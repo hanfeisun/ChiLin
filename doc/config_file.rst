@@ -1,0 +1,109 @@
+=============
+ Config file
+=============
+Synopsis
+========
+
+.. envvar:: [meta]
+
+    Lists all the meta-data of current workflow.
+    
+    Consist of the following options:
+
+    .. envvar:: dataset.ID
+
+        The name for the dataset, which will be the value of :envvar:`${DatasetID}`
+	
+	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
+
+    .. envvar:: species
+
+        The name of species, written to the QCreport and log
+
+	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
+
+    .. envvar:: assembly
+
+        The assembly version, written to the QCreport and log
+
+	Limit: a string (1) consist of ``numbers``, ``alphabets`` (2) shorter than 10 characters
+
+    .. envvar:: treatment
+
+       The paths of treatment files
+
+       Limit: absolute or relative ``path`` of files in :ref:`supported formats<raw data>`
+
+    .. envvar:: control
+
+       The paths of treatment files
+
+       Limit: absolute or relative ``path`` of files in :ref:`supported formats<raw data>`
+       
+.. envvar:: [ext]
+
+    The external data and external tools to use. Read :ref:`External Data` and  :ref:`External Tools` for a full explanation.
+    
+.. envvar:: [steps]
+
+    meta
+
+
+.. _simpest_config:
+
+Simpest config
+==============
+
+Here is one of the simpest Cpipe workflow you can make.
+
+.. literalinclude:: demo/hello_cpipe.conf
+   :language: ini
+   :linenos:
+
+Use your own path of :ref:`Raw Data<Raw Data>` to replace the Line 6. And use the path of the directory used to store :ref:`External Data` to replace Line 9.
+
+When saved to ``hello_cpipe.conf``, this config file can construct a powerful pipeline via:
+
+::
+
+    $ Cpipe hello_cpipe.conf
+
+When it finished about 2 hours later, you will get :ref:`Processed Data<Processed Data>` and a :ref:`PDF report`.
+
+
+    
+Examples about replicates
+=========================
+
+For example, there are five raw files. Three of them are replicates for ``treatment`` and two of two for ``control``.
+
+The file names may look like:
+
+::
+
+    demo_treat1.fastq
+    demo_treat2.fastq
+    demo_treat3.fastq
+    demo_control1.fastq
+    demo_control2.fastq
+
+
+Then you can write the :envvar:`[meta]` section like this:
+
+.. code-block:: ini
+   :linenos:
+   
+    [meta]
+    dataset.ID = demo_replicate
+    # species = human
+    # assembly = hg19
+    treatment.1 = demo_treat1.fastq  
+    treatment.2 = demo_treat2.fastq  
+    treatment.3 = demo_treat3.fastq  
+    control.1 = demo_control1.fastq
+    control.2 = demo_control2.fastq
+
+Replace the commented in Line 2, Line 3 and Line 4 and complete other sections. Then load it with Cpipe.
+
+For the notation of output files, the :envvar:`${DatasetID}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
+
