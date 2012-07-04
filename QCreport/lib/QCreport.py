@@ -12,14 +12,14 @@ import logging
 from subprocess import call
 
 #------------------------
-from QCreport.Basic_qc import *
-from QCreport.fastqc import *
-from QCreport.Mapping_qc import *
-from QCreport.PeakCalling_qc import *
-from QCreport.Ceas_qc import *
-from QCreport.Replicate_qc import *
-from QCreport.Conservtion_qc import *
-from QCreport.motif_qc import *
+from Basic_qc import *
+from fastqc import *
+from Mapping_qc import *
+from PeakCalling_qc import *
+from Ceas_qc import *
+from Replicate_qc import *
+from Conservtion_qc import *
+from motif_qc import *
 
 
 # constants
