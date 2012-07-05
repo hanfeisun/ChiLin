@@ -12,10 +12,10 @@ import logging
 from subprocess import call
 
 #-----------------------
-from basic_qc import Basic_info,fastqc_info
-from mapping_qc import Mapping_info
-from peak_calling_qc import PeakSummary_info,DHS_info,Velcro_info,Replicate_info
-from function_qc import Motif_info,Ceas_info,Conservation_info
+from .basic_qc import Basic_info,fastqc_info
+from .mapping_qc import Mapping_info
+from .peak_calling_qc import PeakSummary_info,DHS_info,Velcro_info,Replicate_info
+from .function_qc import Motif_info,Ceas_info,Conservation_info
 
 
 # constants
@@ -156,7 +156,7 @@ def QC_report():
 	
 	
 def main():
-	configs = read_config("config.conf")
+	configs = read_config("./db/config.conf")
 	username = 'meisl'
 	outputdir = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/testdata/'
 	inputpath = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/QCresult/'
@@ -165,7 +165,7 @@ def main():
 	configs = create_conf(username,datasetid,inputpath,outputdir,configs)
 	print configs
 	QC_report()
-	latex_tex=laytex_parser('latex_temporate.tex')
+	latex_tex=laytex_parser('./template/latex_template.tex')
 	print latex_tex
 	
 if __name__ == '__main__':
