@@ -24,15 +24,16 @@ Manual
    config_file
    output_temporary
 
-Developer Documentation
------------------------
+API Documentation
+-----------------
+
+Documentation for every chlin API.
 
 .. toctree::
    :maxdepth: 2
 
-   interfaces
-   running_test
-
+   api
+   
 Others
 ------
 
