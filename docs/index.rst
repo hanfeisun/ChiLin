@@ -22,7 +22,6 @@ Manual
    features
    data_tool
    config_file
-   workflow
    output_temporary
 
 API Documentation
