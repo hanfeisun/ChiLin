@@ -120,7 +120,7 @@ Workflow
 
     rankdir=TB
     size="15,15"
-    edge[fontsize="11" arrowhead=open]
+    edge[arrowhead=open]
 
     start[shape=circle, label="", style=filled]
     end[shape=doublecircle, label="", style=filled]
