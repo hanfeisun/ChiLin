@@ -111,3 +111,51 @@ IGV
 .. _Cistrome site: http://cistrome.org/~hanfei
 .. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
 .. _pdfTex site: http://www.tug.org/applications/pdftex/ 
+
+========
+Workflow
+========
+
+.. digraph:: foo
+
+    rankdir=TB
+    size="15,15"
+    edge[fontsize="11" arrowhead=open]
+
+    start[shape=circle, label="", style=filled]
+    end[shape=doublecircle, label="", style=filled]
+
+    readconf[shape=box,style=rounded, label="Read config"]
+    bowtie[shape=box,style=rounded, label="Run Bowtie"]
+    rawQC[shape=box,style=rounded, label="Run RawQC"]
+    mappingQC[shape=box,style=rounded, label="Run MappingQC"]
+    macs2[shape=box,style=rounded, label="Run MACS2"]
+    peakcallingQC[shape=box,style=rounded, label="Run PeakcallingQC"]
+    ceas_seqpos[shape=box,style=rounded, label="Run CEAS/Seqpos"]
+    venn[shape=box,style=rounded, label="Draw VennDiagram"]
+    conservation[shape=box,style=rounded, label="Draw ConservationPlot"]
+    annotationQC[shape=box,style=rounded, label="Run AnnotationQC"]
+
+    
+    ifmapped[shape=diamond, label="Mapped?"]
+    ifrep[shape=diamond, label="Replicate?"]
+    
+    start -> readconf
+    readconf -> rawQC
+    rawQC -> ifmapped[headport=n, color="grey"]
+    ifmapped -> mappingQC[label="[Yes]" tailport=s]
+    ifmapped -> bowtie[taillabel="[No]" tailport=e]
+    bowtie -> mappingQC
+    mappingQC -> macs2[color="grey"]
+    macs2 -> ifrep
+    peakcallingQC -> ceas_seqpos[color="grey"]
+    ifrep -> venn[label="[Yes]" tailport=s]
+    ifrep -> conservation[label="[No]" tailport=e]
+    venn -> conservation
+    conservation -> peakcallingQC
+    ceas_seqpos -> annotationQC
+        annotationQC -> end[taillabel="Output Report"]
+    
+
+    
+
