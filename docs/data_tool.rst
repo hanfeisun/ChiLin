@@ -58,6 +58,7 @@ Built-in tools are the scripts that can be run from command-line independently w
 ============================   =====================  
 Tool Name                      Modified from        
 ============================   =====================  
+liftover
 Venn Diagram
 Conservation Plot
 Correlation plot               bigwig_correlation
@@ -116,6 +117,12 @@ IGV
 Workflow
 ========
 
+.. digraph:: main
+    
+    rankdir=TB
+    size="20,15"
+
+
 .. digraph:: foo
 
     rankdir=TB
@@ -154,8 +161,5 @@ Workflow
     venn -> conservation
     conservation -> peakcallingQC
     ceas_seqpos -> annotationQC
-        annotationQC -> end[taillabel="Output Report"]
-    
-
-    
+    annotationQC -> end[taillabel="Output Report"]
 

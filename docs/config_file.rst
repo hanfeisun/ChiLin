@@ -22,6 +22,15 @@ Synopsis
 
 	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
 
+    .. envvar:: factor
+        
+        The name of species, writen to DC summary and QCreport, log 
+	Limit: a string (1) come from GO standard term
+     
+    .. envvar:: TF or Histone
+        The judgement of the factor for MACS shift-size choice and assess motif QC measurement 
+	Limit: Logic value, True for TF and False for Histone
+
     .. envvar:: assembly
 
         The assembly version, written to the QCreport and log
@@ -66,7 +75,7 @@ When saved to ``hello_cpipe.conf``, this config file can construct a powerful pi
 
 ::
 
-    $ Cpipe hello_cpipe.conf
+    $ chilin hello_cpipe.conf
 
 When it finished about 2 hours later, you will get :ref:`Processed Data<Processed Data>` and a :ref:`PDF report`.
 
