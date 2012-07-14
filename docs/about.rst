@@ -12,6 +12,11 @@ Purpose
 
 Goal
 ==================
+There are two main command for the pipeline.
+The one `merge_DC` is for previous reservation version for constructing Cistrome Secondary Database;
+The New Version  `chilin` provide a more flexible handle for understanding the ChIP-seq analysis workflow.
+
+
 There are two layers for pipeline goal.This is part of the Cistrome_ project
 
 1.command line :: 
