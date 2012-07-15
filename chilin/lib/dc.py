@@ -93,7 +93,6 @@ class TemplateParser(object):
         except TemplateNotFound:
             print "No template folder"
 
-
 class Log(object):
     def __init__(self):
         """
@@ -177,13 +176,12 @@ class Bowtie(DcController):
     def _run(self):
         print "Run Bowtie in the Option set command"
         print "Write in Log"
-        return # true or false for DcController to continue or stop
+        return # true or false for DcController to continue or stop\
+                # and path for Next step
 
     def summary(self):
         print "Call private _Run"
         print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
         print "Write into the template"
 
 class MACS(DcController):
@@ -191,6 +189,7 @@ class MACS(DcController):
     for peaks calling"""
     
     def __init__(self):
+        self.Model = True
         print "Get MACS related options from options"
         super(Replicates, self).__init__()
         
@@ -198,37 +197,41 @@ class MACS(DcController):
         print "Use samtools Convert the sam to sorted bam"
         print "Convert to tdf format by IGV tools"
 
-    def _Run(self):
+    def _run(self):
+        if self.Model:
+            print "Build Model"
+        else:
+            print "--shift-size --nomode options on"
+
         print "call External Macs program"
         print "Print Log into the universal Log"
         
     def summary(self):
         print "Call private _Run"
         print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
         print "Write into the template"
 
 class CEAS(DcController):
     def __init__(self):
         """Get CEAS dependency info from
         Check Class"""
+        self.format = []
         super(Replicates, self).__init__()
 
     def _format(self):
+        self.format.append('BED or wiggele or both')
         print "Get the random peaks number for speeding the CEAS"
 
-    def _Run(self):
+    def _run(self):
+
         print "Run the Dependency Program for return FindPath string"
         
     def summary(self):
         print "Call private _Run"
         print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Seqpos(Check, Log):
+class Seqpos(DcController):
     def __init__(self):
         super(Replicates, self).__init__()
     
@@ -243,8 +246,8 @@ class Seqpos(Check, Log):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Replicates(Check, Log):
-    def __init__(self):
+class Replicates(DcController):
+    def __init__(self, OptionMethod = "Mean"):
         """Read in the Controller Dictionary
         to decide whether do this step or not"""
         super(Replicates, self).__init__()
@@ -253,7 +256,7 @@ class Replicates(Check, Log):
     def _format(self):
         print "use bedtools to get the desired input"
         print "use bedGraphToBigwiggle to generate Bigwiggle"
-    def _Run(self):
+    def _run(self):
         print "Run the venn_diagram"
         print "Run the correlation diagram"
         print "Call private _Run"
@@ -261,6 +264,10 @@ class Replicates(Check, Log):
         print "Call FindPath DC to return path for QC"
         print "Call FindPath to return path for DC"
         print "Write into the template"
+        return "Path for QC"
+
+    def summary(self):
+        print "render to template"
 
 class Conserv(DcController):
     def __init__(self):
