@@ -28,6 +28,7 @@ class QC_Controller(object):
 	def render(self, template = None):
 		""" Generate the latex code for current section. """
 		if not self.has_run:
+
 			self.run()
 		if template is None:
 			template = self.template
