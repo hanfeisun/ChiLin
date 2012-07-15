@@ -18,7 +18,8 @@ Through the pipeline, several temporary files will be generated, some of them ar
 
 Notation
 ========
-All the program operation will be under the ${DatasetID} or 
+All the program operation will be under the ${DatasetID}_folder.  
+
 .. envvar:: ${DatasetID}
 
     The value of :ref:`dataset.id<dataset.id>` option in :envvar:`[meta]` section
@@ -33,9 +34,11 @@ All the program operation will be under the ${DatasetID} or
     The suffix of :envvar:`control` option in :envvar:`[meta]` section
 
 .. envvar:: ${config}
+
     The general configuration file for pipeline :envvar:`[meta]` section
 
 .. envvar:: ${log}
+
     For write in all shell output and assessment during procedure, including time consumed :envvar: `[meta]`
 
 Temporary files
@@ -116,8 +119,8 @@ Output result
 
 Final PDF Report
 ================
-
 Provide the overall report of the whole pipeline for viewing general result.
+
 .. Note:: 
    Output Format is optional(default PDF)
    Below is output in the root directory, that is the folder named after ${DatasetID}
