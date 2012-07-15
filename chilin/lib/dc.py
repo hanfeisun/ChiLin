@@ -8,8 +8,7 @@ Last modified
 """
 #-------------module--------------
 from subprocess import Popen, call
-from optparse import OptionParser
-from os.path import join, exists, getmtime
+from os.path import join, exists
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from collections import defaultdict
 
@@ -21,11 +20,8 @@ import sys
 import glob
 import time
 import datetime
-#import QC
-
 
 #----------collective class-------
-
 class Check(object):
     """read in Options set by optparse
     Meta -> ${DatasetID}Meta.xls
@@ -35,11 +31,11 @@ class Check(object):
     PathFindDict = {${DatasetID}_bowtie.sam : 
                    [ path/to/file+universalfilename, True] #logic value for control the step
     """
-    def __init__(self, conf):
-        self.tmpname = ''
-        self.outputname = ''
-        self.reportname = ''
-        self.cormethod = options.method
+    def __init__(self, config="", NameRule="", Meta=""):
+        self.conf = config
+        self.Name = NameRule
+        self.Meta = Meta # from options
+        print "read in options from command line"
 
     def ReadConf(self):
         """
@@ -74,11 +70,12 @@ class Check(object):
         the replicates or not, good quality or poor quality
         thus, control the step
         """
-        print "read in the output contemporary Name from config file"
-        print "read in the Meta data path from .xls file"
-        print "According to the config and set the universal outputname"
+        print "read in NameRule.ini to initialize output& temporary file name"
+        print "Create corresponding folder"
+        print "Set path for each file according to Meta.xls output column"
+        print "write out step control information using a Dictionary"
 
-class TemplateParser(Check):
+class TemplateParser(object):
     """Load in the QC and DC summary
     template and Write Output in"""
     def __init__(self):
@@ -87,6 +84,7 @@ class TemplateParser(Check):
 
     def Loader(self):
         print "Load in filesystem"
+        print "Create a temporary file to contain writen summary"
         try:
             env = Environment(loader=FileSystemLoader("chilin/template"))
             template = env.get_template('DA.txt')
@@ -95,54 +93,77 @@ class TemplateParser(Check):
         except TemplateNotFound:
             print "No template folder"
 
-    # write in DC, QC template separate variables
-    def DcRender(self):
-        print "Load DC.template and Write in DC output"
 
-    def QcRender(self):
-        print "Load QC template and write into DC output"
-
-
-class Log(logging):
-    def __init__(self, option):
+class Log(object):
+    def __init__(self):
         """
         Universal log format
         time, execute, Shell, DC and QC string
         plus time consumed"
         write in the desired log format
         """
-        basicConfig(level=20,
-                    format='%(levelname)-5s @ %(asctime)s: %(message)s ',
-                    datefmt='%a, %d %b %Y %H:%M:%S',
-                    stream=sys.stderr,
-                    filemode="w"
-                    ) # logging
-        self.logfhd = open("log","w")
-        self.error   = critical # alias for logging.critical
-        self.warn    = warning
+        print "Create a Log file"
+        print "Customized log content, including shell output,\
+                warning and error"
 
     def Timer(self):
         print "Calculate time for each step"
-        print "CPU time elapsed: %s s" %(time.clock() - cpustart)
-        print "Real time elapsed: %s s" %(datetime.datetime.now()-realstart)
         
     def info(exp):
-        self.info(a) # logging.info
-        self.logfhd.write(a + '\n')
-        self.logfhd.flush()
-        if warn:
-            self.warn()
-        elif error:
-            self.error()
-        print "write running log"
-        print "write in shell command"
-        print "write accident during pipeline"
-        print "_Timer for each step"
-        print "Write the path for temporary and output result"
+        print "write config and meta information in log file"
+        print "write shell command in log"
+        print "if warning, write in warning"
+        print "if error, break, write in error"
+        print "if execute command succeed, call Timer to write in running time"
+
+class DcController(Check, Log, TemplateParser):
+    def __init__(self, Options = ""):
+        # read in Options from command line
+        # Get template and conf information
+        super(DcController, self).__init__()
+        self.template = ""
+        self.method = Options
+        self.conf = self.ReadConf()
+        self.program = self.DependencyCheck()
+        self.error = False
+
+    def _StepControl(self):
+        """ Supplement Dictionary logic value 
+        for class Check"""
+        print "Set logic dictionary value from Options and Check class"
+
+    def run(self):
+        """for running each step of pipeline
+        """
+        print "run each step in control"
+        print "Call private class bowtie etc. _run"
+        print "Extract shell output for render and log"
+        if self.error: 
+            print "write log and exit"
+            return False # logic
+        else:
+            print "write in warning"
+            return True
+
+    def partition(self):
+        print "Create Folder up to output&temporary folder"
+        print "assign the output&temporary file according to\
+               output& temporary folder"
+
+    def render(self, template = ''):
+        """
+        write into the DA.txt template 
+        separately 
+        """
+        if self.run:
+            print "Get variable"
+            print "Write into Template"
+        else:
+            print "Write into log"
 
 #---------------DC class---------------
 
-class Bowtie(Check, Log):
+class Bowtie(DcController):
     """Bowtie DC and QC step"""
     
     def __init__(self):
@@ -165,12 +186,13 @@ class Bowtie(Check, Log):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class MACS(Check, Log):
+class MACS(DcController):
     """ MACS step, separately and merge for sorted bam
     for peaks calling"""
     
     def __init__(self):
         print "Get MACS related options from options"
+        super(Replicates, self).__init__()
         
     def _format(self):
         print "Use samtools Convert the sam to sorted bam"
@@ -178,7 +200,7 @@ class MACS(Check, Log):
 
     def _Run(self):
         print "call External Macs program"
-    print "Print Log into the universal Log"
+        print "Print Log into the universal Log"
         
     def summary(self):
         print "Call private _Run"
@@ -187,11 +209,12 @@ class MACS(Check, Log):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class CEAS(Check, MACS, Log, FindPath):
+class CEAS(DcController):
     def __init__(self):
         """Get CEAS dependency info from
         Check Class"""
-        print self.option
+        super(Replicates, self).__init__()
+
     def _format(self):
         print "Get the random peaks number for speeding the CEAS"
 
@@ -205,9 +228,9 @@ class CEAS(Check, MACS, Log, FindPath):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Seqpos(Check, MACS, Log, FindPath):
+class Seqpos(Check, Log):
     def __init__(self):
-		print self.option
+        super(Replicates, self).__init__()
     
     def _format(self):
         print "Get the top peaks number for motif analysis"
@@ -220,10 +243,11 @@ class Seqpos(Check, MACS, Log, FindPath):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Replicates(Check, Log, MACS, FindPath):
+class Replicates(Check, Log):
     def __init__(self):
         """Read in the Controller Dictionary
         to decide whether do this step or not"""
+        super(Replicates, self).__init__()
         print "if replicates, Do this Step"
 
     def _format(self):
@@ -238,15 +262,16 @@ class Replicates(Check, Log, MACS, FindPath):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Conserv(Check, Log):
-
+class Conserv(DcController):
     def __init__(self):
         super(Conserv, self).__init__()
 
     def _format(self):
         print "Set input Peaks number for conservation Plot"
+
     def _run(self):
         print "Run the External conservation plot"
+
     def summary(self):
         print "Call private _Run"
         print "Extract shell output" # generate temporary file
@@ -255,38 +280,11 @@ class Conserv(Check, Log):
         print "Write into the template"
         return # information for passing to TemplateParser
 
+
+
+# TO-DO
 class GUI(DcController):
     pass
 
 class CistromeAPI(DcController):
-    def __init__(self):
-        super(DcController)
     pass
-
-class DcController(Check):
-
-    def _StepControl(self):
-        """ Supplement Dictionary logic value 
-        for class Check"""
-        print "Set logic dictionary value for Step"
-
-    def main(self):
-        """for running each step of pipeline
-        """
-        print "run each step in control"
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
-        print "Write into the template"
-        print "..."
-
-##Options
-        # Index-genome: Bowtie
-        # m : Bowtie mapping limit
-        # model or not : MACS shift-size
-        # CEAS : Peaks number
-        # Refgene
-        # Conservation: Peaks number
-        #
-        
