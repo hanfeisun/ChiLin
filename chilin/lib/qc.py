@@ -5,13 +5,14 @@
 #Usage      :
 
 
-class QC_Controller():
+class QC_Controller(object):
 	"""
 	All the class in the module derives from this class
 	"""
 	def __init__(self, template=""):
 		self.template = template
 		self.has_run = False
+		print 'QC control'
 	
 	def run(self):
 		""" Run some QC tools or do some time-costing statistics """
@@ -36,16 +37,17 @@ class QC_Controller():
 
 
 class RawQC(QC_Controller):
-	def __init__(self):
+	def __init__(self,a):
 		super(RawQC, self).__init__()
+		self.a = 'qin qian'
 		print 'init basic_qc'
 	def _basic_info(self):
 		print 'basic QC information'
 	def _fastqc_info(self):
-		qc_main = ''
-		files = []
 		print 'fastqc\n'
-	def run(self):
+	def run(self,b):
+		print self.a
+		print b
 		self._basic_info()
 		self._fastqc_info()
 	def check(self):

@@ -13,7 +13,7 @@ from subprocess import call
 from jinja2 import Environment, FileSystemLoader
 
 #-----------------------
-from QC_class import Basic_qc,Mapping_qc,Peak_calling_qc,Function_qc
+from qc import RawQC,MappingQC,PeakcallingQC,AnnotationQC
 
 
 # constants
@@ -26,7 +26,7 @@ def template_parser():
 	tag['mapping_check'] = ''
 	file = './template/template.tex'
 	env = Environment(
-			loader=FileSystemLoader('/Users/Samleo'),
+			loader=FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/'),
 			block_start_string = '\BLOCK{',
 			block_end_string = '}',
 			variable_start_string = '\VAR{',
@@ -47,11 +47,11 @@ def main():
 	outputdir = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/testdata/'
 	inputpath = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/QCresult/'
 	datasetid = '1277'
-#	Basic_qc().summary()
-#	Mapping_qc().summary()
-#	Peak_calling_qc().summary()
-#	Function_qc().summary()
-	template_parser()
+	RawQC('sdfsdf').run('yulinyang')
+	MappingQC().run()
+	PeakcallingQC().run()
+	AnnotationQC().run()
+#	template_parser()
 	
 if __name__ == '__main__':
 	main()

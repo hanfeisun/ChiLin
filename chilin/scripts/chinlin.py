@@ -21,34 +21,10 @@ import sys
 import glob
 import time
 import datetime
-import QC
+#import QC
 
 
 #----------collective class-------
-
-class TemplateParser(Check):
-    """Load in the QC and DC summary
-    template and Write Output in"""
-    def __init__(self):
-        self.datatype = Check
-        super(TemplateParser, self).__init__()
-
-    def Loader(self):
-        print "Load in filesystem"
-        try:
-            env = Environment(loader=FileSystemLoader("chilin/template"))
-            template = env.get_template('DA.txt')
-            #template = env.get_template('template.tex')
-            print template.render()
-        except TemplateNotFound:
-            print "No template folder"
-
-    # write in DC, QC template separate variables
-    def DcRender(self):
-        print "Load DC.template and Write in DC output"
-
-    def QcRender(self):
-        print "Load QC template and write into DC output"
 
 class Check(Config, Options, Meta):
     """read in Options set by optparse
@@ -76,7 +52,7 @@ class Check(Config, Options, Meta):
         Check the Meta configuration 
         if up to our definition
         """
-        pass
+        print "Check the configuration right or not"
 
     def DependencyCheck(self):
         """
@@ -101,6 +77,31 @@ class Check(Config, Options, Meta):
         print "read in the output contemporary Name from config file"
         print "read in the Meta data path from .xls file"
         print "According to the config and set the universal outputname"
+
+class TemplateParser(Check):
+    """Load in the QC and DC summary
+    template and Write Output in"""
+    def __init__(self):
+        self.datatype = Check
+        super(TemplateParser, self).__init__()
+
+    def Loader(self):
+        print "Load in filesystem"
+        try:
+            env = Environment(loader=FileSystemLoader("chilin/template"))
+            template = env.get_template('DA.txt')
+            #template = env.get_template('template.tex')
+            print template.render()
+        except TemplateNotFound:
+            print "No template folder"
+
+    # write in DC, QC template separate variables
+    def DcRender(self):
+        print "Load DC.template and Write in DC output"
+
+    def QcRender(self):
+        print "Load QC template and write into DC output"
+
 
 class Log(logging):
     def __init__(self, option):
@@ -206,7 +207,7 @@ class CEAS(Check, MACS, Log, FindPath):
 
 class Seqpos(Check, MACS, Log, FindPath):
     def __init__(self):
-    print self.option
+		print self.option
     
     def _format(self):
         print "Get the top peaks number for motif analysis"
