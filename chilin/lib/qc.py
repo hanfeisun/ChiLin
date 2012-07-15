@@ -45,13 +45,14 @@ class RawQC(QC_Controller):
 		self.a = 'qin qian'
 		print 'init basic_qc'
 	def _basic_info(self):
-		""" basic description of the ChIP-seq dataset """
+		""" Basic description of the ChIP-seq  input dataset """
 		print 'basic QC information'
 	def _fastqc_info(self):
 		""" QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
 		"""
 		print 'fastqc\n'
 	def run(self,b):
+		""" Run some RawQC functions to get final result."""
 		print self.a
 		print b
 		self._basic_info()
@@ -79,10 +80,12 @@ class MappingQC(QC_Controller):
 		""" Show redundant  ratio of the dataset in all historic data"""
 		print 'redundant_ratio\n'
 	def run(self):
+		""" Run some MappingQC function to get final result. """
 		self._basic_mapping_statistics_info()
 		self._mappable_ratio_info()
 		self._redundant_ratio_info()
 	def check():
+		"""Check whether the MappingQC's result is ok. """
 		print 'mapping qc pass or not'
 
 
@@ -110,11 +113,13 @@ class PeakcallingQC(QC_Controller):
 		print 'replicate_info\n'
 
 	def run(self):
+		""" Run some PeakcallingQC function to get final result. """
 		self._peak_summary_info()
 		self._velcro_ratio_info()
 		self._DHS_ratio_info()
 		self._replicate_info()
 	def check():
+		""" Check whether PeakcallingQC's result is ok. """
 		print 'pass or not'
 
 		
@@ -133,9 +138,11 @@ class AnnotationQC(QC_Controller):
 		""" QC of Sepose. """
 		print 'motif info\n'
 	def run(self):
+		""" Run some AnnotationQC function. """
 		self._ceas_info()
 		self._conservation_info()
 		self._motif_info()
 	def check(self):
+		""" Check whether AnnotationQC's result is ok. """
 		print 'pass or not'
 
