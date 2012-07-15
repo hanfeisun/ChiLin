@@ -2,6 +2,38 @@
 API Documentation
 =================
 
+DC class design instructions
+--------------------------------
+
+.. automodule:: chilin.dc
+
+.. autoclass::  chilin.dc.Check
+     :member: ReadConf, CheckConf, DependencyCheck
+
+.. autoclass:: chilin.dc.TemplateParser
+    :member: Loader
+
+.. autoclass:: chilin.chilin.Log
+     :member: _Timer, info
+
+.. autoclass:: chilin.dc.DcController
+     :member:_StepControl, run, partition, render
+
+.. autoclass:: chilin.dc.Bowtie
+     :member: _format, _run, summary
+     
+.. autoclass:: chilin.dc.MACS
+     :member: _format, _run, summary
+
+ 
+.. autoclass:: chilin.dc.Replicates
+     :member: _format, _run, summary
+
+.. autoclass:: chilin.dc.CEAS
+     :member: _format, _run, summary
+ 
+.. autoclass:: chilin.dc.Conserv
+     :member: _format, _run, summary
 
 
 
@@ -9,35 +41,6 @@ Controllers of QC
 ------------------
 
 .. automodule:: chilin.qc
-
-.. .. automodule:: chilin.chilin
-
-.. .. autoclass::  chilin.chilin.Check
-..     :member: ReadConf, CheckConf, DependencyCheck
-
-.. .. autoclass:: chilin.chilin.TemplateParser
-..     :member: Loader, DcRender, QcRender
-
-.. .. autoclass:: chilin.chilin.Log
-..     :member: _Timer, info
-
-.. .. autoclass:: chilin.chilin.DcController
-..     :member:_StepControl, main
-.. 
-.. .. autoclass:: chilin.chilin.Bowtie
-..     :member: _format, _run, summary
-..     
-.. .. autoclass:: chilin.chilin.MACS
-..     :member: _format, _run, summary
-.. 
-.. .. autoclass:: chilin.chilin.Bowtie
-..     :member: _format, _run, summary
-.. 
-.. .. autoclass:: chilin.chilin.Bowtie
-..     :member: _format, _run, summary
-.. 
-.. .. autoclass:: chilin.chilin.Conserv
-    :member: _format, _run, summary
 
 .. autoclass:: chilin.qc.QC_Controller
     :members: run, check, render

@@ -211,6 +211,29 @@ class MACS(DcController):
         print "Extract shell output"
         print "Write into the template"
 
+class Replicates(DcController):
+    def __init__(self, OptionMethod = "Mean"):
+        """Read in the Controller Dictionary
+        to decide whether do this step or not"""
+        super(Replicates, self).__init__()
+        print "if replicates, Do this Step"
+
+    def _format(self):
+        print "use bedtools to get the desired input"
+        print "use bedGraphToBigwiggle to generate Bigwiggle"
+    def _run(self):
+        print "Run the venn_diagram"
+        print "Run the correlation diagram"
+        print "Call private _Run"
+        print "Extract shell output"
+        print "Call FindPath DC to return path for QC"
+        print "Call FindPath to return path for DC"
+        print "Write into the template"
+        return "Path for QC"
+
+    def summary(self):
+        print "render to template"
+
 class CEAS(DcController):
     def __init__(self):
         """Get CEAS dependency info from
@@ -246,28 +269,6 @@ class Seqpos(DcController):
         print "Call FindPath to return path for DC"
         print "Write into the template"
 
-class Replicates(DcController):
-    def __init__(self, OptionMethod = "Mean"):
-        """Read in the Controller Dictionary
-        to decide whether do this step or not"""
-        super(Replicates, self).__init__()
-        print "if replicates, Do this Step"
-
-    def _format(self):
-        print "use bedtools to get the desired input"
-        print "use bedGraphToBigwiggle to generate Bigwiggle"
-    def _run(self):
-        print "Run the venn_diagram"
-        print "Run the correlation diagram"
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
-        print "Write into the template"
-        return "Path for QC"
-
-    def summary(self):
-        print "render to template"
 
 class Conserv(DcController):
     def __init__(self):
