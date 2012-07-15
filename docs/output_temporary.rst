@@ -78,12 +78,10 @@ Temporary files
    ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithpeak.R ; CEAS ; R
    ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithoutpeak.pdf ; CEAS ; R
    ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithpeak.pdf ; CEAS ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_peak_overlap_DHS.pdf ; Peak calling QC ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_mappable_ratio.pdf ; Mapping QC result ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_fastqc_score_distribution.pdf ; Raw data QC ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_peak_distribution.pdf ; Peak calling QC ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_velcro_ratio.pdf ; Peak calling QC ; R
-
+   ${DatasetID}_qctmp ; ${DatasetID}_fasctqc_summary.txt ; FastQC ; ref:`FastQC`
+   ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
+   ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
+	
  .. _Processed Data:
 
 Output result
@@ -104,6 +102,12 @@ Output result
    ${DatasetID}_CEASresult ;${DatasetID}_ceas.xls ; CEAS ; CEAS_
    ${DatasetID}_conservresult ; ${DatasetID}_conserv.png ; Phascon score plot ; :ref:`Built-in tools<Built-in tools>`
    ${DatasetID}_conservresult ; ${DatasetID}_conserv.R ; Phascon score ; :ref:`Built-in tools<Built-in tools>`
+   ${DatasetID}_MappingQCresult ; ${DatasetID}_redundant_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_MappingQCresult ; ${DatasetID}_mappable_ratio.pdf ; Mapping QC result ; R
+   ${DatasetID}_RawQCresult ; ${DatasetID}_fastqc_score_distribution.pdf ; Raw data QC ; R
+   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_DHS_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_velcro_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_peak_ratio.pdf ; Peak calling QC ; R
    ${DatasetID}_QCresult ; ${DatasetID}_QC.tex ; QC report code ; pdftex_
    ${DatasetID}_QCresult ; ${DatasetID}_QC.tex ; QC report code ; :ref:`pdftex`
    root directory ; ${DatasetID}_summary.txt ; Data analysis summary ; : ref : `Built-in tools<Built-in tools>`
