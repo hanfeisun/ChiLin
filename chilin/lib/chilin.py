@@ -26,7 +26,7 @@ import datetime
 
 #----------collective class-------
 
-class Check(Config, Options, Meta):
+class Check(object):
     """read in Options set by optparse
     Meta -> ${DatasetID}Meta.xls
     Name rule file -> NameRule.ini
@@ -263,7 +263,7 @@ class CistromeAPI(DcController):
         super(DcController)
     pass
 
-class DcController(Config, Check):
+class DcController(Check):
 
     def _StepControl(self):
         """ Supplement Dictionary logic value 
@@ -290,5 +290,3 @@ class DcController(Config, Check):
         # Conservation: Peaks number
         #
         
-if __name__ == "__main__":
-    main()

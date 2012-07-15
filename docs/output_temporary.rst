@@ -41,23 +41,23 @@ All the program operation will be under the ${DatasetID} or
 Temporary files
 ===============
 
-.. csv-table:: 
-   :header: "FolderName" "FileName", "Content", "Tool used"
-   :widths: 20, 25, 20, 10
+.. csv-table::
+   :header: "FolderName", "FileName", "Content", "Tool used"
+   :widths: 25, 25, 20, 10
    :delim: ;
-   
+
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_control_rep${control_rep}.sam ; mapping result ; :ref:`Bowtie`
-   ${DatasetID}_Bowtietmp ; ${DatasetID}_bowtie_sh.txt ; bowtie shell summary : :ref: `Bowtie`
+   ${DatasetID}_Bowtietmp ; ${DatasetID}_bowtie_sh.txt ; bowtie shell summary ; :ref: `Bowtie`
    ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_dhs.txt ; DHS peaks intersection ; :ref:`BEDtools`
    ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_velcro.txt ; overlap with velcro region; :ref:`BEDtools`
    ${DatasetID}_BEDtoolstmp ; ${DatasetID}_overlapped_bed ; peaks overlapped ; :ref:`bedtools`
    ${DatasetID}_MACStmp ; ${DatasetID}_control_rep${control_rep}.bdg ; separate control MACS bedGraph file; :ref:`MACS2<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_treat_rep${treat_rep}.bdg ; separate treat bedGraphfile ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat.bdg ; Overall MACS bedGraph file; :ref:`MACS2<MACS2>`
+   ${DatasetID}_MACStmp ; ${DatasetID}_treat.bdg ; Overall MACS bedGraph file ; :ref:`MACS2<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_treat.bdg.tmp ; bedGraph temporary file ; :ref:`MACS2<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_treat.bdg ; separate treat bedGraph ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_${treat_rep}_peaks.encodePeak; MACS encode Peak ; :ref:`MACS<MACS2>`
+   ${DatasetID}_MACStmp ; ${DatasetID}_${treat_rep}_peaks.encodePeak ; MACS encode Peak ; :ref:`MACS<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_pq_table.txt ; separate p q value  ; :ref:`MACS2<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_pq_table.txt ; collective MACS2 p q value ; :ref:`MACS2<MACS2>`
    ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_control_lambda.bdg ; treat over control lambda; :ref:`MACS<MACS2>`
@@ -81,14 +81,14 @@ Temporary files
    ${DatasetID}_qctmp ; ${DatasetID}_fasctqc_summary.txt ; FastQC ; ref:`FastQC`
    ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
    ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
-	
+
  .. _Processed Data:
 
 Output result
 =============
 
 .. csv-table:: 
-   :header: "Folder" "File Name", "Content", "Tool used"
+   :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 10
    :delim: ;
    
