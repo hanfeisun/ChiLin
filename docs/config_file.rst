@@ -28,8 +28,10 @@ Synopsis
 	Limit: a string (1) come from GO standard term
      
     .. envvar:: TF or Histone
+
         The judgement of the factor for MACS shift-size choice and assess motif QC measurement 
-	Limit: Logic value, True for TF and False for Histone
+
+    Limit: Logic value, True for TF and False for Histone
 
     .. envvar:: assembly
 
