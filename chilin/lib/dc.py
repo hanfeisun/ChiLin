@@ -2,8 +2,8 @@ from subprocess import Popen, call
 from os.path import join, exists
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
 from collections import defaultdict
+from ConfigParser import ConfigParser
 
-import ConfigParser
 import string
 import re
 import logging
@@ -11,6 +11,7 @@ import sys
 import glob
 import time
 import datetime
+import os
 
 class Check(object):
     """read in Options set by optparse
@@ -22,7 +23,7 @@ class Check(object):
                    [ path/to/file+universalfilename, True] #logic value for control the step
     """
     def __init__(self, config="", NameRule="", Meta=""):
-        self.conf = config
+        self.conf = os.path.join(os.path.split(os.getcwd())[0], 'lib/db/chinlin.ini')
         self.Name = NameRule
         self.Meta = Meta # from options
         print "read in options from command line"
@@ -31,7 +32,16 @@ class Check(object):
         """
         Read configuration and parse it into Dictionary
         """
-        print "read and parse the conf"
+
+        print self.conf
+        cf = ConfigParser()
+        cf.read(self.conf)
+        secs = cf.sections()
+        print secs
+        print cf.options('bowtie')
+
+    def MetaParse(self, MetaPath = ""):
+        print MetaPath
 
     def CheckConf(self):
         """
@@ -105,16 +115,17 @@ class Log(object):
         print "if error, break, write in error"
         print "if execute command succeed, call Timer to write in running time"
 
-class DcController(Check, Log, TemplateParser):
+class DcController(object):
     def __init__(self, Options = ""):
+        """
         # read in Options from command line
         # Get template and conf information
-        super(DcController, self).__init__()
-        self.template = ""
-        self.method = Options
-        self.conf = self.ReadConf()
-        self.program = self.DependencyCheck()
+        """
+        print "Dc control prepare"
         self.error = False
+        print "DC control start"
+
+
 
     def _StepControl(self):
         """ Supplement Dictionary logic value 
