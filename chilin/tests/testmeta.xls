@@ -1,0 +1,2 @@
+User    datasetID       species factor  treatpath   controlpath OutputDirectory type(Dnase,Histone,TF)
+qinq    5000            human   ESR1    /Tfolder/Tfilename,/Tfolder/Tfilename       /Cfolder/Cfilename,/Cfolder/Cfilename   path/to/output  TF
