@@ -110,12 +110,13 @@ Output result
    ${DatasetID}_conservresult ; ${DatasetID}_conserv.R ; Phascon score ; :ref:`Built-in tools<Built-in tools>`
    ${DatasetID}_MappingQCresult ; ${DatasetID}_redundant_ratio.pdf ; Peak calling QC ; R
    ${DatasetID}_MappingQCresult ; ${DatasetID}_mappable_ratio.pdf ; Mapping QC result ; R
-   ${DatasetID}_RawQCresult ; ${DatasetID}_fastqc_score_distribution.pdf ; Raw data QC ; R
-   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_DHS_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_velcro_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_PeakCallingQCresult ; ${DatasetID}_peak_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_QCresult ; ${DatasetID}_fastqc_score_distribution.pdf ; Raw data QC ; R
+   ${DatasetID}_QCresult ; ${DatasetID}_fastqc_summary.txt ; Raw data QC ; R
+   ${DatasetID}_QCresult ; ${DatasetID}_DHS_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_QCresult ; ${DatasetID}_velcro_ratio.pdf ; Peak calling QC ; R
+   ${DatasetID}_QCresult ; ${DatasetID}_peak_ratio.pdf ; Peak calling QC ; R
    ${DatasetID}_QCresult ; ${DatasetID}_QC.tex ; QC report code ; pdftex_
-   ${DatasetID}_QCresult ; ${DatasetID}_QC.tex ; QC report code ; :ref:`pdftex`
+   ${DatasetID}_QCresult ; ${DatasetID}_QC.pdf ; QC report ; :ref:`pdftex`
    root directory ; ${DatasetID}_summary.txt ; Data analysis summary ; : ref : `Built-in tools<Built-in tools>`
 
 .. _PDF report:
