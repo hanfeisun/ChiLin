@@ -22,26 +22,28 @@ class Check(object):
     PathFindDict = {${DatasetID}_bowtie.sam : 
                    [ path/to/file+universalfilename, True] #logic value for control the step
     """
-    def __init__(self, config="", NameRule="", Meta=""):
+    def __init__(self, config=""):
         self.conf = os.path.join(os.path.split(os.getcwd())[0], 'lib/db/chinlin.ini')
-        self.Name = NameRule
-        self.Meta = Meta # from options
+        self.username = ''
+        self.datasetid = ''
+        self.type = '' # Dnase, Histone, TF
         print "read in options from command line"
 
     def ReadConf(self):
         """
         Read configuration and parse it into Dictionary
         """
-
-        print self.conf
         cf = ConfigParser()
         cf.read(self.conf)
-        secs = cf.sections()
-        print secs
         print cf.options('bowtie')
+        print cf.items('bowtie')
+        secs = cf.sections()
+        return secs
 
     def MetaParse(self, MetaPath = ""):
-        print MetaPath
+        for line in open(MetaPath).readlines():
+            line = line.strip().split()
+            print line
 
     def CheckConf(self):
         """

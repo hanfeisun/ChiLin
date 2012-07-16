@@ -7,7 +7,6 @@ sys.path.append("../lib/")
 from dc import *
 from qc import *
 from optparse import OptionParser
-from ConfigParser import ConfigParser
 
 def main():
     usage = "usage: %prog <Meta.xls Path> [optional]-m cormethod -p peaksnumber"
@@ -24,9 +23,13 @@ def main():
         sys.exit(1)
     Meta = args[0]
     Config = Check().ReadConf()
+    print Config
+#    ['bowtie', 'samtools', 'macs', 'bedtools', 'bed2bam', 'ceas', 'conservation', 'correlation', 'venn', 'seqpos', 'QC']
 
-    DC = DcController()
-    QC = QC_Controller()
+    
+    Meta = Check().MetaParse(Meta)
+    
+
     print "test OK"
 
 
