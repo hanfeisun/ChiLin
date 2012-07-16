@@ -1,10 +1,3 @@
-#!/usr/bin/env python
-#Author     : meisl
-#Name       :
-#Description:
-#Usage      :
-
-
 class QC_Controller(object):
 	"""
 	All the class in the module derives from this class
@@ -34,16 +27,13 @@ class QC_Controller(object):
 			template = self.template
 		return ""
 		
-		
-
 
 class RawQC(QC_Controller):
 	"""  
 	RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
 	"""
-	def __init__(self,a):
+	def __init__(self):
 		super(RawQC, self).__init__()
-		self.a = 'qin qian'
 		print 'init basic_qc'
 	def _basic_info(self):
 		""" Basic description of the ChIP-seq  input dataset """
@@ -52,10 +42,8 @@ class RawQC(QC_Controller):
 		""" QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
 		"""
 		print 'fastqc\n'
-	def run(self,b):
+	def run(self):
 		""" Run some RawQC functions to get final result."""
-		print self.a
-		print b
 		self._basic_info()
 		self._fastqc_info()
 	def check(self):
