@@ -117,12 +117,6 @@ IGV
 Workflow
 ========
 
-.. digraph:: main
-    
-    rankdir=TB
-    size="20,15"
-
-
 .. digraph:: foo
 
     rankdir=TB
@@ -132,14 +126,14 @@ Workflow
     start[shape=circle, label="", style=filled]
     end[shape=doublecircle, label="", style=filled]
 
-    readconf[shape=box,style=rounded, label="Read config"]
+    readconf[shape=box,style=rounded, label="class Check"]
     bowtie[shape=box,style=rounded, label="Run Bowtie"]
     rawQC[shape=box,style=rounded, label="Run RawQC"]
     mappingQC[shape=box,style=rounded, label="Run MappingQC"]
     macs2[shape=box,style=rounded, label="Run MACS2"]
     peakcallingQC[shape=box,style=rounded, label="Run PeakcallingQC"]
     ceas_seqpos[shape=box,style=rounded, label="Run CEAS/Seqpos"]
-    venn[shape=box,style=rounded, label="Draw VennDiagram"]
+    venn[shape=box,style=rounded, label="class Replicates, Draw VennDiagram and Correlation plot"]
     conservation[shape=box,style=rounded, label="Draw ConservationPlot"]
     annotationQC[shape=box,style=rounded, label="Run AnnotationQC"]
 
@@ -163,3 +157,4 @@ Workflow
     ceas_seqpos -> annotationQC
     annotationQC -> end[taillabel="Output Report"]
 
+	

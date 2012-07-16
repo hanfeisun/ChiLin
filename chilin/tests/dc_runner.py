@@ -10,4 +10,3 @@ from chilin.dc import (
     Seqpos,
     Conserv)
 import unittest
-    
