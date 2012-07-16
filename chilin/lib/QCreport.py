@@ -1,23 +1,20 @@
-#!/usr/bin/python
-
-
-# python modules
 import os
 import sys
 import re
-from optparse import OptionParser
-import ConfigParser
 import string
 import logging
 from subprocess import call
+import ConfigParser
+from optparse import OptionParser
 from jinja2 import Environment, FileSystemLoader
+from chilin.qc import (
+	RawQC,
+	MappingQC,
+	PeakcallingQC,
+	AnnotationQC)
 
-#-----------------------
-from qc import RawQC,MappingQC,PeakcallingQC,AnnotationQC
 
 
-# constants
-# ------------------------------------
 
 def template_parser():
 	tag = {}

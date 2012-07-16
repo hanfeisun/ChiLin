@@ -1,4 +1,3 @@
-#-------------module--------------
 from subprocess import Popen, call
 from os.path import join, exists
 from jinja2 import Environment, FileSystemLoader, TemplateNotFound
@@ -13,7 +12,6 @@ import glob
 import time
 import datetime
 
-#----------collective class-------
 class Check(object):
     """read in Options set by optparse
     Meta -> ${DatasetID}Meta.xls
@@ -152,7 +150,6 @@ class DcController(Check, Log, TemplateParser):
         else:
             print "Write into log"
 
-#---------------DC class---------------
 
 class Bowtie(DcController):
     """Bowtie DC and QC step"""
