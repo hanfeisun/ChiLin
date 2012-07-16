@@ -1,11 +1,3 @@
-#!/usr/bin/python
-"""
-Last modified
-# Time-stamp: <2012-07-11 11:59:42 qinq >
-# author: qinq
-# status: test
-
-"""
 #-------------module--------------
 from subprocess import Popen, call
 from os.path import join, exists
