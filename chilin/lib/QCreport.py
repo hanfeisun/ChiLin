@@ -44,11 +44,7 @@ def main():
 	outputdir = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/testdata/'
 	inputpath = '/mnt/Storage/home/meisl/mybin/chilin/QCreport/lib/QCresult/'
 	datasetid = '1277'
-	RawQC('sdfsdf').run('yulinyang')
-	MappingQC().run()
-	PeakcallingQC().run()
-	AnnotationQC().run()
-#	template_parser()
+
 	
 if __name__ == '__main__':
 	main()
