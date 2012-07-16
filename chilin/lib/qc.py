@@ -1,0 +1,137 @@
+class QC_Controller(object):
+	"""
+	All the class in the module derives from this class
+	"""
+	def __init__(self, template=""):
+		self.template = template
+		self.has_run = False
+		print 'QC control'
+	
+	def run(self):
+		""" Run some QC tools or do some time-costing statistics """
+		self.has_run = True
+		return True
+
+	def check(self):
+		""" Check whether the quality of the dataset is ok. """
+		if not self.has_run:
+			self.run()
+		return True
+
+	def render(self, template = None):
+		""" Generate the latex code for current section. """
+		if not self.has_run:
+
+			self.run()
+		if template is None:
+			template = self.template
+		return ""
+		
+
+class RawQC(QC_Controller):
+	"""  
+	RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
+	"""
+	def __init__(self):
+		super(RawQC, self).__init__()
+		print 'init basic_qc'
+	def _basic_info(self):
+		""" Basic description of the ChIP-seq  input dataset """
+		print 'basic QC information'
+	def _fastqc_info(self):
+		""" QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
+		"""
+		print 'fastqc\n'
+	def run(self):
+		""" Run some RawQC functions to get final result."""
+		self._basic_info()
+		self._fastqc_info()
+	def check(self):
+		"""
+		Check whether the FastQC's result is ok
+		"""
+		print 'if fastqc pass or not'
+		
+		
+class MappingQC(QC_Controller):
+	""" MappingQC aims to describe the mapping quality of the sequence alignment. """
+	def __init__(self):
+		super(MappingQC, self).__init__()		
+		print 'init mapping qc'
+	def _basic_mapping_statistics_info(self):
+		""" Stastic summary of mapping result for each sample. """
+		print 'basic_mapping_statistics'
+		""" Cumulative percentage plot to  describe the  mappable ratio quality of all historic data. """
+	def _mappable_ratio_info(self):
+		""" Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
+		print 'mappable_ratio'
+	def _redundant_ratio_info(self):
+		""" Show redundant  ratio of the dataset in all historic data"""
+		print 'redundant_ratio\n'
+	def run(self):
+		""" Run some MappingQC function to get final result. """
+		self._basic_mapping_statistics_info()
+		self._mappable_ratio_info()
+		self._redundant_ratio_info()
+	def check():
+		"""Check whether the MappingQC's result is ok. """
+		print 'mapping qc pass or not'
+
+
+class PeakcallingQC(QC_Controller):
+	""" PeakcallingQC aims to describe the quality of peak calling result."""
+	def __init__(self):
+		super(PeakcallingQC, self).__init__()
+		print 'init peak calling  qc'
+	def _peak_summary_info(self):
+		"""Basic statistic of peak calling result."""
+		print ' summary_info'
+
+	def _velcro_ratio_info(self):
+		"""verlcro ratio is used to describe whether the peak is credible , The lower the result is more convenience.
+		 The cumulative percentage plot can reflect the particularly dataset's verlcro ratio quality of all historic data."""
+		print 'velcro_ratio_info '
+
+	def _DHS_ratio_info(self):
+		""" DHS ratio indicate the percentage of peaks overlap with DHSs site.
+		The function can describe  the particularly dataset's DHS ratio quality of all historic data.
+		"""
+		print 'DHS_ratio_info'
+	def _replicate_info(self):
+		""" ReplicateQC aims to describe the similarity of replicate experiment. Venn diagram and correlation plot will be used."""
+		print 'replicate_info\n'
+
+	def run(self):
+		""" Run some PeakcallingQC function to get final result. """
+		self._peak_summary_info()
+		self._velcro_ratio_info()
+		self._DHS_ratio_info()
+		self._replicate_info()
+	def check():
+		""" Check whether PeakcallingQC's result is ok. """
+		print 'pass or not'
+
+		
+class AnnotationQC(QC_Controller):
+	""" AnnotationQC aims to describe the quality of annotations after peak calling. """ 
+	def __init__(self):
+		super(AnnotationQC, self).__init__()
+		print 'intialization of function qc'
+	def _ceas_info(self):
+		""" Describe peaks' distribution and relative position. """
+		print 'ceas qc'
+	def _conservation_info(self):
+		""" Density plot of peaks's conservation."""
+		print 'conservation qc'
+	def _motif_info(self):
+		""" QC of Sepose. """
+		print 'motif info\n'
+	def run(self):
+		""" Run some AnnotationQC function. """
+		self._ceas_info()
+		self._conservation_info()
+		self._motif_info()
+	def check(self):
+		""" Check whether AnnotationQC's result is ok. """
+		print 'pass or not'
+
