@@ -48,7 +48,9 @@ Temporary files
    :header: "FolderName", "FileName", "Content", "Tool used"
    :widths: 25, 25, 20, 10
    :delim: ;
-
+   
+   root directory ; ${DatasetID}log ; log; class Log
+   ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_control_rep${control_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_bowtie_sh.txt ; bowtie shell summary ; :ref: `Bowtie`
@@ -85,7 +87,8 @@ Temporary files
    ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
    ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
 
- .. _Processed Data:
+
+.. _Processed Data:
 
 Output result
 =============
@@ -126,7 +129,7 @@ Provide the overall report of the whole pipeline for viewing general result.
    Below is output in the root directory, that is the folder named after ${DatasetID}
 
 .. csv-table::
-   :header: "Foler" "File Name", "Content", "Tool used"
+   :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
    :delim: ;
 
