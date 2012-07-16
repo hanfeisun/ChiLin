@@ -8,32 +8,32 @@ DC class design instructions
 .. automodule:: chilin.dc
 
 .. autoclass::  chilin.dc.Check
-     :member: ReadConf, CheckConf, DependencyCheck
+     :members: ReadConf, CheckConf, DependencyCheck
 
 .. autoclass:: chilin.dc.TemplateParser
-    :member: Loader
+    :members: Loader
 
 .. autoclass:: chilin.chilin.Log
-     :member: _Timer, info
+     :members: _Timer, info
 
 .. autoclass:: chilin.dc.DcController
-     :member:_StepControl, run, partition, render
+     :members: _StepControl, run, partition, render
 
 .. autoclass:: chilin.dc.Bowtie
-     :member: _format, _run, summary
+     :members: _format, _run, summary
      
 .. autoclass:: chilin.dc.MACS
-     :member: _format, _run, summary
+     :members: _format, _run, summary
 
  
 .. autoclass:: chilin.dc.Replicates
-     :member: _format, _run, summary
+     :members: _format, _run, summary
 
 .. autoclass:: chilin.dc.CEAS
-     :member: _format, _run, summary
+     :members: _format, _run, summary
  
 .. autoclass:: chilin.dc.Conserv
-     :member: _format, _run, summary
+     :members: _format, _run, summary
 
 
 
