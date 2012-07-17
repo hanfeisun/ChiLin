@@ -1,3 +1,4 @@
+from chilin.dc import *
 class QC_Controller(object):
 	"""
 	All the class in the module derives from this class

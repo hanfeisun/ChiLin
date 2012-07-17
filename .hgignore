@@ -8,4 +8,5 @@ chilin.egg-info
 *~
 *.pyc
 *.orig
-
+*.swp
+.DS_Store

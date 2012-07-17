@@ -7,34 +7,36 @@ DC class design instructions
 
 .. automodule:: chilin.dc
 
-.. autoclass::  chilin.dc.Check
-     :members: ReadConf, CheckConf, DependencyCheck
+.. autoclass::  chilin.dc.PipePreparation
+     :members: readconf, checkconf
 
-.. autoclass:: chilin.dc.TemplateParser
-    :members: Loader
+.. autoclass:: chilin.dc.PathFinder
+    :members: bowtiefilepath, macs2filepath, venn_corfilepath, ceasfilepath, conservfilepath, qcfilepath
 
-.. autoclass:: chilin.chilin.Log
-     :members: _Timer, info
+.. autoclass:: chilin.chilin.LogWriter
+     :members: record
 
-.. autoclass:: chilin.dc.DcController
-     :members: _StepControl, run, partition, render
+.. autoclass:: chilin.dc.PipeController
+     :members: run, partition, render
 
-.. autoclass:: chilin.dc.Bowtie
+.. autoclass:: chilin.dc.PipeBowtie
      :members: _format, _run, summary
      
-.. autoclass:: chilin.dc.MACS
+.. autoclass:: chilin.dc.PipeMACS2
      :members: _format, _run, summary
 
  
-.. autoclass:: chilin.dc.Replicates
+.. autoclass:: chilin.dc.PipeVennCor
      :members: _format, _run, summary
 
-.. autoclass:: chilin.dc.CEAS
+.. autoclass:: chilin.dc.PipeCEAS
      :members: _format, _run, summary
  
-.. autoclass:: chilin.dc.Conserv
+.. autoclass:: chilin.dc.PipeConserv
      :members: _format, _run, summary
 
+.. autoclass:: chilin.dc.PipeMotif  
+     :members: _format, _run, summary
 
 
 Controllers of QC
