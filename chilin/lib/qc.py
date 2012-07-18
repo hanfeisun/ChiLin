@@ -6,24 +6,12 @@ class QC_Controller(object):
 	"""
 	def __init__(self):
 #		self.pathfinder = PathFinder(conf)
-		self.env = Environment(
-				loader=FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/'),
-				block_start_string = '\BLOCK{',
-				block_end_string = '}',
-				variable_start_string = '\VAR{',
-				variable_end_string = '}',
-				comment_start_string = '\#{',
-				comment_end_string = '}',
-				line_statement_prefix = '%-',
-				line_comment_prefix = '%#',
-				trim_blocks = True,
-				autoescape = False,
-				)
+		self.env = jinja_env
 		print 'pass'
 		self.template = self.env.get_template('template.tex')
 		self.has_run = False
 		print 'QC control'
-	
+
 	def run(self):
 		""" Run some QC tools or do some time-costing statistics """
 		self.has_run = True
@@ -39,7 +27,7 @@ class QC_Controller(object):
 		""" Generate the latex code for current section. """
 #		self.template.render({})
 		pass
-		
+
 
 class RawQC(QC_Controller):
 	"""  

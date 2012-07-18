@@ -8,7 +8,18 @@ import glob
 import datetime
 import os
 
-jinja_env = Environment(loader = PackageLoader('chilin', 'template'))
+jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
+                        block_start_string = '\BLOCK{',
+                        block_end_string = '}',
+                        variable_start_string = '\VAR{',
+                        variable_end_string = '}',
+                        comment_start_string = '\#{',
+                        comment_end_string = '}',
+                        line_statement_prefix = '%-',
+                        line_comment_prefix = '%#',
+                        trim_blocks = True,
+                        autoescape = False,
+                        )
 cf = ConfigParser()
 safecf = SafeConfigParser()
 class PipePreparation:
@@ -17,17 +28,6 @@ class PipePreparation:
     def __init__(self, ChiLinconfPath = ''):
         self.ChiLinconfPath = ChiLinconfPath
         self.ChiLinconfigs = {}
-
-        self.user = ''
-        self.datasetid = ''
-        self.species = ''
-        self.factor = ''
-        self.treatpath = []
-        self.controlpath = []
-        self.outputdirectory = ''
-        self.bowtiemain = ''
-        self.bowtie_genome_index_path = ''
-        self.nbowtie_max_alignment = ''
         print "read in options from command line"
 
     def _readconf(self):

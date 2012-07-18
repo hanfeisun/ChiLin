@@ -28,6 +28,8 @@ def main():
     ChiLinConf = args[0]
     Preparation = PipePreparation(ChiLinConf)
     Preparation.checkconf()
+    print Preparation.ChiLinconfigs
+    RawQC().run()
 
 
 if __name__ == '__main__':
