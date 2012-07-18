@@ -24,19 +24,22 @@ class PipePreparation:
         """
         cf.read(self.ChiLinconfPath)
         for sec in cf.sections():
-            secName = string.lower(sec)
+            temp = {}
             for opt in cf.options(sec):
                 print opt
                 optName = string.lower(opt)
-                self.ChiLinconfigs[secName + '.' + optName] = string.strip(cf.get(sec, opt))
-
+                temp[string.lower(sec) + '.' + optName] = string.strip(cf.get(sec, opt))
+            self.ChiLinconfigs[string.lower(sec)] = temp
     def checkconf(self):
         """
         Check the Meta configuration
         if up to our definition
         """
         self._readconf()
-
+        if not os.path.exists(self.ChiLinconfigs['qc']['qc.fastqc_main']):
+            print 'fastqc not exists'
+            return False
+            
         if not os.path.exists(self.ChiLinconfigs['bowtie.bowtie_main']):
             print "bowtie program dependency has passed"
             return False
