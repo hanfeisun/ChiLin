@@ -1,63 +1,83 @@
 from subprocess import call
-from os.path import join, exists
-from jinja2 import Environment, FileSystemLoader, TemplateNotFound
-from ConfigParser import ConfigParser
+from jinja2 import Environment, PackageLoader, TemplateNotFound
+from ConfigParser import ConfigParser, SafeConfigParser
 import logging
+import string
 import sys
 import glob
 import datetime
 import os
 
-jinja_env = Environment(FileSystemLoader('./template/'))
-
+jinja_env = Environment(loader = PackageLoader('chilin', 'template'))
+cf = ConfigParser()
+safecf = SafeConfigParser()
 class PipePreparation:
     """read in Options set by optparse
     """
-    def __init__(self, ChiLinconfig=""):
-        self.ChiLinconfig = ChiLinconfig
-        self.username = ''
+    def __init__(self, ChiLinconfPath = ''):
+        self.ChiLinconfPath = ChiLinconfPath
+        self.ChiLinconfigs = {}
+
+        self.user = ''
         self.datasetid = ''
-        self.type = '' # Dnase, Histone, TF
+        self.species = ''
+        self.factor = ''
+        self.treatpath = []
+        self.controlpath = []
+        self.outputdirectory = ''
+        self.bowtiemain = ''
+        self.bowtie_genome_index_path = ''
+        self.nbowtie_max_alignment = ''
         print "read in options from command line"
 
-    def readconf(self):
+    def _readconf(self):
         """
         Read configuration and parse it into Dictionary
         """
-        cf = ConfigParser()
-        cf.read(self.conf)
-        print cf.options('bowtie')
-        print cf.items('bowtie')
-        secs = cf.sections()
-        return secs
+        cf.read(self.ChiLinconfPath)
+        for sec in cf.sections():
+            secName = string.lower(sec)
+            for opt in cf.options(sec):
+                print opt
+                optName = string.lower(opt)
+                self.ChiLinconfigs[secName + '.' + optName] = string.strip(cf.get(sec, opt))
 
     def checkconf(self):
         """
-        Check the Meta configuration 
+        Check the Meta configuration
         if up to our definition
         """
-        print "Check the configuration right or not"
+        self._readconf()
+
+        if not os.path.exists(self.ChiLinconfigs['bowtie.bowtie_main']):
+            print "bowtie program dependency has passed"
+            return False
+        if not os.path.exists(self.ChiLinconfigs['macs.macs_main']):
+            print "macs2 program dependency has passed"
+            return False
+        return True
 
 class PathFinder:
     """prepare path for each step"""
     def __init__(self, NameConf='', rep='', datasetid=''):
-        self.parser = ConfigParser()
-        self.parser.read(NameConf)
+        self.cf = ConfigParser()
         self.NameConf = NameConf
-        
+    def _readconf(self):
+        self.cf.read(NameConf)
     def bowtiefilepath(self):
+        print self.cf.sections()
+        cmd = 'mkdir %s' % self.bowtiefolder
+        call(cmd, shell = True)
         return
-
     def macs2filepath(self):
-        return 
-
+        print 'macs2filepath'
+        return 'path'
     def venn_corfilepath(self):
         return "path"
     def ceasfilepath(self):
         return "path"
     def conservfilepath(self):
-        return path
-
+        return 'path'
     def qcfilepath(self):
         return "qcfilepath"
 
@@ -97,6 +117,7 @@ class PipeController(object):
             return True
 
     def partition(self):
+        cmd = 'cp {0} {1}'
         print "Create Folder up to output&temporary folder"
         print "assign the output&temporary file according to\
                output& temporary folder"
@@ -125,6 +146,7 @@ class PipeBowtie(PipeController):
         print "Write in Log"
         
     def _run(self):
+        cmd = '{0} -S {1} -m {2} {3} {4} {5}'
         print "Run Bowtie in the Option set command"
         print "Write in Log"
         return # true or false for PipeController to continue or stop\
@@ -140,27 +162,28 @@ class PipeMACS2(PipeController):
     for peaks calling"""
     
     def __init__(self):
-        self.Model = True
-        print "Get MACS related options from options"
-        super(PipeMACS, self).__init__()
+        super(PipeMACS2, self).__init__()
         
     def _format(self):
-        print "Use samtools Convert the sam to sorted bam"
-        print "Convert to tdf format by IGV tools"
+        return 
 
     def _run(self):
-        if self.Model:
-            print "Build Model"
-        else:
-            print "--shift-size --nomode options on"
-
-        print "call External Macs program"
-        print "Print Log into the universal Log"
+        cmd = '{0} callpeak {1} -B -q 0.01 --nomodel --shift-size {2} ' + \
+              '-t {3} -c {4} -n {5}'
+               
+            
+        cmd = cmd.format(self.macs2_main,
+                         self.genome_option,
+                         self.shiftsize,
+                         self.treat_bam,
+                         self.control_bam,
+                         self.macsname)
         
+        return cmd
+
     def summary(self):
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Write into the template"
+        call(self._run())
+
 
 class PipeVennCor(PipeController):
     def __init__(self, OptionMethod = "Mean"):
