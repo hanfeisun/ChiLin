@@ -1,6 +1,6 @@
 from chilin.dc import *
-
-jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
+from jinja2 import Environment, FileSystemLoader
+jinja_env = Environment(loader = FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/'),
                         block_start_string = '\BLOCK{',
                         block_end_string = '}',
                         variable_start_string = '\VAR{',
