@@ -47,26 +47,23 @@ class RawQC(QC_Controller):
 	"""
 	def __init__(self):
 		super(RawQC, self).__init__()
-		self.has_fastqc = False
-		self.basic_stat = ''
-		self.fastqc_summary_stat = ''
-		fastqc_graph_stat = ''
 		print 'init basic_qc'
 	def _basic_info(self):
-		self.basic_stat = 'basic info result'
+		self.basic_stat = ['basic_info']
 		print self.basic_stat
 		""" Basic description of the ChIP-seq  input dataset """
+		return self.basic_stat
 
 	def _fastqc_info(self):
 		self.has_fastqc = True
 		""" QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
 		"""
 		print 'fastqc\n'          
-		return 'fastqc_summary','fastqc_pdf'
-
+		return ['fastqc_summary'],'fastqc_pdf'
 	def run(self):
 		""" Run some RawQC functions to get final result."""
-		self.basic_stat = self._basic_info()
+		self.RawQC_check = True
+		self.basic_stat = self._basic_info() #list format
 		self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info()
 		self._check()
 		self._render()
@@ -79,9 +76,8 @@ class RawQC(QC_Controller):
 		else:
 			print ' no need fastqc'
 	def _render(self):
-		self.basic_stat = ['111','adasfd','dfsdf','sfdsdf','sdfsd','sdfsdf']
-		self.has_fastqc = ''
-		temp = self.template.render(basic_table = self.basic_stat,fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
+		print self.fastqc_summary_stat
+		temp = self.template.render(RawQC_check = self.RawQC_check,prefix_datasetid = 'id',basic_table = self.basic_stat,fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
 		print temp 
 
 
@@ -91,21 +87,36 @@ class MappingQC(QC_Controller):
 	def __init__(self):
 		super(MappingQC, self).__init__()		
 		print 'init mapping qc'
+
 	def _basic_mapping_statistics_info(self):
 		""" Stastic summary of mapping result for each sample. """
 		print 'basic_mapping_statistics'
+		self.mappable_summary_stat = 'basic_mapping_table'
+		return self.mappable_summary_stat
+
 		""" Cumulative percentage plot to  describe the  mappable ratio quality of all historic data. """
 	def _mappable_ratio_info(self):
 		""" Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
 		print 'mappable_ratio'
+		self.mappable_ratio_stat = 'mappable_ratio_graph'
+		return self.mappable_ratio_stat
+
 	def _redundant_ratio_info(self):
 		""" Show redundant  ratio of the dataset in all historic data"""
 		print 'redundant_ratio\n'
+		self.redundant_ratio_stat = 'redundant_ratio_graph'
+		return self.redundant_ratio_stat
+
+	def _render(self):
+		temp = self.template.render(MappingQC_check = self.MappingQC_check, basic_mapping_table = self.mappable_summary_stat, mappable_ratio_graph = self.mappable_ratio_stat, redundant_ratio_graph = self.redundant_ratio_stat)
+		print temp
 	def run(self):
+		self.MappingQC_check = True
 		""" Run some MappingQC function to get final result. """
-		self._basic_mapping_statistics_info()
-		self._mappable_ratio_info()
-		self._redundant_ratio_info()
+		self.mappable_summary_stat = self._basic_mapping_statistics_info()
+		self.mappable_ratio_stat = self._mappable_ratio_info()
+		self.redundant_ratio_stat = self._redundant_ratio_info()
+		self._render()
 	def check():
 		"""Check whether the MappingQC's result is ok. """
 		print 'mapping qc pass or not'
@@ -133,6 +144,8 @@ class PeakcallingQC(QC_Controller):
 	def _replicate_info(self):
 		""" ReplicateQC aims to describe the similarity of replicate experiment. Venn diagram and correlation plot will be used."""
 		print 'replicate_info\n'
+	def _render(self):
+		pass
 
 	def run(self):
 		""" Run some PeakcallingQC function to get final result. """
@@ -159,6 +172,8 @@ class AnnotationQC(QC_Controller):
 	def _motif_info(self):
 		""" QC of Sepose. """
 		print 'motif info\n'
+	def _render(self):
+		pass
 	def run(self):
 		""" Run some AnnotationQC function. """
 		self._ceas_info()
