@@ -1,5 +1,7 @@
 %# templat_name['prefix_datasetid','basic_table','fastqc_check','fastqc_table','fastqc_graph','mapping_check','basic_map_table','mappable_ratio_graph','redundant_ratio_graph','peak_summary_table','DHS_ratio_graph','velcro_ratio_graph','venn_graph','correlation_graph','height_distibution_graph','gene_distibution_graph','conservation_graph']
 %#  ------Prefix-------prefix_datasetid
+
+%- if RawQC_check
 \documentclass[11pt,a4paper]{article}
 \usepackage{tabularx}
 \usepackage[english]{babel}
@@ -23,23 +25,6 @@ avoid such confusion, Here is a comprehensive report on it.If any question, plea
 Modern high throughput sequencers can generate tens of millions of sequences in a single run. Before analysing this sequence to draw biological conclusions you should always perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data which may affect how you can usefully use it.
 \end{quotation}          
 
-%# -------basic info---------basic_table
-\subsection{Basic mapping data information}
-\begin{quotation}
-ChIP-sequencing, also known as ChIP-seq, is used to analyze protein interactions with DNA.ChIP-Seq combines chromatin immunoprecipitation (ChIP) with massively parallel DNA sequencing to identify the set of cis-acting targets of DNA-associated proteins or factors on a genome scale. It's also used to study epigenetic events such as histone modifications and DNA methylation. The basic information  as follows.
-\end{quotation}
-\begin{table}[h]
-\caption{FastQC measurement}\label{basicinfo}
-\begin{tabularx}{\textwidth}{ |X|X|X|X|X|X| } 
-\hline
-DatasetID & Cell type & Cell line & Factor & Data format & Replicate \\
-\hline
-\BLOCK{ for line in basic_table }
-\VAR{line|join(' & ')}
-\hline
-\BLOCK{ endfor }
-\end{tabularx}
-\end{table}
 
 %# -------------fastqc--------------fastqc_check : fastqc_table ; fastqc_graph
 
@@ -74,11 +59,12 @@ We draw the cumulative percentage plot of the sequence quality scores of all his
 \end{figure}
 \newpage	
 %- endif
+%- endif
 
 %# --------mapping QC--------mapping_check : basic_map_table ; mappable_ratio_graph ; redundant_ratio_graph
 %# --------basic mapping QC statistics--------
 
-%- if mapping_check
+%- if MappingQC_check
 \subsection{Basic mapping QC statistics}
 \begin{quotation}
 Bowtie is an ultrafast, memory-efficient alignment program for aligning short DNA sequence reads to large genomes.\footnote{Langmead B, Trapnell C, Pop M, Salzberg SL: Ultrafast and memory-efficient alignment of short DNA sequences to the human genome. Genome Biology 2009, 10(3):R25}
@@ -133,7 +119,10 @@ This is a cumulative distribution file of the unique reads ratio of all the ChIP
 \newpage
 %- endif
 
+
 %# ---------peak calling QC---------- peak_summary_table ; DHS_ratio_graph ; velcro_ratio_graph
+
+%- if PeakcallingQC_check
 \section{Peak calling QC measurement}
 \subsection{Peak calling summary}
 \begin{quotation}
@@ -219,10 +208,12 @@ If biologist have replicate chipseq experiments,pipline will draw the venn plot.
 \end{figure}
 \newpage
 %- endif
-
+%- endif
 
 %# -------Functional Genomic QC measurement------------height_distibution_graph ; gene_distribution_graph
 %#---------Ceas QC---------
+
+%- if AnnotationQC_check
 \section{Functional Genomic QC measurement}
 \subsection{Peak Height distribution}
 \begin{quotation}
@@ -287,8 +278,11 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 \hline
 factor name & Hits & Z-score & motif logo \\tabularnewline
 \hline
-%s
+\BLOCK{ for line in motif_table }
+\VAR{line|join(' & ')}
 \hline
+\BLOCK{ endfor }
 \end{tabularx}
 \end{table}
 \end{document}
+%- endif
