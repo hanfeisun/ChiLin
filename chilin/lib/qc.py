@@ -3,8 +3,23 @@ class QC_Controller(object):
 	"""
 	All the class in the module derives from this class
 	"""
-	def __init__(self, template=""):
-		self.template = template
+	def __init__(self):
+#		self.pathfinder = PathFinder(conf)
+		self.env = Environment(
+				loader=FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/'),
+				block_start_string = '\BLOCK{',
+				block_end_string = '}',
+				variable_start_string = '\VAR{',
+				variable_end_string = '}',
+				comment_start_string = '\#{',
+				comment_end_string = '}',
+				line_statement_prefix = '%-',
+				line_comment_prefix = '%#',
+				trim_blocks = True,
+				autoescape = False,
+				)
+		print 'pass'
+		self.template = self.env.get_template('template.tex')
 		self.has_run = False
 		print 'QC control'
 	
@@ -13,20 +28,16 @@ class QC_Controller(object):
 		self.has_run = True
 		return True
 
-	def check(self):
+	def _check(self):
 		""" Check whether the quality of the dataset is ok. """
 		if not self.has_run:
 			self.run()
 		return True
 
-	def render(self, template = None):
+	def _render(self, template = None):
 		""" Generate the latex code for current section. """
-		if not self.has_run:
-
-			self.run()
-		if template is None:
-			template = self.template
-		return ""
+#		self.template.render({})
+		pass
 		
 
 class RawQC(QC_Controller):
@@ -35,24 +46,44 @@ class RawQC(QC_Controller):
 	"""
 	def __init__(self):
 		super(RawQC, self).__init__()
+		self.has_fastqc = False
+		self.basic_stat = ''
+		self.fastqc_summary_stat = ''
+		fastqc_graph_stat = ''
 		print 'init basic_qc'
 	def _basic_info(self):
+		self.basic_stat = 'basic info result'
+		print self.basic_stat
 		""" Basic description of the ChIP-seq  input dataset """
-		print 'basic QC information'
+
 	def _fastqc_info(self):
+		self.has_fastqc = True
 		""" QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
 		"""
-		print 'fastqc\n'
+		print 'fastqc\n'          
+		return 'fastqc_summary','fastqc_pdf'
+
 	def run(self):
 		""" Run some RawQC functions to get final result."""
-		self._basic_info()
-		self._fastqc_info()
-	def check(self):
+		self.basic_stat = self._basic_info()
+		self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info()
+		self._check()
+		self._render()
+	def _check(self):
 		"""
 		Check whether the FastQC's result is ok
 		"""
-		print 'if fastqc pass or not'
-		
+		if self.has_fastqc:
+			print 'input self.fastqc_summary_stat for judge'
+		else:
+			print ' no need fastqc'
+	def _render(self):
+		self.basic_stat = ['111','adasfd','dfsdf','sfdsdf','sdfsd','sdfsdf']
+		self.has_fastqc = ''
+		temp = self.template.render(basic_table = self.basic_stat,fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
+		print temp 
+
+
 		
 class MappingQC(QC_Controller):
 	""" MappingQC aims to describe the mapping quality of the sequence alignment. """
