@@ -8,53 +8,63 @@ import glob
 import datetime
 import os
 
-cf = ConfigParser()
-safecf = SafeConfigParser()
 class PipePreparation:
     """read in Options set by optparse
     """
     def __init__(self, ChiLinconfPath = ''):
         self.ChiLinconfPath = ChiLinconfPath
+        self.cf = ConfigParser()
         self.ChiLinconfigs = {}
-        print "read in options from command line"
 
     def _readconf(self):
         """
         Read configuration and parse it into Dictionary
         """
-        cf.read(self.ChiLinconfPath)
-        for sec in cf.sections():
+        self.ChiLinconfPath
+        self.cf.read(self.ChiLinconfPath)
+        for sec in self.cf.sections():
             temp = {}
-            for opt in cf.options(sec):
-                print opt
+            for opt in self.cf.options(sec):
                 optName = string.lower(opt)
-                temp[string.lower(sec) + '.' + optName] = string.strip(cf.get(sec, opt))
+                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
             self.ChiLinconfigs[string.lower(sec)] = temp
+        print temp
+
     def checkconf(self):
         """
         Check the Meta configuration
         if up to our definition
         """
         self._readconf()
-        if not os.path.exists(self.ChiLinconfigs['qc']['qc.fastqc_main']):
+        if not os.path.exists(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
             return False
-            
-        if not os.path.exists(self.ChiLinconfigs['bowtie.bowtie_main']):
+        if not os.path.exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
             print "bowtie program dependency has passed"
             return False
-        if not os.path.exists(self.ChiLinconfigs['macs.macs_main']):
+        if not os.path.exists(self.ChiLinconfigs['macs']['macs_main']):
             print "macs2 program dependency has passed"
             return False
         return True
 
 class PathFinder:
     """prepare path for each step"""
-    def __init__(self, NameConf='', rep='', datasetid=''):
-        self.cf = ConfigParser()
-        self.NameConf = NameConf
+    def __init__(self, NameConfPath='', rep='', datasetid=''):
+        self.cf = SafeConfigParser()
+        self.NameConfPath = NameConfPath
+        self.Nameconfigs = {}
+
     def _readconf(self):
+        cf.read(self.NameConf)
+        for sec in cf.sections():
+            for opt in cf.options(sec):
+                optName = string.lower(opt)
+                temp[optName] = string.strip(cf.get(sec, opt))
+                print optName
+            self.Nameconfigs[string.lower(sec)] = temp
+
         self.cf.read(NameConf)
+
     def bowtiefilepath(self):
         print self.cf.sections()
         cmd = 'mkdir %s' % self.bowtiefolder

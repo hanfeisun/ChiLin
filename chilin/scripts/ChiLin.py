@@ -5,6 +5,7 @@ Main program of DC pipeline
 from chilin.dc import *
 from chilin.qc import *
 from optparse import OptionParser
+from subprocess import call
 
 def main():
     usage = "usage: %prog <ChiLin.conf Path> [optional]-m cormethod -p peaksnumber"
@@ -26,14 +27,24 @@ def main():
         sys.exit('options missing')
 
     ChiLinConf = args[0]
+
     Preparation = PipePreparation(ChiLinConf)
+    Preparation.checkconf()
     conf = Preparation.ChiLinconfigs
-    judge = Preparation.checkconf()
-#    if judge == False:
-#        sys.exit()
-    fastqc_check = RawQC().run()
-    print Preparation.ChiLinconfigs
-    RawQC().run()
+
+    outputd = conf['userinfo']['outputdirectory']
+    print outputd
+    call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
+    texfile = open('tex.tex', 'wb')
+
+#    log = LogWriter(open('log', 'w'))
+#    judge = Preparation.checkconf()
+##    if judge == False:
+##        sys.exit()
+#    fastqc_check = RawQC(texfile).run()
+#    print Preparation.ChiLinconfigs
+#    RawQC().run()
+    texfile.close()
 
 
 
@@ -44,7 +55,4 @@ if __name__ == '__main__':
         print "User stops me:)"
     finally:
         print "Welcome to ChiLin"
-
-
-
 

@@ -39,18 +39,21 @@ class QC_Controller(object):
             self.run()
         return True
 
-    def _render(self, template = None):
+    def _render(self):
         """ Generate the latex code for current section. """
 #       self.template.render({})
         pass
 
 
-class RawQC(QC_Controller):
+class RawQC():
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self):
+    def __init__(self, texfile):
+        self.env = jinja_env
+        self.template = self.env.get_template('template.tex')
         super(RawQC, self).__init__()
+        self.filehandle =  texfile
         print 'init basic_qc'
     def _basic_info(self):
         self.basic_stat = ['basic_info']
@@ -82,7 +85,9 @@ class RawQC(QC_Controller):
     def _render(self):
         print self.fastqc_summary_stat
         temp = self.template.render(RawQC_check = self.RawQC_check,prefix_datasetid = 'id',basic_table = self.basic_stat,fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
-        print temp 
+        self.filehandle.write(temp)
+        self.filehandle.flush()
+         
 
 
         
@@ -186,4 +191,5 @@ class AnnotationQC(QC_Controller):
     def check(self):
         """ Check whether AnnotationQC's result is ok. """
         print 'pass or not'
+
 
