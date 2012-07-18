@@ -28,9 +28,7 @@ def main():
     ChiLinConf = args[0]
     Preparation = PipePreparation(ChiLinConf)
     Preparation.checkconf()
-    
 
-#    ['bowtie', 'samtools', 'macs', 'bedtools', 'bed2bam', 'ceas', 'conservation', 'correlation', 'venn', 'seqpos', 'QC']
 
 if __name__ == '__main__':
     try:
