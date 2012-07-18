@@ -27,9 +27,14 @@ def main():
 
     ChiLinConf = args[0]
     Preparation = PipePreparation(ChiLinConf)
-    Preparation.checkconf()
+    conf = Preparation.ChiLinconfigs
+    judge = Preparation.checkconf()
+#    if judge == False:
+#        sys.exit()
+    fastqc_check = RawQC().run()
     print Preparation.ChiLinconfigs
     RawQC().run()
+
 
 
 if __name__ == '__main__':

@@ -22,8 +22,8 @@ def main():
           packages = ["chilin"],
           package_dir={'chilin' : 'chilin/lib'},
           install_requires=['jinja2', ],
-
-          # scripts=['bin/QCreport'],
+          package_data = {'chilin':['db/*','template/*']},
+          scripts=['chilin/scripts/Chilin.py'],
           classifiers=[
             'Development Status :: 5 - productive',
             'Environment :: Console',
