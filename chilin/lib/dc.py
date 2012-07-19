@@ -49,21 +49,20 @@ class PipePreparation:
 
 class PathFinder:
     """prepare path for each step"""
-    def __init__(self, NameConfPath='', rep='', datasetid=''):
+    def __init__(self, NameConfPath='db/NameRule.conf', datasetid='',treatpath = '', controlpath = ''):
         self.cf = SafeConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
-    def _readconf(self):
-        cf.read(self.NameConf)
-        for sec in cf.sections():
-            for opt in cf.options(sec):
+        self.treat_rep = len(treatpath.split(','))
+        self.control_rep = len(controlpath.split(','))
+    def _readconf(self):       
+        self.cf.read(self.NameConf)
+        for sec in self.cf.sections():
+            temp = {}
+            for opt in self.cf.options(sec):
                 optName = string.lower(opt)
-                temp[optName] = string.strip(cf.get(sec, opt))
-                print optName
+                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
             self.Nameconfigs[string.lower(sec)] = temp
-
-        self.cf.read(NameConf)
-
     def bowtiefilepath(self):
         print self.cf.sections()
         cmd = 'mkdir %s' % self.bowtiefolder
