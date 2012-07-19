@@ -7,6 +7,7 @@ import sys
 import glob
 import datetime
 import os
+import chilin
 
 class PipePreparation:
     """read in Options set by optparse
@@ -40,45 +41,80 @@ class PipePreparation:
             print 'fastqc not exists'
             return False
         if not os.path.exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
-            print "bowtie program dependency has passed"
+            print "bowtie program dependency has failed"
             return False
-        if not os.path.exists(self.ChiLinconfigs['macs.macs_main']):
-            print "macs2 program dependency has passed"
+        if not os.path.exists(self.ChiLinconfigs['macs']['macs_main']):
+            print "macs2 program dependency has failed"
             return False
         return True
 
 class PathFinder:
     """prepare path for each step"""
-    def __init__(self, NameConfPath='db/NameRule.conf', datasetid='',treatpath = '', controlpath = ''):
+    def __init__(self, outputd = '',  datasetid='', treatpath = '', controlpath = '',\
+            NameConfPath = os.path.split(chilin.__file__)[0] + '/' + 'db/NameRule.conf'):
         self.cf = SafeConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
         self.treat_rep = len(treatpath.split(','))
         self.control_rep = len(controlpath.split(','))
+        self.datasetid = datasetid
+
     def _readconf(self):       
-        self.cf.read(self.NameConf)
+        print self.NameConfPath
+        self.cf.read(self.NameConfPath)
         for sec in self.cf.sections():
             temp = {}
             for opt in self.cf.options(sec):
                 optName = string.lower(opt)
-                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
-            self.Nameconfigs[string.lower(sec)] = temp
+                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt).replace('${DatasetID}', self.datasetid))
+                self.Nameconfigs[string.lower(sec)] = temp
+    def _rep(self,step):
+        for i in range(1,len(treatpath.split(','))+1):
+            for j in self.Nameconfigs[step].keys():
+                if 'rep' in  j:
+            temp = self.Nameconfigs[step].['treat_data']
+            temp.replace('${DatasetID}', self.datasetid)
+            
+            name +=temp
+
+            self.Nameconfigs['rawdata'].['treat_data'].replace('${DatasetID}', self.datasetid)
+            self.Nameconfigs['rawdata'].['treat_data'].replace('${treat_rep}', str(i))
+        for i in range(1,len(controlpath.split(','))+1):
+            self.Nameconfigs['rawdata'].['control_data'].replace('${DatasetID}', self.datasetid)
+            self.Nameconfigs['rawdata'].['control_data'].replace('${control_rep}', str(i))
+
+    def qcfilepath(self):
+        self._readconf()
+        print self.Nameconfigs
+        for i in range(1,len(treatpath.split(','))+1):
+            self.Nameconfigs['qctmp'].['treat_fastqc']
+        for key, value in self.Nameconfigs['qctmp'].iteritems():
+            print key, value.replace('${DatasetID}', self.datasetid)
+
+
+
+
+        return "qcfilepath"
+
     def bowtiefilepath(self):
         print self.cf.sections()
         cmd = 'mkdir %s' % self.bowtiefolder
         call(cmd, shell = True)
         return
     def macs2filepath(self):
+
         print 'macs2filepath'
         return 'path'
     def venn_corfilepath(self):
+
         return "path"
     def ceasfilepath(self):
+
         return "path"
     def conservfilepath(self):
+
         return 'path'
-    def qcfilepath(self):
-        return "qcfilepath"
+        
 
 class LogWriter:
     def __init__(self, logfile = 'log'):
