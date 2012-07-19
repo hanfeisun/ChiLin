@@ -15,7 +15,7 @@ jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         line_comment_prefix = '%#',
                         trim_blocks = True,
                         autoescape = False,
-                        )
+                        )                        
 class QC_Controller(object):
     """
     All the class in the module derives from this class

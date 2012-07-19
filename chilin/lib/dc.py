@@ -42,7 +42,7 @@ class PipePreparation:
         if not os.path.exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
             print "bowtie program dependency has passed"
             return False
-        if not os.path.exists(self.ChiLinconfigs['macs']['macs_main']):
+        if not os.path.exists(self.ChiLinconfigs['macs.macs_main']):
             print "macs2 program dependency has passed"
             return False
         return True
@@ -53,7 +53,6 @@ class PathFinder:
         self.cf = SafeConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
-
     def _readconf(self):
         cf.read(self.NameConf)
         for sec in cf.sections():
