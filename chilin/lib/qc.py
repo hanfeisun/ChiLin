@@ -45,21 +45,16 @@ class QC_Controller(object):
         pass
 
 
-class RawQC():
+class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
     def __init__(self, texfile):
-        self.env = jinja_env
-        self.template = self.env.get_template('template.tex')
+#        self.env = jinja_env
+#       self.template = self.env.get_template('template.tex')
         super(RawQC, self).__init__()
         self.filehandle =  texfile
         print 'init basic_qc'
-    def _basic_info(self):
-        self.basic_stat = ['basic_info']
-        print self.basic_stat
-        """ Basic description of the ChIP-seq  input dataset """
-        return self.basic_stat
 
     def _fastqc_info(self):
         self.has_fastqc = True
@@ -67,10 +62,9 @@ class RawQC():
         """
         print 'fastqc\n'          
         return ['fastqc_summary'],'fastqc_pdf'
-    def run(self):
+    def run(self,conf_qc = '',treatpath = '', controlpath = ''):
         """ Run some RawQC functions to get final result."""
         self.RawQC_check = True
-        self.basic_stat = self._basic_info() #list format
         self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info()
         self._check()
         self._render()
@@ -84,7 +78,7 @@ class RawQC():
             print ' no need fastqc'
     def _render(self):
         print self.fastqc_summary_stat
-        temp = self.template.render(RawQC_check = self.RawQC_check,prefix_datasetid = 'id',basic_table = self.basic_stat,fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
+        temp = self.template.render(RawQC_check = self.RawQC_check,prefix_datasetid = 'id',fastqc_check = self.has_fastqc,fastqc_graph = self.fastqc_graph_stat)
         self.filehandle.write(temp)
         self.filehandle.flush()
          

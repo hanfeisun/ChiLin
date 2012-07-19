@@ -30,8 +30,8 @@ def main():
 
     Preparation = PipePreparation(ChiLinConf)
     Preparation.checkconf()
-    conf = Preparation.ChiLinconfigs
-
+    conf = Preparation.ChiLinconfi
+    PathFinder(conf['userinfo']['treatpath'],conf['userinfo']['controlpath'])
     outputd = conf['userinfo']['outputdirectory']
     print outputd
     call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
@@ -42,8 +42,8 @@ def main():
 ##    if judge == False:
 ##        sys.exit()
 #    fastqc_check = RawQC(texfile).run()
-#    print Preparation.ChiLinconfigs
-#    RawQC().run()
+    print Preparation.ChiLinconfigs
+    RawQC(texfile).run()
     texfile.close()
 
 
@@ -56,3 +56,4 @@ if __name__ == '__main__':
     finally:
         print "Welcome to ChiLin"
 
+@
