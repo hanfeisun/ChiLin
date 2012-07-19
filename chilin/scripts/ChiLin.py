@@ -6,6 +6,7 @@ from chilin.dc import *
 from chilin.qc import *
 from optparse import OptionParser
 from subprocess import call
+import os
 
 def main():
     usage = "usage: %prog <ChiLin.conf Path> [optional]-m cormethod -p peaksnumber"
@@ -29,31 +30,42 @@ def main():
     ChiLinConf = args[0]
 
     Preparation = PipePreparation(ChiLinConf)
-    Preparation.checkconf()
-    conf = Preparation.ChiLinconfi
-    PathFinder(conf['userinfo']['treatpath'],conf['userinfo']['controlpath'])
+    checkresult = Preparation.checkconf()
+    if not checkresult:
+        sys.exit()
+    conf = Preparation.ChiLinconfigs
     outputd = conf['userinfo']['outputdirectory']
     print outputd
-    call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
-    texfile = open('tex.tex', 'wb')
+    if not os.path.exists(outputd):
+        call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
+    else:
+        call('cd %s' % outputd, shell = True)
+
+    Path = PathFinder(conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
+    Path.qcfilepath()
+    
+
+#    for rep in treatreplicates:
+#        for index in range(1, len(replicates) + 1):
+#            PathFinder(conf['userinfo']['treatpath'],conf['userinfo']['controlpath'], index)
+
+
+#    texfile = open('tex.tex', 'wb')
 
 #    log = LogWriter(open('log', 'w'))
 #    judge = Preparation.checkconf()
 ##    if judge == False:
 ##        sys.exit()
 #    fastqc_check = RawQC(texfile).run()
-    print Preparation.ChiLinconfigs
-    RawQC(texfile).run()
-    texfile.close()
+#    print Preparation.ChiLinconfigs
+#    RawQC(texfile).run()
+#    texfile.close()
 
 
 
 if __name__ == '__main__':
+    print "Welcome to ChiLin"
     try:
         main()
     except KeyboardInterrupt():
         print "User stops me:)"
-    finally:
-        print "Welcome to ChiLin"
-
-@
