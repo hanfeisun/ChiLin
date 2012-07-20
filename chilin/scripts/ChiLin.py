@@ -35,14 +35,14 @@ def main():
         sys.exit()
     conf = Preparation.ChiLinconfigs
     outputd = conf['userinfo']['outputdirectory']
-    print outputd
     if not os.path.exists(outputd):
         call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
     else:
         call('cd %s' % outputd, shell = True)
 
-    Path = PathFinder(conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
-    Path.qcfilepath()
+    Path = PathFinder(conf['userinfo']['outputdirectory'], conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
+    fastqcname = Path.qcfilepath()
+    print fastqcname
 
 
 #    for rep in treatreplicates:
