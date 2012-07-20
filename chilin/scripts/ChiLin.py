@@ -43,7 +43,7 @@ def main():
 
     Path = PathFinder(conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     Path.qcfilepath()
-    
+
 
 #    for rep in treatreplicates:
 #        for index in range(1, len(replicates) + 1):
