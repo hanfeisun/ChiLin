@@ -55,11 +55,13 @@ class PathFinder:
         self.cf = SafeConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
-        self.treat_rep = len(treatpath.split(','))
-        self.control_rep = len(controlpath.split(','))
+        self.treat_path = treatpath.split(',')
+        self.control_path = controlpath.split(',')
         self.datasetid = datasetid
+        self.outputd = outputd
 
-    def _readconf(self):       
+    def _readconf(self):
+        '''read in conf and write datasetid information'''
         print self.NameConfPath
         self.cf.read(self.NameConfPath)
         for sec in self.cf.sections():
@@ -68,33 +70,33 @@ class PathFinder:
                 optName = string.lower(opt)
                 temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt).replace('${DatasetID}', self.datasetid))
                 self.Nameconfigs[string.lower(sec)] = temp
-    def _rep(self,step):
-        for i in range(1,len(treatpath.split(','))+1):
-            for j in self.Nameconfigs[step].keys():
-                if 'rep' in  j:
-            temp = self.Nameconfigs[step].['treat_data']
-            temp.replace('${DatasetID}', self.datasetid)
-            
-            name +=temp
 
-            self.Nameconfigs['rawdata'].['treat_data'].replace('${DatasetID}', self.datasetid)
-            self.Nameconfigs['rawdata'].['treat_data'].replace('${treat_rep}', str(i))
-        for i in range(1,len(controlpath.split(','))+1):
-            self.Nameconfigs['rawdata'].['control_data'].replace('${DatasetID}', self.datasetid)
-            self.Nameconfigs['rawdata'].['control_data'].replace('${control_rep}', str(i))
+    def _rep(self, onlyname = True, session = ''):
+        '''only name means not plus the output directory, for legend only
+        write in NameRule rep '''
+        for option in self.Nameconfigs[session]:
+            temp = []
+            if '${control_rep}' in self.Nameconfigs[session][option]:
+                for control_rep in range(1, len(self.control_path) + 1):
+
+                    if onlyname:
+                        temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                    else:
+                        if not self.outputd.endswith('/'):
+                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option])
+            if '${treat_rep}' in self.Nameconfigs[session][option]:
+                for treat_rep in range(1, len(self.treat_path) + 1):
+                    if onlyname:
+                        temp.append(self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
+                    else:
+                        if not self.outputd.endswith('/'):
+                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option])
+            self.Nameconfigs[session][option] = temp
 
     def qcfilepath(self):
         self._readconf()
-        print self.Nameconfigs
-        for i in range(1,len(treatpath.split(','))+1):
-            self.Nameconfigs['qctmp'].['treat_fastqc']
-        for key, value in self.Nameconfigs['qctmp'].iteritems():
-            print key, value.replace('${DatasetID}', self.datasetid)
-
-
-
-
-        return "qcfilepath"
+        self._rep(True, 'rawdata')
+        return self.Nameconfigs['rawdata']
 
     def bowtiefilepath(self):
         print self.cf.sections()
@@ -114,7 +116,6 @@ class PathFinder:
     def conservfilepath(self):
 
         return 'path'
-        
 
 class LogWriter:
     def __init__(self, logfile = 'log'):

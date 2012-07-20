@@ -20,6 +20,7 @@ Manual
 
    about
    features
+   tutorials
    data_tool
    config_file
    output_temporary
