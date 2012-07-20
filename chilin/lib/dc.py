@@ -99,10 +99,12 @@ class PathFinder:
         return self.Nameconfigs['rawdata']
 
     def bowtiefilepath(self):
-        print self.cf.sections()
-        cmd = 'mkdir %s' % self.bowtiefolder
-        call(cmd, shell = True)
-        return
+        self._rep(True, 'bowtietmp')
+        self._rep(True, 'bowtieresult')
+        if os.path.exists('bowtietmp') or os.path.exists('bowtieresult'):
+            cmd = 'mkdir %s' % self.bowtiefolder
+            call(cmd, shell = True)
+        return self.Nameconfgis['bowtietmp']
     def macs2filepath(self):
 
         print 'macs2filepath'
@@ -114,7 +116,6 @@ class PathFinder:
 
         return "path"
     def conservfilepath(self):
-
         return 'path'
 
 class LogWriter:
@@ -125,11 +126,13 @@ class LogWriter:
         plus time consumed
         """
         self.logfile = logfile
-
     def record(self, logcontent):
         dt = datetime.datetime.now()
-        with open(self.logfile) as f:
+        with open(self.logfile, 'wb') as f:
             f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
+            logging.error(logcontent)
+            logging.warning(logcontent)
+
 
 class PipeController(object):
     def __init__(self, Options = ""):
@@ -138,7 +141,6 @@ class PipeController(object):
         # Get template and conf information
         """
         print "Dc control prepare"
-
     def run(self):
         """for running each step of pipeline
         """
@@ -160,8 +162,8 @@ class PipeController(object):
 
     def render(self, template = ''):
         """
-        write into the DA.txt template 
-        separately 
+        write into the DA.txt template
+        separately
         """
         if self.run:
             print "Get variable"
@@ -171,16 +173,15 @@ class PipeController(object):
 
 class PipeBowtie(PipeController):
     """Bowtie DC and QC step"""
-    
     def __init__(self):
         super(PipeBowtie, self).__init__()
         self.bowtie_main = self.parser.get("bowtie", "bowtie_main")
         self.gene_index = self.parser.get("bowtie", "bowie_genome_index")
-        
+
     def _format(self):
         print "Get sra or other format into Bowtie Input"
         print "Write in Log"
-        
+
     def _run(self):
         cmd = '{0} -S {1} -m {2} {3} {4} {5}'
         print "Run Bowtie in the Option set command"
