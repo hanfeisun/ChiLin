@@ -40,6 +40,8 @@ def main():
     else:
         call('cd %s' % outputd, shell = True)
 
+    log = LogWriter('log')
+    log.record('test')
     Path = PathFinder(conf['userinfo']['outputdirectory'], conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     fastqcname = Path.qcfilepath()
     print fastqcname
@@ -52,7 +54,7 @@ def main():
 
 #    texfile = open('tex.tex', 'wb')
 
-#    log = LogWriter(open('log', 'w'))
+
 #    judge = Preparation.checkconf()
 ##    if judge == False:
 ##        sys.exit()
