@@ -17,7 +17,7 @@ class PipePreparation:
         self.cf = ConfigParser()
         self.ChiLinconfigs = {}
 
-    def _readconf(self):
+    def readconf(self):
         """
         Read configuration and parse it into Dictionary
         """
@@ -29,13 +29,12 @@ class PipePreparation:
                 optName = string.lower(opt)
                 temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
             self.ChiLinconfigs[string.lower(sec)] = temp
-
     def checkconf(self):
         """
         Check the Meta configuration
         if up to our definition
         """
-        self._readconf()
+        self.readconf()
         if not os.path.exists(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
             return False
