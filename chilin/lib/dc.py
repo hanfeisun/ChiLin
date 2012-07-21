@@ -102,7 +102,7 @@ class PathFinder:
         if os.path.exists('bowtietmp') or os.path.exists('bowtieresult'):
             cmd = 'mkdir %s' % self.bowtiefolder
             call(cmd, shell = True)
-        return self.Nameconfgis['bowtietmp']
+        return self.Nameconfigs['bowtietmp'], self.Nameconfigs['bowtieresult']
     def macs2filepath(self):
 
         print 'macs2filepath'
@@ -171,23 +171,33 @@ class PipeController(object):
 
 class PipeBowtie(PipeController):
     """Bowtie DC and QC step"""
-    def __init__(self):
+    def __init__(self, treat_path, control_path):
         super(PipeBowtie, self).__init__()
-        self.bowtie_main = self.parser.get("bowtie", "bowtie_main")
-        self.gene_index = self.parser.get("bowtie", "bowie_genome_index")
+        self.cmd  = '{0} -S {1} -m {2} {3} {4} {5}'
+        
 
     def _format(self):
+        if 
         print "Get sra or other format into Bowtie Input"
         print "Write in Log"
 
     def _run(self):
-        cmd = '{0} -S {1} -m {2} {3} {4} {5}'
-        print "Run Bowtie in the Option set command"
-        print "Write in Log"
-        return # true or false for PipeController to continue or stop\
+        state = call(self.cmd, shell = True)
+        if state == 0:
+            return True# true or false for PipeController to continue or stop\
                 # and path for Next step
 
-    def summary(self):
+    def summary(self, bowtie_main = '', format_option = 'sam', max_alignment = '1', \
+                index_path = '', treat_path = '', outputname = ''):
+        self.cmd.format(bowtie_main,
+                        format_option,
+                        max_alignment,
+                        index_path,
+                        treat_path,
+                        outputname)
+        PipeBowtie._run()
+
+
         print "Call private _Run"
         print "Extract shell output"
         print "Write into the template"

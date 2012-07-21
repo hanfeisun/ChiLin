@@ -35,6 +35,7 @@ def main():
         sys.exit()
     conf = Preparation.ChiLinconfigs
     outputd = conf['userinfo']['outputdirectory']
+    print outputd, 'here'
     if not os.path.exists(outputd):
         call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
     else:
@@ -42,23 +43,30 @@ def main():
 
 #   log = LogWriter('log')
 #    log.record('test')
-    Path = PathFinder(conf['userinfo']['outputdirectory'], conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
+    Path = PathFinder(outputd, conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     fastqcname = Path.qcfilepath()
     print fastqcname
-    
-
-
-
 
     texfile = open('tex.tex', 'wb')
 
 
     judge = Preparation.checkconf()
+    print "Test for output"
     if judge == False:
         sys.exit()
+    print outputd
     fastqc_check = RawQC(texfile).run(conf['qc'],fastqcname,conf['userinfo']['treatpath'], conf['userinfo']['controlpath'],conf['userinfo']['outputdirectory'])
     print Preparation.ChiLinconfigs
     texfile.close()
+
+    fastqc_judge = True
+    if fastqc_judge == True:
+        bowtiename = Path.bowtiefilepath()
+        print bowtiename
+        PipeBowtie().summary(
+        
+
+    
 
 
 
