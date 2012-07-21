@@ -1,6 +1,8 @@
 import chilin
 from chilin.dc import *
 import os
+import re
+import zipfile
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 # FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/')
 # JinJa_temp = os.path.dirname(os.path.abspath(chilin.__file__))
@@ -55,17 +57,117 @@ class RawQC(QC_Controller):
         super(RawQC, self).__init__()
         self.filehandle =  texfile
         print 'init basic_qc'
-
-    def _fastqc_info(self):
+    def _infile_parse(self,dataname):
+        data = open(dataname).readlines()
+        seqquality = []
+        seqlen = 0
+        quality_flag = 0
+        for line in data:
+            if line.startswith('#') or not line:
+                continue
+            hits = re.findall("Sequence length\t(\d+)", line)
+            if hits and len(hits)==1 and not seqlen:
+                seqlen = int(hits[0])
+            if line.startswith(">>Per sequence quality"):
+                quality_flag = 1
+            if quality_flag:
+                seqquality.append(line)
+            if line.startswith(">>END_MODULE") and quality_flag:
+                quality_flag = 0
+        quality_dict = {}
+        for i in seqquality[1:-1]:
+            i2 = i.strip().split('\t')
+            quality_dict[int(i2[0])] = float(i2[1])
+        nt=sum(quality_dict.values())
+        n=0
+        for item in sorted(quality_dict.items(),key=lambda e:e[0],reverse=True):
+            n=n+item[1]
+            percentage=n/float(nt)
+            if percentage > 0.5:
+                peak=int(item[0])
+                break
+            else:
+                continue
+        return seqlen,peak
+    def _fastqc_info(self,conf_qc,rawdata,names,outdir):
         self.has_fastqc = True
         """ QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
         """
-        print 'fastqc\n'          
-        return ['fastqc_summary'],'fastqc_pdf'
-    def run(self,conf_qc = '',treatpath = '', controlpath = ''):
+        npeakl = []
+        nseqlen = []
+        for i in range(len(rawdata)):
+            d = rawdata[i]
+            cmd = '{0} {1} --extract -o {2}'
+            cmd = cmd.format(conf_qc['fastqc_main'], d,outdir)
+            print cmd
+            call(cmd,shell=True)
+            fastqc_outname = outdir+d.split('/')[-1]+'_fastqc'
+            changed_name = outdir+names[i]+'_fastqc'
+            cmd = 'mv {0} {1}'
+            cmd = cmd.format(fastqc_outname,changed_name)
+            print cmd
+            call(cmd,shell=True)
+            dataname = changed_name+'/fastqc_data.txt' 
+            seqlen,peak = self._infile_parse(dataname)
+            npeakl.append(peak)
+            nseqlen.append(seqlen)
+        print npeakl
+        print nseqlen
+        fastqc_summary = []
+        for j in range(len(npeakl)):
+            if npeakl[j] < 25:
+                judge = 'Fail'
+            else:
+                judge = 'Pass'
+            temp = '%s: %s/t%s/t%s ' %(names[j],str(nseqlen[j]),str(npeakl[j]),judge)
+            fastqc_summary.append(temp)
+        print fastqc_summary
+        inf=open(conf_qc['fastqc_value_list'],'rU')
+        peaklist1=inf.readline()
+        oufe=open(outdir+'fastqc_summay_ecdf.r','w')
+        oufe.write("setwd('%s')\n" %outdir)
+        oufe.write("sequence_quality_score<-c(%s)\n" %str(peaklist1)[1:-1])
+        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+        oufe.write("ecdf(sequence_quality_score)->fn\n")
+        oufe.write("fn(sequence_quality_score)->density\n")
+        oufe.write("cbind(sequence_quality_score,density)->fndd\n")
+        oufe.write("fndd2<-fndd[order(fndd[,1]),]\n")
+        oufe.write("pdf('Sequence_quality_score_Cumulative_percentage.pdf')\n")
+        oufe.write("plot(fndd2,type='b',pch=18,col=2,main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
+        j=0
+        for p in npeakl:
+            oufe.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            j=j+1
+#        oufe.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(','.join(names),str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+        oufe.write("dev.off()\n")
+        oufe.close()
+        inf.close()
+        os.system('Rscript '+outdir+'fastqc_summay_ecdf.r')
+        return fastqc_summary,'True'
+    def run(self,conf_qc = '',confname ='',treatpath = '', controlpath = '',outdir = ''):
         """ Run some RawQC functions to get final result."""
         self.RawQC_check = True
-        self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info()
+        os.chdir(outdir)
+        if len(controlpath) ==0:
+            rawdata = treatpath.split(',')
+            names = confname['treat_data']
+        else:
+            rawdata = treatpath.split(',') +controlpath.split(',')
+            names = confname['treat_data']+confname['control_data']
+        print rawdata
+        print names
+        for i in range(len(rawdata)-1,-1,-1):
+            if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.q' in rawdata[i]:
+                pass
+            else:
+                del rawdata[i]
+                del names[i]
+        if len(rawdata)!=0:
+            self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info(conf_qc,rawdata,names,outdir)
+            self.fastqc_check = True
+        else:
+            self.fastqc_check = Fasle
         self._check()
         self._render()
     def _check(self):

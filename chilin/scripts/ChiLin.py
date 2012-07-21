@@ -45,18 +45,15 @@ def main():
     print fastqcname
 
 
-#    for rep in treatreplicates:
-#        for index in range(1, len(replicates) + 1):
-#            PathFinder(conf['userinfo']['treatpath'],conf['userinfo']['controlpath'], index)
 
 
-#    texfile = open('tex.tex', 'wb')
+    texfile = open('tex.tex', 'wb')
 
-#    log = LogWriter(open('log', 'w'))
-#    judge = Preparation.checkconf()
-##    if judge == False:
-##        sys.exit()
-#    fastqc_check = RawQC(texfile).run()
+    log = LogWriter(open('log', 'w'))
+    judge = Preparation.checkconf()
+    if judge == False:
+        sys.exit()
+    RawQC(texfile).run(conf['qc'],fastqcname,conf['userinfo']['treatpath'], conf['userinfo']['controlpath'],conf['userinfo']['outputdirectory'])
 #    print Preparation.ChiLinconfigs
 #    RawQC(texfile).run()
 #    texfile.close()

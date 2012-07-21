@@ -29,7 +29,6 @@ class PipePreparation:
                 optName = string.lower(opt)
                 temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
             self.ChiLinconfigs[string.lower(sec)] = temp
-        print temp
 
     def checkconf(self):
         """
