@@ -46,14 +46,13 @@ def main():
     Path.parseconfrep()
     paths = Path.Nameconfigs
     print paths, 'test for pathname dict'
-
     texfile = open('tex.tex', 'wb')
 
 
     judge = Preparation.checkconf()
     if judge == False:
         sys.exit()
-  #  fastqc_check = RawQC(texfile).run(conf['qc'],fastqcname,conf['userinfo']['treatpath'], conf['userinfo']['controlpath'],conf['userinfo']['outputdirectory'])
+    fastqc_check = RawQC(conf,paths,texfile).run()
     texfile.close()
 
 #    fastqc_judge = True

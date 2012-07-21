@@ -23,14 +23,10 @@ class QC_Controller(object):
     """
     All the class in the module derives from this class
     """
-    def __init__(self, configs =''):
+    def __init__(self, configs ='',path = ''):
+        self.path = path
         self.conf = configs
-        print self.conf
-        print 'if sel.conf print'
-        self.test ='dsfsdf'
-#       self.pathfinder = PathFinder(conf)
         self.env = jinja_env
-        print 'pass'
         self.template = self.env.get_template('template.tex')
         self.has_run = False
         print 'QC control'
@@ -56,13 +52,13 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self,configs = '', texfile = ''):
+    def __init__(self,configs = '',path = '', texfile = ''):
 #        self.env = jinja_env
 #       self.template = self.env.get_template('template.tex')
-        self.conf = configs
         super(RawQC, self).__init__()
+        self.conf = configs
+        self.path = path
         self.filehandle =  texfile
-        print 'init basic_qc'
     def _infile_parse(self,dataname):
         data = open(dataname).readlines()
         seqquality = []
@@ -95,7 +91,7 @@ class RawQC(QC_Controller):
             else:
                 continue
         return seqlen,peak
-    def _fastqc_info(self,conf_qc,rawdata,names,outdir):
+    def _fastqc_info(self,rawdata,names):
         self.has_fastqc = True
         """ QC analysis of the raw Chip-seq data, including sequence quality score of particularity raw data and the cumulative percentage plot of the sequence quality scores of all historic data.
         """
@@ -103,21 +99,22 @@ class RawQC(QC_Controller):
         nseqlen = []
         for i in range(len(rawdata)):
             d = rawdata[i]
-            cmd = '{0} {1} --extract -o {2}'
-            cmd = cmd.format(conf_qc['fastqc_main'], d,outdir)
+            cmd = '{0} {1} --extract -t 3 -o {2}'
+            cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.conf['userinfo']['outputdirectory'])
             call(cmd,shell=True)
-            fastqc_outname = outdir+d.split('/')[-1]+'_fastqc'
-            changed_name = outdir+names[i]+'_fastqc'
+            fastqc_out = self.conf['userinfo']['outputdirectory']+d.split('/')[-1]+'_fastqc'
+            changed_name = names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
-            cmd = cmd.format(fastqc_outname,changed_name)
+            cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
-            dataname = changed_name+'/fastqc_data.txt' 
+            call('rm %s.zip'% fastqc_out,shell=True)
+            dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
             npeakl.append(peak)
             nseqlen.append(seqlen)
-        print npeakl
-        print nseqlen
-        fastqc_summary = []
+        fastqc_summary = []    #fasqtQC summary
+        rCode = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf_r']
+        pdfName = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf']
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -125,19 +122,19 @@ class RawQC(QC_Controller):
                 judge = 'Pass'
             temp = '%s: %s/t%s/t%s ' %(names[j],str(nseqlen[j]),str(npeakl[j]),judge)
             fastqc_summary.append(temp)
-        print fastqc_summary
-        inf=open(conf_qc['fastqc_value_list'],'rU')
+        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/fastqc_value_list.txt'
+        inf=open(historyData,'rU')
         peaklist1=inf.readline()
-        oufe=open(outdir+'fastqc_summay_ecdf.r','w')
-        oufe.write("setwd('%s')\n" %outdir)
-        oufe.write("sequence_quality_score<-c(%s)\n" %str(peaklist1)[1:-1])
+        oufe=open(rCode,'w')
+        oufe.write("setwd('%s')\n" %self.conf['userinfo']['outputdirectory'])
+        oufe.write("sequence_quality_score<-c(%s)\n" % str(peaklist1)[1:-1])
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
         oufe.write("ecdf(sequence_quality_score)->fn\n")
         oufe.write("fn(sequence_quality_score)->density\n")
         oufe.write("cbind(sequence_quality_score,density)->fndd\n")
         oufe.write("fndd2<-fndd[order(fndd[,1]),]\n")
-        oufe.write("pdf('Sequence_quality_score_Cumulative_percentage.pdf')\n")
+        oufe.write("pdf('%s')\n" % pdfName)
         oufe.write("plot(fndd2,type='b',pch=18,col=2,main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
         j=0
         for p in npeakl:
@@ -147,35 +144,30 @@ class RawQC(QC_Controller):
         oufe.write("dev.off()\n")
         oufe.close()
         inf.close()
-        os.system('Rscript '+outdir+'fastqc_summay_ecdf.r')
-        return fastqc_summary,'True'
-    def run(self,conf_qc,confname,treatpath,controlpath,outdir):
-        print 'hello'
-        print self.conf
+        os.system('Rscript %s'% rCode)
+        return fastqc_summary,pdfName
+    def run(self):
         """ Run some RawQC functions to get final result."""
         self.RawQC_check = True
-        os.chdir(outdir)
-        if len(controlpath) ==0:
-            rawdata = treatpath.split(',')
-            names = confname['treat_data']
+        if len(self.conf['userinfo']['controlpath']) ==0:
+            rawdata = self.conf['userinfo']['treatpath'].split(',')
+            names = self.path['qcresult']['treat_data']
         else:
-            rawdata = treatpath.split(',') +controlpath.split(',')
-            names = confname['treat_data']+confname['control_data']
-        print rawdata
-        print names
+            rawdata = self.conf['userinfo']['treatpath'].split(',') +self.conf['userinfo']['controlpath'].split(',')
+            names = self.path['qcresult']['treat_data']+self.path['qcresult']['control_data']
         for i in range(len(rawdata)-1,-1,-1):
-            if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.q' in rawdata[i]:
+            if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.fq' in rawdata[i]:
                 pass
             else:
                 del rawdata[i]
-                del names[i]
         if len(rawdata)!=0:
-            self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info(conf_qc,rawdata,names,outdir)
+            self.fastqc_summary_stat,self.fastqc_graph_stat = self._fastqc_info(rawdata,names)
             self.fastqc_check = True
         else:
             self.fastqc_check = Fasle
         self._check()
         self._render()
+        return 'test'
     def _check(self):
         """
         Check whether the FastQC's result is ok
