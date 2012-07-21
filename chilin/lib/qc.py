@@ -4,6 +4,7 @@ import os
 import re
 import zipfile
 from jinja2 import Environment, FileSystemLoader,PackageLoader
+import ChiLin
 # FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/')
 # JinJa_temp = os.path.dirname(os.path.abspath(chilin.__file__))
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
@@ -22,7 +23,11 @@ class QC_Controller(object):
     """
     All the class in the module derives from this class
     """
-    def __init__(self):
+    def __init__(self, configs =''):
+        self.conf = configs
+        print self.conf
+        print 'if sel.conf print'
+        self.test ='dsfsdf'
 #       self.pathfinder = PathFinder(conf)
         self.env = jinja_env
         print 'pass'
@@ -51,9 +56,10 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self, texfile):
+    def __init__(self,configs = '', texfile):
 #        self.env = jinja_env
 #       self.template = self.env.get_template('template.tex')
+        self.conf = configs
         super(RawQC, self).__init__()
         self.filehandle =  texfile
         print 'init basic_qc'
@@ -99,13 +105,11 @@ class RawQC(QC_Controller):
             d = rawdata[i]
             cmd = '{0} {1} --extract -o {2}'
             cmd = cmd.format(conf_qc['fastqc_main'], d,outdir)
-            print cmd
             call(cmd,shell=True)
             fastqc_outname = outdir+d.split('/')[-1]+'_fastqc'
             changed_name = outdir+names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_outname,changed_name)
-            print cmd
             call(cmd,shell=True)
             dataname = changed_name+'/fastqc_data.txt' 
             seqlen,peak = self._infile_parse(dataname)
@@ -139,13 +143,15 @@ class RawQC(QC_Controller):
         for p in npeakl:
             oufe.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
             j=j+1
-#        oufe.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(','.join(names),str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+        oufe.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         oufe.write("dev.off()\n")
         oufe.close()
         inf.close()
         os.system('Rscript '+outdir+'fastqc_summay_ecdf.r')
         return fastqc_summary,'True'
-    def run(self,conf_qc = '',confname ='',treatpath = '', controlpath = '',outdir = ''):
+    def run(self,conf_qc,confname,treatpath,controlpath,outdir):
+        print 'hello'
+        print self.conf
         """ Run some RawQC functions to get final result."""
         self.RawQC_check = True
         os.chdir(outdir)
@@ -189,34 +195,82 @@ class RawQC(QC_Controller):
         
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
-    def __init__(self):
-        super(MappingQC, self).__init__()       
+    def __init__(self,configs = ''):
+        super(MappingQC, self).__init__()
+        self.conf = configs
         print 'init mapping qc'
 
-    def _basic_mapping_statistics_info(self):
+    def _basic_mapping_statistics_info(mappingFile):
+
         """ Stastic summary of mapping result for each sample. """
         print 'basic_mapping_statistics'
         self.mappable_summary_stat = 'basic_mapping_table'
         return self.mappable_summary_stat
 
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data. """
-    def _mappable_ratio_info(self):
+    def _mappable_ratio_info(self,ratioList,historyData):
+        pdfName = ''
+        rCode = ''
+        names = ''
+        f=open("%s"%rCode,"w")
+        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
+        f.write("map_ratio_data<-c(%s)\n" %str(historyData)[0:-1])
+        f.write("fn<-ecdf(map_ratio_data)\n")
+        f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue', col.vert='black',main='mappable rates',xlab='mappable rates',ylab='Fn(mappable rates)')"+"\n")
+        j=0
+        for p in ratioList:
+            oufe.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            j=j+1
+        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+        f.write("dev.off()\n")
+        f.close()
+        cmd = 'Rscript %s'%rCode
+        call(cmd,shell=True)
+        return pdfName
+
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
         print 'mappable_ratio'
         self.mappable_ratio_stat = 'mappable_ratio_graph'
         return self.mappable_ratio_stat
 
-    def _redundant_ratio_info(self):
+    def _redundant_ratio_info(self,ratioList,historyData):
         """ Show redundant  ratio of the dataset in all historic data"""
         print 'redundant_ratio\n'
-        self.redundant_ratio_stat = 'redundant_ratio_graph'
-        return self.redundant_ratio_stat
+        pdfName = ''
+        rCode = ''
+        names = ''
+        f=open("%s"%rCode,"w")
+        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
+        f.write("map_ratio_data<-c(%s)\n" %str(historyData)[0:-1])
+        f.write("fn<-ecdf(map_ratio_data)\n")
+        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='unique reads ratio',xlab='unique reads ratio',ylab='Fn(unique reads ratio)')"+"\n")
+        j=0
+        for p in ratioList:
+            f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            j=j+1
+        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+        f.write("dev.off()\n")
+        f.close()
+        cmd = 'Rscript %s'%rCode
+        call(cmd,shell=True)
+        return pdfName
 
     def _render(self):
         temp = self.template.render(MappingQC_check = self.MappingQC_check, basic_mapping_table = self.mappable_summary_stat, mappable_ratio_graph = self.mappable_ratio_stat, redundant_ratio_graph = self.redundant_ratio_stat)
         print temp
-    def run(self):
+    def run(self,conf_qc,mapping):
         self.MappingQC_check = True
+
+        totle_read = ''
+        unique_read= ''
+        names = ''
+        mapped_read = ''
+        all_data = ''
+
         """ Run some MappingQC function to get final result. """
         self.mappable_summary_stat = self._basic_mapping_statistics_info()
         self.mappable_ratio_stat = self._mappable_ratio_info()
@@ -229,8 +283,9 @@ class MappingQC(QC_Controller):
 
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""
-    def __init__(self):
+    def __init__(self,configs = ''):
         super(PeakcallingQC, self).__init__()
+        self.conf = configs
         print 'init peak calling  qc'
     def _peak_summary_info(self):
         """Basic statistic of peak calling result."""
@@ -265,8 +320,9 @@ class PeakcallingQC(QC_Controller):
         
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
-    def __init__(self):
+    def __init__(self,configs = ''):
         super(AnnotationQC, self).__init__()
+        self.conf = configs
         print 'intialization of function qc'
     def _ceas_info(self):
         """ Describe peaks' distribution and relative position. """
