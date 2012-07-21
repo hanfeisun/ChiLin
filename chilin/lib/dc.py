@@ -77,21 +77,24 @@ class PathFinder:
         for session in self.Nameconfigs:
             for option in self.Nameconfigs[session]:
                 temp = []
-                if '${control_rep}' in self.Nameconfigs[session][option]:
-                    for control_rep in range(1, len(self.control_path) + 1):
-                        if not self.outputd.endswith('/'):
-                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                        else:
-                            temp.append(self.outputd + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                    self.Nameconfigs[session][option] = temp
-                if '${treat_rep}' in self.Nameconfigs[session][option]:
-                    for treat_rep in range(1, len(self.treat_path) + 1):
-                        if not self.outputd.endswith('/'):
-                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
-                        else:
-                            temp.append(self.outputd + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
+                if self.control_path[0] != '':
+                    if '${control_rep}' in self.Nameconfigs[session][option]:
+                        for control_rep in range(1, len(self.control_path) + 1):
+                            if not self.outputd.endswith('/'):
+                                temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                            else:
+                                temp.append(self.outputd + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                        self.Nameconfigs[session][option] = temp
+                    
+                if self.treat_path[0] != '':
+                    if '${treat_rep}' in self.Nameconfigs[session][option]:
+                        for treat_rep in range(1, len(self.treat_path) + 1):
+                            if not self.outputd.endswith('/'):
+                                temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
+                            else:
+                                temp.append(self.outputd + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
 
-                    self.Nameconfigs[session][option] = temp
+                        self.Nameconfigs[session][option] = temp
 
 class LogWriter:
     def __init__(self, logfile = 'log'):
