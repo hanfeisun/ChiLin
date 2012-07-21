@@ -45,6 +45,7 @@ def main():
     Path = PathFinder(conf['userinfo']['outputdirectory'], conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     fastqcname = Path.qcfilepath()
     print fastqcname
+    
 
 
 
