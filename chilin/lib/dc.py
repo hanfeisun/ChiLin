@@ -69,52 +69,29 @@ class PathFinder:
                 temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt).replace('${DatasetID}', self.datasetid))
                 self.Nameconfigs[string.lower(sec)] = temp
 
-    def _rep(self, onlyname = True, session = ''):
+    def parseconfrep(self):
         '''only name means not plus the output directory, for legend only
         write in NameRule rep '''
-        for option in self.Nameconfigs[session]:
-            temp = []
-            if '${control_rep}' in self.Nameconfigs[session][option]:
-                for control_rep in range(1, len(self.control_path) + 1):
-
-                    if onlyname:
-                        temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                    else:
-                        if not self.outputd.endswith('/'):
-                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option])
-            if '${treat_rep}' in self.Nameconfigs[session][option]:
-                for treat_rep in range(1, len(self.treat_path) + 1):
-                    if onlyname:
-                        temp.append(self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
-                    else:
-                        if not self.outputd.endswith('/'):
-                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option])
-            self.Nameconfigs[session][option] = temp
-
-    def qcfilepath(self):
         self._readconf()
-        self._rep(True, 'rawdata')
-        return self.Nameconfigs['rawdata']
 
-    def bowtiefilepath(self):
-        self._rep(True, 'bowtietmp')
-        self._rep(True, 'bowtieresult')
-        if os.path.exists('bowtietmp') or os.path.exists('bowtieresult'):
-            cmd = 'mkdir %s' % self.bowtiefolder
-            call(cmd, shell = True)
-        return self.Nameconfigs['bowtietmp'], self.Nameconfigs['bowtieresult']
-    def macs2filepath(self):
+        for session in self.Nameconfigs:
+            for option in self.Nameconfigs[session]:
+                temp = []
+                if '${control_rep}' in self.Nameconfigs[session][option]:
+                    for control_rep in range(1, len(self.control_path) + 1):
+                        if not self.outputd.endswith('/'):
+                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                        else:
+                            temp.append(self.outputd + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                    self.Nameconfigs[session][option] = temp
+                if '${treat_rep}' in self.Nameconfigs[session][option]:
+                    for treat_rep in range(1, len(self.treat_path) + 1):
+                        if not self.outputd.endswith('/'):
+                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
+                        else:
+                            temp.append(self.outputd + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
 
-        print 'macs2filepath'
-        return 'path'
-    def venn_corfilepath(self):
-
-        return "path"
-    def ceasfilepath(self):
-
-        return "path"
-    def conservfilepath(self):
-        return 'path'
+                    self.Nameconfigs[session][option] = temp
 
 class LogWriter:
     def __init__(self, logfile = 'log'):
@@ -130,14 +107,14 @@ class LogWriter:
             f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
             logging.error(logcontent)
             logging.warning(logcontent)
-
-
+            
 class PipeController(object):
     def __init__(self, Options = ""):
         """
         # read in Options from command line
         # Get template and conf information
         """
+        self.has_run = True
         print "Dc control prepare"
     def run(self):
         """for running each step of pipeline
@@ -151,6 +128,9 @@ class PipeController(object):
         else:
             print "write in warning"
             return True
+    def check(self):
+        if self.has_run == True:
+            print 'pass'
 
     def partition(self):
         cmd = 'cp {0} {1}'
@@ -174,12 +154,11 @@ class PipeBowtie(PipeController):
     def __init__(self, treat_path, control_path):
         super(PipeBowtie, self).__init__()
         self.cmd  = '{0} -S {1} -m {2} {3} {4} {5}'
-        
 
     def _format(self):
-        if 
-        print "Get sra or other format into Bowtie Input"
-        print "Write in Log"
+        if 'format' == 'fastq':
+            print "Get sra or other format into Bowtie Input"
+            print "Write in Log"
 
     def _run(self):
         state = call(self.cmd, shell = True)

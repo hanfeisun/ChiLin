@@ -56,7 +56,7 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self,configs = '', texfile):
+    def __init__(self,configs = '', texfile = ''):
 #        self.env = jinja_env
 #       self.template = self.env.get_template('template.tex')
         self.conf = configs
