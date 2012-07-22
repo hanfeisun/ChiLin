@@ -55,11 +55,11 @@ def main():
     fastqc_check = RawQC(conf,paths,texfile).run()
     texfile.close()
 
-#    fastqc_judge = True
-#    if fastqc_judge == True:
-#        bowtiename = Path.bowtiefilepath()
-#        print bowtiename
-#        PipeBowtie().summary()
+    fastqc_judge = True
+    if fastqc_judge == True:
+
+        bowtie = PipeBowtie(conf, paths)
+        bowtie.process()
 
 
 
