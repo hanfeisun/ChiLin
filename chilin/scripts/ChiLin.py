@@ -45,7 +45,13 @@ def main():
     Path = PathFinder(outputd, conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     Path.parseconfrep()
     paths = Path.Nameconfigs
-    print paths, 'test for pathname dict'
+    if not conf['userinfo']['outputdirectory'].endswith('/'):
+        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+'/'+paths['qcresult']['folder']
+    else:
+        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+paths['qcresult']['folder']
+    if not os.path.exists(paths['qcresult']['folder']):
+        call('mkdir %s' % paths['qcresult']['folder'],shell = True)
+    print paths['qcresult']['folder'] 
     texfile = open('tex.tex', 'wb')
 
 
@@ -53,6 +59,7 @@ def main():
     if judge == False:
         sys.exit()
     fastqc_check = RawQC(conf,paths,texfile).run()
+    MappingQC(conf,paths,texfile).run()
     texfile.close()
 
     fastqc_judge = True

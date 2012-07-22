@@ -115,6 +115,7 @@ class RawQC(QC_Controller):
         fastqc_summary = []    #fasqtQC summary
         rCode = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf_r']
         pdfName = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf']
+        names = [os.path.split(i)[1] for i in names]
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -144,8 +145,7 @@ class RawQC(QC_Controller):
         oufe.write("dev.off()\n")
         oufe.close()
         inf.close()
-        os.system('Rscript %s'% rCode)
-        return fastqc_summary,pdfName
+        return fastqc_summary, pdfName
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.RawQC_check = True
@@ -187,12 +187,14 @@ class RawQC(QC_Controller):
         
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
-    def __init__(self,configs = ''):
+    def __init__(self,configs = '',path = '', texfile = ''):
         super(MappingQC, self).__init__()
         self.conf = configs
+        self.path = path
+        self.filehandle = texfile
         print 'init mapping qc'
 
-    def _basic_mapping_statistics_info(mappingFile):
+    def _basic_mapping_statistics_info(self):
 
         """ Stastic summary of mapping result for each sample. """
         print 'basic_mapping_statistics'
@@ -200,11 +202,11 @@ class MappingQC(QC_Controller):
         return self.mappable_summary_stat
 
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data. """
-    def _mappable_ratio_info(self,ratioList,historyData):
-        pdfName = ''
-        rCode = ''
-        names = ''
-        f=open("%s"%rCode,"w")
+    def _mappable_ratio_info(self,ratioList,names):
+        historyData = self.historyData[0]
+        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['mappable_ratio_r']
+        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['mappable_ratio']
+        f=open("%s"% rCode,"w")
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
         f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
@@ -213,7 +215,7 @@ class MappingQC(QC_Controller):
         f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue', col.vert='black',main='mappable rates',xlab='mappable rates',ylab='Fn(mappable rates)')"+"\n")
         j=0
         for p in ratioList:
-            oufe.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
@@ -224,49 +226,48 @@ class MappingQC(QC_Controller):
 
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
         print 'mappable_ratio'
-        self.mappable_ratio_stat = 'mappable_ratio_graph'
-        return self.mappable_ratio_stat
 
-    def _redundant_ratio_info(self,ratioList,historyData):
+    def _redundant_ratio_info(self,ratioList,names):
         """ Show redundant  ratio of the dataset in all historic data"""
         print 'redundant_ratio\n'
-        pdfName = ''
-        rCode = ''
-        names = ''
+        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio']
+        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio_r']
+        historyData = self.historyData[2]
         f=open("%s"%rCode,"w")
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
         f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
-        f.write("map_ratio_data<-c(%s)\n" %str(historyData)[0:-1])
-        f.write("fn<-ecdf(map_ratio_data)\n")
-        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='unique reads ratio',xlab='unique reads ratio',ylab='Fn(unique reads ratio)')"+"\n")
+        f.write("redun_data<-c(%s)\n" % str(historyData)[0:-1])
+        f.write("fn<-ecdf(redun_data)\n")
+        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='redundant ratio',xlab='redundant ratio',ylab='Fn(redundant ratio)')"+"\n")
         j=0
         for p in ratioList:
-            f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
         f.close()
-        cmd = 'Rscript %s'%rCode
+        cmd = 'Rscript %s'% rCode
         call(cmd,shell=True)
         return pdfName
 
     def _render(self):
-        temp = self.template.render(MappingQC_check = self.MappingQC_check, basic_mapping_table = self.mappable_summary_stat, mappable_ratio_graph = self.mappable_ratio_stat, redundant_ratio_graph = self.redundant_ratio_stat)
-        print temp
-    def run(self,conf_qc,mapping):
+        temp = self.template.render(MappingQC_check = self.MappingQC_check, basic_mapping_table = self.mappable_summary_stat,\
+                mappable_ratio_graph = self.mappable_ratio_stat, redundant_ratio_graph = self.redundant_ratio_stat)
+        self.filehandle.write(temp)
+        self.filehandle.flush()
+    def run(self):
+        
         self.MappingQC_check = True
-
-        totle_read = ''
-        unique_read= ''
-        names = ''
-        mapped_read = ''
-        all_data = ''
-
+        names = ['rep1','rep2','rep3']
+        mapped_ratio = [0.9,0.8,0.8]
+        redundant_ratio = [0.1,0.2,0.2]
+        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
+        self.historyData = open(historyData).readlines()
         """ Run some MappingQC function to get final result. """
         self.mappable_summary_stat = self._basic_mapping_statistics_info()
-        self.mappable_ratio_stat = self._mappable_ratio_info()
-        self.redundant_ratio_stat = self._redundant_ratio_info()
+        self.mappable_ratio_stat = self._mappable_ratio_info(mapped_ratio,names)
+        self.redundant_ratio_stat = self._redundant_ratio_info(redundant_ratio,names)
         self._render()
     def check():
         """Check whether the MappingQC's result is ok. """
