@@ -9,6 +9,11 @@ import datetime
 import os
 import chilin
 
+#alias
+j = os.path.join
+e = os.path.exists
+
+#class for configs
 class PipePreparation:
     """read in Options set by optparse
     """
@@ -35,13 +40,13 @@ class PipePreparation:
         if up to our definition
         """
         self.readconf()
-        if not os.path.exists(self.ChiLinconfigs['qc']['fastqc_main']):
+        if not e(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
             return False
-        if not os.path.exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
+        if not e(self.ChiLinconfigs['bowtie']['bowtie_main']):
             print "bowtie program dependency has failed"
             return False
-        if not os.path.exists(self.ChiLinconfigs['macs']['macs_main']):
+        if not e(self.ChiLinconfigs['macs']['macs_main']):
             print "macs2 program dependency has failed"
             return False
         return True
@@ -60,7 +65,6 @@ class PathFinder:
 
     def _readconf(self):
         '''read in conf and write datasetid information'''
-        print self.NameConfPath
         self.cf.read(self.NameConfPath)
         for sec in self.cf.sections():
             temp = {}
@@ -85,7 +89,7 @@ class PathFinder:
                             else:
                                 temp.append(self.outputd + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
                         self.Nameconfigs[session][option] = temp
-                    
+
                 if self.treat_path[0] != '':
                     if '${treat_rep}' in self.Nameconfigs[session][option]:
                         for treat_rep in range(1, len(self.treat_path) + 1):
@@ -96,6 +100,7 @@ class PathFinder:
 
                         self.Nameconfigs[session][option] = temp
 
+# log 
 class LogWriter:
     def __init__(self, logfile = 'log'):
         """
@@ -110,79 +115,72 @@ class LogWriter:
             f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
             logging.error(logcontent)
             logging.warning(logcontent)
-            
+
+# parent class of DC part
 class PipeController(object):
-    def __init__(self, Options = ""):
+    def __init__(self):
         """
-        # read in Options from command line
-        # Get template and conf information
+        read in Options from command line
+        Get template and conf information
         """
         self.has_run = True
-        print "Dc control prepare"
-    def run(self):
+        self.cmd = ''
+
+    def run(self, pipestep = ''):
         """for running each step of pipeline
         """
-        print "run each step in control"
-        print "Call private class bowtie etc. _run"
-        print "Extract shell output for render and log"
-        if self.error: 
-            print "write log and exit"
-            return False # logic
+        shelljudge = call(self.cmd, shell = True)
+        print self.chilinconfigs
+        if shelljudge == 0:
+            self.has_run = True
         else:
-            print "write in warning"
-            return True
-    def check(self):
-        if self.has_run == True:
-            print 'pass'
+            self.has_run = False
 
     def partition(self):
-        cmd = 'cp {0} {1}'
-        print "Create Folder up to output&temporary folder"
-        print "assign the output&temporary file according to\
-               output& temporary folder"
+        self.cmd = 'mv {0} {1}'
+        mv = call(cmd, shell = True)
+        if mv:
+            return True
 
     def render(self, template = ''):
         """
         write into the DA.txt template
-        separately
         """
-        if self.run:
+        if self.has_run:
             print "Get variable"
             print "Write into Template"
         else:
             print "Write into log"
 
+# children class
 class PipeBowtie(PipeController):
     """Bowtie DC and QC step"""
-    def __init__(self, treat_path, control_path):
+    def __init__(self, chilinconfigs, nameconfigs):
         super(PipeBowtie, self).__init__()
-        self.cmd  = '{0} -S {1} -m {2} {3} {4} {5}'
+        self.chilinconfigs = chilinconfigs
+        self.nameconfigs = nameconfigs
 
     def _format(self):
         if 'format' == 'fastq':
             print "Get sra or other format into Bowtie Input"
             print "Write in Log"
+        else:
+            pass
 
-    def _run(self):
-        state = call(self.cmd, shell = True)
-        if state == 0:
-            return True# true or false for PipeController to continue or stop\
-                # and path for Next step
+    def process(self):
+        self.run()
+        self.cmd  = '{0} -S {1} -m {2} {3} {4} {5}'
+        print 'test', self.nameconfigs
+        print 'test2', self.chilinconfigs
 
-    def summary(self, bowtie_main = '', format_option = 'sam', max_alignment = '1', \
-                index_path = '', treat_path = '', outputname = ''):
-        self.cmd.format(bowtie_main,
-                        format_option,
+        self.cmd.format(self.chilinconfigs['bowtie']['bowtie_main'],
+                        'sam',
                         max_alignment,
                         index_path,
                         treat_path,
                         outputname)
-        PipeBowtie._run()
-
-
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Write into the template"
+        call(self.cmd)
+        self._format()
 
 class PipeMACS2(PipeController):
     """ MACS step, separately and merge for sorted bam
