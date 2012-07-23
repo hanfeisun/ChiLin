@@ -23,7 +23,7 @@ def main():
           package_dir={'chilin' : 'chilin/lib'},
           install_requires=['jinja2', ],
           package_data = {'chilin':['db/*','template/*']},
-          scripts=['chilin/scripts/Chilin.py'],
+          scripts=['chilin/scripts/ChiLin.py'],
           classifiers=[
             'Development Status :: 5 - productive',
             'Environment :: Console',
