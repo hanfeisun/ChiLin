@@ -45,18 +45,18 @@ Controllers of QC
 .. automodule:: chilin.qc
 
 .. autoclass:: chilin.qc.QC_Controller
-    :members: run, check, render
+    :members: run, _check, _render
 
 
 .. autoclass:: chilin.qc.RawQC
-	:members: _basic_info, _fastqc_info, run, check
+	:members:  _fastqc_info, run, _check, _render
 
 .. autoclass:: chilin.qc.MappingQC
-	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run, check
+	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run, _check, _render
 
 .. autoclass:: chilin.qc.PeakcallingQC
-	:members: _peak_summary_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run, check
+	:members: _peak_summary_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run, _check, _render
 
 .. autoclass:: chilin.qc.AnnotationQC
-	:members: _ceas_info, _conservation_info, _motif_info, run, check
+	:members: _ceas_info, _conservation_info, _motif_info, run, _check, _render
     
