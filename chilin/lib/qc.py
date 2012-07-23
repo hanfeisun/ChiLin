@@ -100,12 +100,11 @@ class RawQC(QC_Controller):
         for i in range(len(rawdata)):
             d = rawdata[i]
             cmd = '{0} {1} --extract -t 3 -o {2}'
-            cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.conf['userinfo']['outputdirectory'])
+            cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.path['qcresult']['folder'])
             call(cmd,shell=True)
-            fastqc_out = self.conf['userinfo']['outputdirectory']+d.split('/')[-1]+'_fastqc'
-            changed_name = names[i]+'_fastqc'
+            fastqc_out = self.path['qcresult']['folder']+'/'+d.split('/')[-1]+'_fastqc'
+            changed_name = self.path['qcresult']['folder']+'/'+names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
-            print cmd
             cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
             call('rm %s.zip'% fastqc_out,shell=True)
@@ -114,9 +113,8 @@ class RawQC(QC_Controller):
             npeakl.append(peak)
             nseqlen.append(seqlen)
         fastqc_summary = []    #fasqtQC summary
-        rCode = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf_r']
-        pdfName = self.conf['userinfo']['outputdirectory']+self.path['qcresult']['fastqc_pdf']
-        names = [os.path.split(i)[1] for i in names]
+        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf_r']
+        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf']
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -146,6 +144,7 @@ class RawQC(QC_Controller):
         oufe.write("dev.off()\n")
         oufe.close()
         inf.close()
+        call('Rscript %s' % pdfName, shell = True)
         return fastqc_summary, pdfName
     def run(self):
         """ Run some RawQC functions to get final result."""
