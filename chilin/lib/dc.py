@@ -1,4 +1,4 @@
-from subprocess import call, check_output
+from subprocess import call
 from jinja2 import Environment, PackageLoader, TemplateNotFound
 from ConfigParser import ConfigParser, SafeConfigParser
 import logging
