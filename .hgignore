@@ -1,0 +1,12 @@
+syntax: glob
+
+dist
+build
+docs/_build
+chilin.egg-info
+
+*~
+*.pyc
+*.orig
+*.swp
+.DS_Store
