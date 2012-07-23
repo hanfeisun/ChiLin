@@ -1,11 +1,9 @@
-# This file summarizes the output from pipeline. Use ConfigParser to parse it.
-
 [replicates]
-{{% for rep in reps %}}
+{% for rep in reps %}
 treatment_bam = {{ rep.bam }}
 macs_peaks = {{ rep.peakbed }}
 macs_treat_bw = {{ rep.bw }}
-{{% endfor %}}
+{% endfor %}
 
 [dataset]
 dataset_id = {{ id }}
@@ -38,7 +36,7 @@ verlcro overlap peak number is: {{ velcro }}
 verlcro overlap percentage is: {{ velcropercentage }}
 
 [Bowtie Quality information]
-{{% for sam in sams %}}
+{% for sam in sams %}
 sam file = {{ sam.name }}
 total reads = {{ sam.total }}
 mapped reads = {{ sam.mapped }}

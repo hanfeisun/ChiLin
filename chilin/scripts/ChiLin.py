@@ -36,12 +36,13 @@ def main():
     conf = Preparation.ChiLinconfigs
     outputd = conf['userinfo']['outputdirectory']
     if not os.path.exists(outputd):
-        call('mkdir %s & cd %s' % (outputd, outputd), shell = True)
+        call('mkdir %s' % outputd, shell = True)
+        os.chdir(outputd)
     else:
-        call('cd %s' % outputd, shell = True)
+        os.chdir(outputd)
 
-#   log = LogWriter('log')
-#    log.record('test')
+    log = LogWriter('log')
+    log.record('test')
     Path = PathFinder(outputd, conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     Path.parseconfrep()
     paths = Path.Nameconfigs

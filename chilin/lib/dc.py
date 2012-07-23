@@ -1,17 +1,20 @@
-from subprocess import call
+from subprocess import call, check_output
 from jinja2 import Environment, PackageLoader, TemplateNotFound
 from ConfigParser import ConfigParser, SafeConfigParser
 import logging
 import string
 import sys
-import glob
 import datetime
 import os
 import chilin
 
-#alias
+# alias
+env = Environment(loader=PackageLoader('chilin', 'template'))
 j = os.path.join
 e = os.path.exists
+error = logging.error
+warn = logging.warning
+
 
 #class for configs
 class PipePreparation:
@@ -34,6 +37,7 @@ class PipePreparation:
                 optName = string.lower(opt)
                 temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
             self.ChiLinconfigs[string.lower(sec)] = temp
+
     def checkconf(self):
         """
         Check the Meta configuration
@@ -84,23 +88,16 @@ class PathFinder:
                 if self.control_path[0] != '':
                     if '${control_rep}' in self.Nameconfigs[session][option]:
                         for control_rep in range(1, len(self.control_path) + 1):
-                            if not self.outputd.endswith('/'):
-                                temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                            else:
-                                temp.append(self.outputd + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
                         self.Nameconfigs[session][option] = temp
 
                 if self.treat_path[0] != '':
                     if '${treat_rep}' in self.Nameconfigs[session][option]:
                         for treat_rep in range(1, len(self.treat_path) + 1):
-                            if not self.outputd.endswith('/'):
-                                temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
-                            else:
-                                temp.append(self.outputd + self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
-
+                            temp.append(self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
                         self.Nameconfigs[session][option] = temp
 
-# log 
+# log
 class LogWriter:
     def __init__(self, logfile = 'log'):
         """
@@ -113,11 +110,10 @@ class LogWriter:
         dt = datetime.datetime.now()
         with open(self.logfile, 'wb') as f:
             f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
-            logging.error(logcontent)
-            logging.warning(logcontent)
 
 # parent class of DC part
 class PipeController(object):
+
     def __init__(self):
         """
         read in Options from command line
@@ -125,32 +121,32 @@ class PipeController(object):
         """
         self.has_run = True
         self.cmd = ''
+        self.shellextract = ''
 
-    def run(self, pipestep = ''):
-        """for running each step of pipeline
-        """
-        shelljudge = call(self.cmd, shell = True)
-        print self.chilinconfigs
-        if shelljudge == 0:
-            self.has_run = True
-        else:
+    def run(self):
+        self.shellextract = call(self.cmd, shell = True)
+        if self.shellextract !=0:
             self.has_run = False
 
-    def partition(self):
-        self.cmd = 'mv {0} {1}'
-        mv = call(cmd, shell = True)
-        if mv:
-            return True
+    def partition(self, step, target = ''):
+        '''use step as folder'''
+        if self.has_run:
+            if not e():
+                self.cmd = 'mkdir %s' % (step)
+            else:
+                self.cmd = 'mv %s %s' %(target, step)
+            self.run()
+            mv = call(self.cmd, shell = True)
+            if mv != 0:
+                logging.error('partition error')
+                self.has_run = False
 
     def render(self, template = ''):
         """
         write into the DA.txt template
         """
         if self.has_run:
-            print "Get variable"
-            print "Write into Template"
-        else:
-            print "Write into log"
+            print 'write the template'
 
 # children class
 class PipeBowtie(PipeController):
@@ -159,55 +155,120 @@ class PipeBowtie(PipeController):
         super(PipeBowtie, self).__init__()
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
+        self.bowtieinfo = {}
 
-    def _format(self):
-        if 'format' == 'fastq':
-            print "Get sra or other format into Bowtie Input"
-            print "Write in Log"
-        else:
-            pass
+    def _format(self, files):
+        '''format input and output format'''
+
+        for rep in range(len(files)):
+            self.cmd = '{0} view -bt {1} {2} -o {3}'
+            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                       self.chilinconfigs['samtools']['samtools_chrom_len_path']+\
+                                           'chromInfo_' + self.chilinconfigs['userinfo']['species'] + '.txt',
+                                       files[rep],
+                                       self.nameconfigs['bowtieresult']['bam_treat'],
+                                       )
+            self.run()
+
+    def extract(self):
+        '''
+        extract information from sam file
+        to write data summary and qc measurement
+        revision from Xikun and Junsheng
+        '''
+
+        for sam_rep in xrange(len(self.nameconfigs['bowtietmp']['treat_sam'])):
+            samfile = file(self.nameconfigs['bowtietmp']['treat_sam'][sam_rep],"r")
+            reads_dict = {}
+            location_dict = {}
+            total_reads = 0
+            mapped_reads = 0
+
+            for line in samfile:
+                sam_line = line.split("\t")
+                if sam_line[0] in ['@HD','@SQ','@PG','@RG']: # eliminate the table's head
+                    continue
+                else:
+                    total_reads += 1
+                    if sam_line[1] == "4": # "4" means not mapped
+                        continue
+                    else:
+                        mapped_reads += 1 # mapped reads
+                        #location = sam_line[1]+sam_line[2]+sam_line[3]
+                location = sam_line[1]+":"+sam_line[2]+":"+sam_line[3] ####edited by bo to avoid mistakes20111228
+                read_name = sam_line[0]
+
+                if reads_dict.has_key(read_name):
+                    reads_dict[read_name] += 1
+                elif not reads_dict.has_key(read_name):
+                    reads_dict[read_name] = 1
+                else:
+                    print("! STRANGE in reads_dict")
+
+                if location_dict.has_key(location):
+                    location_dict[location] += 1
+                elif not location_dict.has_key(location):
+                    location_dict[location] = 1
+                else:
+                    print("! STRANGE in location_dict")
+
+            uniq_read = 0
+            uniq_location = 0
+            for read_name in reads_dict.keys():####edited by bo change == to >=
+                if reads_dict[read_name] >= 1: # the read was only mapped once
+                    uniq_read += 1
+            for location in location_dict.keys():
+                if location_dict[location] >= 1: # the location was only covered once
+                    uniq_location += 1
+            usable_percentage = float(uniq_read)/float(total_reads)*100
+        self.bowtieinfo['mapped'] = mapped_reads
+        self.bowtieinfo['unique'] = uniq_read
+        self.bowtieinfo['uniq_location'] = uniq_location
+        self.bowtieinfo['uniq_ratio'] = str(usable_percentage) + '%'
+        self.bowtieinfo['total'] = total_reads
 
     def process(self):
-        self.run()
-        self.cmd  = '{0} -S {1} -m {2} {3} {4} {5}'
-        print 'test', self.nameconfigs
-        print 'test2', self.chilinconfigs
+        treatpath = self.chilinconfigs['userinfo']['treatpath'].split(',')
+        for treat_rep in range(len(treatpath)):
+            self.cmd  = '{0} -S -m {1} {2} {3} {4} '
+            self.cmd = self.cmd.format(self.chilinconfigs['bowtie']['bowtie_main'],
+                                        self.chilinconfigs['bowtie']['nbowtie_max_alignment'],
+                                        self.chilinconfigs['bowtie']['bowtie_genome_index_path'] + \
+                                            self.chilinconfigs['userinfo']['species'],
+                                        treatpath[treat_rep],
+                                        self.nameconfigs['bowtietmp']['treat_sam'][treat_rep])
+            print "bowtie is processing %s" %(treatpath[treat_rep])
+            self.run()
+            self._format(self.nameconfigs['bowtietmp']['treat_sam'])
+            self.extract()
+        self.render('test')
 
-        self.cmd.format(self.chilinconfigs['bowtie']['bowtie_main'],
-                        'sam',
-                        max_alignment,
-                        index_path,
-                        treat_path,
-                        outputname)
-        call(self.cmd)
-        self._format()
+
 
 class PipeMACS2(PipeController):
     """ MACS step, separately and merge for sorted bam
-    for peaks calling"""
-    
+    for peaks calling
+    macs2 callpeak -B -q 0.01 --keep-dup 1 --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam -n test.bed"""
+
     def __init__(self):
         super(PipeMACS2, self).__init__()
-        
-    def _format(self):
-        return 
 
-    def _run(self):
-        cmd = '{0} callpeak {1} -B -q 0.01 --nomodel --shift-size {2} ' + \
-              '-t {3} -c {4} -n {5}'
-               
-            
+    def _format(self):
+        return
+
+    def process(self,):
+        cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shift-size {2} --nomodel ' + \
+              '-t {3} {4} -n {5}'
+
+
         cmd = cmd.format(self.macs2_main,
                          self.genome_option,
                          self.shiftsize,
                          self.treat_bam,
                          self.control_bam,
                          self.macsname)
-        
-        return cmd
 
-    def summary(self):
-        call(self._run())
+        return cmd
 
 
 class PipeVennCor(PipeController):
@@ -217,7 +278,7 @@ class PipeVennCor(PipeController):
         super(PipeVennCor, self).__init__()
         print "if replicates, Do this Step"
 
-    def _format(self):
+    def _format(self, peaksnumber):
         print "use bedtools to get the desired input"
         print "use bedGraphToBigwiggle to generate Bigwiggle"
 

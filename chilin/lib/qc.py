@@ -105,6 +105,7 @@ class RawQC(QC_Controller):
             fastqc_out = self.conf['userinfo']['outputdirectory']+d.split('/')[-1]+'_fastqc'
             changed_name = names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
+            print cmd
             cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
             call('rm %s.zip'% fastqc_out,shell=True)
