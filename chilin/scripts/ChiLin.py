@@ -41,8 +41,8 @@ def main():
     else:
         os.chdir(outputd)
 
-    log = LogWriter('log')
-    log.record('test')
+#    log = LogWriter('log')
+ #   log.record('test')
     Path = PathFinder(outputd, conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
     Path.parseconfrep()
     paths = Path.Nameconfigs
