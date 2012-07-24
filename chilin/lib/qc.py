@@ -102,7 +102,8 @@ class RawQC(QC_Controller):
             cmd = '{0} {1} --extract -t 3 -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.path['qcresult']['folder'])
             call(cmd,shell=True)
-            fastqc_out = self.path['qcresult']['folder']+'/'+d.split('/')[-1]+'_fastqc'
+            tem = d.split('/')[-1]
+            fastqc_out = self.path['qcresult']['folder']+'/'+tem.split('.')[0]+'_fastqc'
             changed_name = self.path['qcresult']['folder']+'/'+names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
