@@ -60,20 +60,20 @@ def main():
     if judge == False:
         sys.exit()
     fastqc_check = RawQC(conf,paths,texfile).run()
-    MappingQC(conf,paths,texfile).run()
-    texfile.close()
 
     fastqc_judge = True
     if fastqc_judge:
 
         bowtie = PipeBowtie(conf, paths)
         bowtie.process()
+        MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
            macs.process(options.shiftsize)
+           PeakcallingQC(conf,paths,texfile).run(paths['macstmp']['peaks_xls'],paths['macsresult']['reptreat_peaks'])
            if macs.has_run:
                pass
-
+    print bowtie.bowtieinfo
 
 
 if __name__ == '__main__':
