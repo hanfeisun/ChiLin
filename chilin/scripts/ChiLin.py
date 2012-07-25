@@ -19,7 +19,7 @@ def main():
     parser.add_option("-t", dest = "type", type = "string",
                       help = "specify the analysis type, supported Dnase, Histone, TF")
     parser.add_option("-s", dest = "shiftsize", type = "string", default= '73',
-                      help = "specify the fixed shiftsize for MACS2")
+                      help = "specify the fixed shiftsize for MACS2, advice Dnase: 50, Histone and TF:73")
 #    parser.add_option("-s", dest = "stepcontrol", type = "store_true", default = True)
     (options, args) = parser.parse_args()
 
@@ -64,11 +64,15 @@ def main():
     texfile.close()
 
     fastqc_judge = True
-    if fastqc_judge == True:
+    if fastqc_judge:
 
         bowtie = PipeBowtie(conf, paths)
         bowtie.process()
-
+        if bowtie.has_run:
+           macs = PipeMACS2(conf, paths)
+           macs.process(options.shiftsize)
+           if macs.has_run:
+               pass
 
 
 
