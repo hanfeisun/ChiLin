@@ -15,6 +15,10 @@ e = os.path.exists
 error = logging.error
 warn = logging.warning
 
+def repanalysis(datafilelist):
+
+    print 'analysis treats or controls in batch'
+
 
 #class for configs
 class PipePreparation:
@@ -29,7 +33,6 @@ class PipePreparation:
         """
         Read configuration and parse it into Dictionary
         """
-        self.ChiLinconfPath
         self.cf.read(self.ChiLinconfPath)
         for sec in self.cf.sections():
             temp = {}
@@ -170,8 +173,7 @@ class PipeBowtie(PipeController):
         to write data summary and qc measurement
         revision from Xikun and Junsheng
         '''
-
-        for sam_rep in xrange(len(self.nameconfigs['bowtietmp']['treat_sam'])):
+        for sam_rep in range(len(self.nameconfigs['bowtietmp']['treat_sam'])):
             samfile = file(self.nameconfigs['bowtietmp']['treat_sam'][sam_rep],"r")
             reads_dict = {}
             location_dict = {}
@@ -234,9 +236,11 @@ class PipeBowtie(PipeController):
             print "bowtie is processing %s" %(treatpath[treat_rep])
             self.run()
             self._format(self.nameconfigs['bowtietmp']['treat_sam'][treat_rep], self.nameconfigs['bowtieresult']['bam_treat'][treat_rep])
-            self.extract()
-           
             self.partition('bowtie', self.nameconfigs['bowtietmp']['treat_sam'][treat_rep])
+            self.partition('bowtie', self.nameconfigs['bowtieresult']['bam_treat'][treat_rep])
+        os.chdir('bowtie')
+        self.extract()
+        os.chdir('..')
         print self.bowtieinfo
         self.render()
 
@@ -250,10 +254,30 @@ class PipeMACS2(PipeController):
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
 
-    def _format(self):
+    def _format(self, bdg, rep):
+        """
+        merge bam files
+        filter bdg file and remove over-border coordinates
+        convert bdg to bw
+        command_line = configs["macs.bedgraphtobigwig_main"]+" "+configs["macs.output_treat_bdg_replicates"][i-1]+".tmp "+configs["macs.bedgraphtobigwig_chrom_len_path"]+" "+configs["macs.                    output_treat_bw_replicates"][i-1]
+        """
+        self.cmd = '{0} -a {1} -b {2} -wa -f 1.00 > {3}'  # bdg filter
+        self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
+                                    bdg,
+                                    self.chilinconfigs['samtools']['chrom_len_bed_path'] + self.chilinconfigs['userinfo']['species'] + '.bed',
+                                    self.nameconfigs['macstmp']['treat_tmp_bdg'][rep])
+        self.run()
+        self.cmd = '{0} {1} {2} {3} ' # bedGraphTobigwiggle
+        self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedgraphtobigwig_main'],
+                                   self.nameconfigs['macstmp']['treat_tmp_bdg'][rep],
+                                   self.chilinconfigs['samtools']['samtools_chrom_len_path'], # bedGraphTobw chrom len equal to samtools'
+                                   self.nameconfigs['macsresult']['treatrep_bw'][rep],
+                                   )
+        self.run()
         return
 
     def process(self, shiftsize = ''):
+        # macs2
         for rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
             self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                   '-t {2} -n {3}'
@@ -261,13 +285,34 @@ class PipeMACS2(PipeController):
 
             self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
                                        shiftsize, 
-                                       self.nameconfigs['bowtieresult']['bam_treat'][rep],
+                                       'bowtie/' + self.nameconfigs['bowtieresult']['bam_treat'][rep],
                                         # self.control_bam,
-                                       self.nameconfigs['macsresult']['reptreat_peaks'][rep])
-
-            print self.cmd
-
+                                       self.nameconfigs['macstmp']['macs_init_name'])
             self.run()
+
+#            self._format(self.bdg, rep)
+        if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
+
+            self.cmd = '{0} merge {1} {2}'
+            self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                            ' '.join(self.nameconfigs['bowtieresult']['bam_treat']))
+            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                        'bowtie/' + self.nameconfigs['bowtieresult']['bam_treat'][rep],
+                                        self.chilinconfigs['samtools']['chrom_len_bed_path'] + self.chilinconfigs['userinfo']['species'] + '.bed',
+                                        self.nameconfigs['macstmp']['treatrep_bdg'][rep])
+            self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
+                  '-t {2} -n {3}'
+            self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
+                                       shiftsize,
+                                       self.nameconfigs['bowtieresult']['bammerge'],
+                                       self.nameconfigs['macstmp']['macs_init_mergename'])
+                                       
+            self.run()
+#            self._format(self.bdg, 0)
+        self.partition('macs', ' ')
+        # for control 
+        #    self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
+                #          '-t {2} -c {3} -n {4}'
 
 class PipeVennCor(PipeController):
     def __init__(self, OptionMethod = "Mean"):
@@ -277,10 +322,10 @@ class PipeVennCor(PipeController):
         print "if replicates, Do this Step"
 
     def _format(self, peaksnumber):
-        print "use bedtools to get the desired input"
-        print "use bedGraphToBigwiggle to generate Bigwiggle"
+        #if replicates, merge and intersect bed files
+        return
 
-    def _run(self):
+    def process(self):
         print "Run the venn_diagram"
         print "Run the correlation diagram"
         print "Call private _Run"
@@ -289,9 +334,6 @@ class PipeVennCor(PipeController):
         print "Call FindPath to return path for DC"
         print "Write into the template"
         return "Path for QC"
-
-    def summary(self):
-        print "render to template"
 
 class PipeCEAS(PipeController):
     def __init__(self):
