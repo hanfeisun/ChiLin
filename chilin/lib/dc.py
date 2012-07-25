@@ -131,15 +131,11 @@ class PipeController(object):
     def partition(self, step, target = ''):
         '''use step as folder'''
         if self.has_run:
-            if not e():
+            if not e(step):
                 self.cmd = 'mkdir %s' % (step)
             else:
                 self.cmd = 'mv %s %s' %(target, step)
             self.run()
-            mv = call(self.cmd, shell = True)
-            if mv != 0:
-                logging.error('partition error')
-                self.has_run = False
 
     def render(self, template = ''):
         """
@@ -157,18 +153,16 @@ class PipeBowtie(PipeController):
         self.nameconfigs = nameconfigs
         self.bowtieinfo = {}
 
-    def _format(self, files):
+    def _format(self, sam, bam):
         '''format input and output format'''
-
-        for rep in range(len(files)):
-            self.cmd = '{0} view -bt {1} {2} -o {3}'
-            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-                                       self.chilinconfigs['samtools']['samtools_chrom_len_path']+\
-                                           'chromInfo_' + self.chilinconfigs['userinfo']['species'] + '.txt',
-                                       files[rep],
-                                       self.nameconfigs['bowtieresult']['bam_treat'],
-                                       )
-            self.run()
+        self.cmd = '{0} view -bt {1} {2} -o {3}'
+        self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                   self.chilinconfigs['samtools']['samtools_chrom_len_path']+\
+                                            'chromInfo_' + self.chilinconfigs['userinfo']['species'] + '.txt',
+                                   sam,
+                                   bam,
+                                   )
+        self.run()
 
     def extract(self):
         '''
@@ -239,37 +233,41 @@ class PipeBowtie(PipeController):
                                         self.nameconfigs['bowtietmp']['treat_sam'][treat_rep])
             print "bowtie is processing %s" %(treatpath[treat_rep])
             self.run()
-            self._format(self.nameconfigs['bowtietmp']['treat_sam'])
+            self._format(self.nameconfigs['bowtietmp']['treat_sam'][treat_rep], self.nameconfigs['bowtieresult']['bam_treat'][treat_rep])
             self.extract()
-        self.render('test')
-
-
+           
+            self.partition('bowtie', self.nameconfigs['bowtietmp']['treat_sam'][treat_rep])
+        print self.bowtieinfo
+        self.render()
 
 class PipeMACS2(PipeController):
     """ MACS step, separately and merge for sorted bam
     for peaks calling
     macs2 callpeak -B -q 0.01 --keep-dup 1 --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam -n test.bed"""
 
-    def __init__(self):
+    def __init__(self, chilinconfigs, nameconfigs):
         super(PipeMACS2, self).__init__()
+        self.chilinconfigs = chilinconfigs
+        self.nameconfigs = nameconfigs
 
     def _format(self):
         return
 
-    def process(self,):
-        cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shift-size {2} --nomodel ' + \
-              '-t {3} {4} -n {5}'
+    def process(self, shiftsize = ''):
+        for rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
+            self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
+                  '-t {2} -n {3}'
+            print self.nameconfigs['macsresult']['reptreat_peaks'][rep]
 
+            self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
+                                       shiftsize, 
+                                       self.nameconfigs['bowtieresult']['bam_treat'][rep],
+                                        # self.control_bam,
+                                       self.nameconfigs['macsresult']['reptreat_peaks'][rep])
 
-        cmd = cmd.format(self.macs2_main,
-                         self.genome_option,
-                         self.shiftsize,
-                         self.treat_bam,
-                         self.control_bam,
-                         self.macsname)
+            print self.cmd
 
-        return cmd
-
+            self.run()
 
 class PipeVennCor(PipeController):
     def __init__(self, OptionMethod = "Mean"):
