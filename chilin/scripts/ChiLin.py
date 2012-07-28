@@ -7,7 +7,7 @@ from chilin.qc import *
 from optparse import OptionParser
 from subprocess import call
 import os
-
+import sys
 def main():
     usage = "usage: %prog <ChiLin.conf Path> [optional]-m cormethod -p peaksnumber"
     description = "ChiLin : A clear ChIP-seq pipeline"
@@ -34,6 +34,9 @@ def main():
     if not checkresult:
         sys.exit()
     conf = Preparation.ChiLinconfigs
+    conf['trepn'] = len(conf['userinfo']['treat_path'])
+    conf['crepn'] = len(conf['userinfo']['treat_path'])
+    print conf['trepn'], conf['crepn']
     outputd = conf['userinfo']['outputdirectory']
     if not os.path.exists(outputd):
         call('mkdir %s' % outputd, shell = True)
@@ -56,6 +59,7 @@ def main():
     texfile = open('tex.tex', 'wb')
 
 
+
     judge = Preparation.checkconf()
     if judge == False:
         sys.exit()
@@ -70,10 +74,17 @@ def main():
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
            macs.process(options.shiftsize)
-           PeakcallingQC(conf,paths,texfile).run(paths['macstmp']['peaks_xls'],paths['macsresult']['reptreat_peaks'])
+    #       PeakcallingQC(conf,paths,texfile).run(paths['macstmp']['peaks_xls'],paths['macsresult']['reptreat_peaks'])
            if macs.has_run:
-               pass
+               VennCor = PipeVennCor(conf, paths, peaksnumber, cormethod)
+               if VennCor.has_run:
+                   CEAS = PipeCEAS(conf, paths)
+                   if CEAS.has_run:
+                       Motif = PipeMotif(conf, paths)
+                       if Motif.has_run:
+                           pass
     print bowtie.bowtieinfo
+    texfile.close()
 
 
 if __name__ == '__main__':
