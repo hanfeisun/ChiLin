@@ -50,6 +50,7 @@ class PipePreparation:
         if up to our definition
         """
         self.readconf()
+        print self.ChiLinconfigs
         if not e(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
             return False
@@ -154,6 +155,7 @@ class PipeController(object):
             else:
                 self.cmd = 'mv %s %s' %(target, step + '/' + newname)
                 self.run()
+        print self.cmd
 
     def render(self, template = ''):
         """

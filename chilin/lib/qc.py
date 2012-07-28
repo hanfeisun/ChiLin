@@ -61,8 +61,7 @@ class RawQC(QC_Controller):
         self.path = path
         self.filehandle =  texfile
         
-    def _infile_parse(self,dataname): # extract information from fastqc result file
-		"""parse the fastqc result file"""
+    def _infile_parse(self,dataname): # extract information from fastqc result file 
         fph = open(dataname)
         data = fph.readlines()
         fph.close()
@@ -110,8 +109,8 @@ class RawQC(QC_Controller):
             cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.path['qcresult']['folder'])
             call(cmd,shell=True)
             tem = d.split('/')[-1]
-            fastqc_out = j(self.path['qcresult']['folder'],tem.split('.')[0]+'_fastqc')
-            changed_name = j(self.path['qcresult']['folder'],names[i]+'_fastqc')
+            fastqc_out = self.path['qcresult']['folder']+'/'+tem.split('.')[0]+'_fastqc'
+            changed_name = self.path['qcresult']['folder']+'/'+names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
@@ -122,8 +121,8 @@ class RawQC(QC_Controller):
             npeakl.append(peak)
             nseqlen.append(seqlen)
         fastqc_summary = []    #fasqtQC summary
-        rCode = j(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf_r'])
-        pdfName = j(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf'])
+        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf_r']
+        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf']
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -241,12 +240,6 @@ class MappingQC(QC_Controller):
         """ Show redundant  ratio of the dataset in all historic data"""
         specise = ''
         out = 'temp.bed'
-        for samfile in SamList:
-        	cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
-        	cmd = cmd.format(samfile,
-        					specise,
-        					out
-        					)
         
         print 'redundant_ratio\n'
         pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio']
@@ -319,10 +312,10 @@ class PeakcallingQC(QC_Controller):
         d = sorted(float_fc)
         d20 = [x for x in d if x >= 20]
         d10 = [x for x in d if x >= 10]
-        self.totalpeaks = len(d)
+        self.totalpeaks = len(d)+0.01
         print d20[1:10]
-        self.fold_20 = len(d20)
-        self.fold_10 = len(d10)
+        self.fold_20 = len(d20)+0.01
+        self.fold_10 = len(d10)+0.01
         print self.fold_20
         print self.fold_10
         print self.totalpeaks
@@ -355,8 +348,7 @@ class PeakcallingQC(QC_Controller):
     def _velcro_ratio_info(self,peakbed):
         """verlcro ratio is used to describe whether the peak is credible , The lower the result is more convenience.
          The cumulative percentage plot can reflect the particularly dataset's verlcro ratio quality of all historic data."""
-
-        historyFile = os.path.split(chilin.__file__)[0] + '/' + 'db/wgEncodeHg19ConsensusSignalArtifactRegions.bed'
+        historyFile = self.conf['venn']['velcro_path']
         overlapped_bed_file = "overlapped_bed_file"
         cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
         cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
@@ -392,7 +384,7 @@ class PeakcallingQC(QC_Controller):
         """ DHS ratio indicate the percentage of peaks overlap with DHSs site.
         The function can describe  the particularly dataset's DHS ratio quality of all historic data.
         """
-        historyFile = os.path.split(chilin.__file__)[0] + '/' + 'db/DHS_hg19.bed' 
+        historyFile = self.conf['venn']['dhs_bed_path']
         overlapped_bed_file = "overlapped_dhs"
         cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
         cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
@@ -436,16 +428,15 @@ class PeakcallingQC(QC_Controller):
         """ Run some PeakcallingQC function to get final result. """
 
         historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
+        print self.path
         fph = open(historyDataName)
         self.historyData = fph.readlines()
         fph.close()
         self._peak_summary_info(peaksxls)
         self._high_confidentPeaks_info()
         self._DHS_ratio_info(peaksbed)
-        if self.conf['userinfo']['species'] =='Homo sapiens':
-        	self._velcro_ratio_info(peaksbed)
-        if self.conf['userinfo']['treatpath'] >= 2：
-        	self._replicate_info()
+        self._velcro_ratio_info(peaksbed)
+        self._replicate_info()
         self._render()
     def check():
         """ Check whether PeakcallingQC's result is ok. """

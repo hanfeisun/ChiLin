@@ -57,6 +57,7 @@ def main():
 
     Path.parseconfrep()
     paths = Path.Nameconfigs
+    print paths
     if not conf['userinfo']['outputdirectory'].endswith('/'):
         paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+'/'+paths['qcresult']['folder']
     else:
@@ -65,24 +66,30 @@ def main():
         call('mkdir %s' % paths['qcresult']['folder'],shell = True)
 
     texfile = open('tex.tex', 'wb')
-
+    print '_____________________________'
+    print 'ss',paths
 
 
     judge = Preparation.checkconf()
     if judge == False:
         sys.exit()
     fastqc_check = RawQC(conf,paths,texfile).run()
-
+    print'___________________________'
+    print 'fastqc',paths
     fastqc_judge = True
     if fastqc_judge:
 
         bowtie = PipeBowtie(conf, paths)
         bowtie.process()
         MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
+        print '________________________________'
+        print 'bowtie',paths
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
            macs.process(options.shiftsize)
-    #       PeakcallingQC(conf,paths,texfile).run(paths['macstmp']['peaks_xls'],paths['macsresult']['reptreat_peaks'])
+           print '____________________________'
+           print 'macs',paths
+           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, peaksnumber, cormethod)
                if VennCor.has_run:
