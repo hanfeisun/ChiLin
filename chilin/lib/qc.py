@@ -5,9 +5,10 @@ import math
 import re
 import zipfile
 from jinja2 import Environment, FileSystemLoader,PackageLoader
-import ChiLin
-# FileSystemLoader('/Users/Samleo/mybin/chilin/chilin/lib/template/')
-# JinJa_temp = os.path.dirname(os.path.abspath(chilin.__file__))
+
+
+j = os.path.join
+e = os.path.exists
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
                         block_end_string = '}',
@@ -37,8 +38,6 @@ class QC_Controller(object):
         self.has_run = True
         return True
         
-    def _partion(self):
-        pass
     
     def _check(self):
         """ Check whether the quality of the dataset is ok. """
@@ -57,15 +56,16 @@ class RawQC(QC_Controller):
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
     def __init__(self,configs = '',path = '', texfile = ''):
-#        self.env = jinja_env
-#       self.template = self.env.get_template('template.tex')
         super(RawQC, self).__init__()
         self.conf = configs
         self.path = path
         self.filehandle =  texfile
         
     def _infile_parse(self,dataname): # extract information from fastqc result file
-        data = open(dataname).readlines()
+		"""parse the fastqc result file"""
+        fph = open(dataname)
+        data = fph.readlines()
+        fph.close()
         seqquality = []
         seqlen = 0
         quality_flag = 0
@@ -96,7 +96,7 @@ class RawQC(QC_Controller):
             else:
                 continue
         return seqlen,peak
-        data.close()
+        
         
     def _fastqc_info(self,rawdata,names):
         self.has_fastqc = True
@@ -110,8 +110,8 @@ class RawQC(QC_Controller):
             cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.path['qcresult']['folder'])
             call(cmd,shell=True)
             tem = d.split('/')[-1]
-            fastqc_out = self.path['qcresult']['folder']+'/'+tem.split('.')[0]+'_fastqc'
-            changed_name = self.path['qcresult']['folder']+'/'+names[i]+'_fastqc'
+            fastqc_out = j(self.path['qcresult']['folder'],tem.split('.')[0]+'_fastqc')
+            changed_name = j(self.path['qcresult']['folder'],names[i]+'_fastqc')
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
@@ -122,8 +122,8 @@ class RawQC(QC_Controller):
             npeakl.append(peak)
             nseqlen.append(seqlen)
         fastqc_summary = []    #fasqtQC summary
-        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf_r']
-        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf']
+        rCode = j(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf_r'])
+        pdfName = j(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf'])
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -237,8 +237,17 @@ class MappingQC(QC_Controller):
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
         print 'mappable_ratio'
 
-    def _redundant_ratio_info(self,ratioList,names):
+    def _redundant_ratio_info(self,SamList,names):
         """ Show redundant  ratio of the dataset in all historic data"""
+        specise = ''
+        out = 'temp.bed'
+        for samfile in SamList:
+        	cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
+        	cmd = cmd.format(samfile,
+        					specise,
+        					out
+        					)
+        
         print 'redundant_ratio\n'
         pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio']
         rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio_r']
@@ -427,12 +436,16 @@ class PeakcallingQC(QC_Controller):
         """ Run some PeakcallingQC function to get final result. """
 
         historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
-        self.historyData = open(historyDataName).readlines()
+        fph = open(historyDataName)
+        self.historyData = fph.readlines()
+        fph.close()
         self._peak_summary_info(peaksxls)
         self._high_confidentPeaks_info()
-        self._velcro_ratio_info(peaksbed)
         self._DHS_ratio_info(peaksbed)
-        self._replicate_info()
+        if self.conf['userinfo']['species'] =='Homo sapiens':
+        	self._velcro_ratio_info(peaksbed)
+        if self.conf['userinfo']['treatpath'] >= 2：
+        	self._replicate_info()
         self._render()
     def check():
         """ Check whether PeakcallingQC's result is ok. """
