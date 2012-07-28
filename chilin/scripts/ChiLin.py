@@ -20,7 +20,7 @@ def main():
                       help = "specify the analysis type, supported Dnase, Histone, TF")
     parser.add_option("-s", dest = "shiftsize", type = "string", default= '73',
                       help = "specify the fixed shiftsize for MACS2, advice Dnase: 50, Histone and TF:73")
-#    parser.add_option("-s", dest = "stepcontrol", type = "store_true", default = True)
+    parser.add_option("-c", dest = "stepcontrol", type = "string", default = 'motif')
     (options, args) = parser.parse_args()
 
     if not args or not options.type:
@@ -34,8 +34,11 @@ def main():
     if not checkresult:
         sys.exit()
     conf = Preparation.ChiLinconfigs
-    conf['trepn'] = len(conf['userinfo']['treat_path'])
-    conf['crepn'] = len(conf['userinfo']['treat_path'])
+    conf['trepn'] = len(conf['userinfo']['treatpath'].split(','))
+    if conf['userinfo']['controlpath'] != '':
+        conf['crepn'] = len(conf['userinfo']['controlpath'].split(','))
+    else:
+        conf['crepn'] = 0
     print conf['trepn'], conf['crepn']
     outputd = conf['userinfo']['outputdirectory']
     if not os.path.exists(outputd):
