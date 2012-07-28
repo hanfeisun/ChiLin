@@ -6,6 +6,7 @@ import string
 import datetime
 import os
 import chilin
+import re
 
 # alias
 env = Environment(loader=PackageLoader('chilin', 'template'))
@@ -110,11 +111,19 @@ class LogWriter:
         time, execute, Shell, DC and QC string
         plus time consumed
         """
+        self.logger = logging.getLogger()
         self.logfile = logfile
+        handler = logging.FileHandler(logfile)
+        formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s :  ')
+        handler.setFormatter(formatter)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.NOTSET)
+
     def record(self, logcontent):
-        dt = datetime.datetime.now()
-        with open(self.logfile, 'wb') as f:
-            f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
+#        dt = datetime.datetime.now()
+        self.logger.info(logcontent)
+#        with open(self.logfile, 'wb') as f:
+#            f.write(dt.strftime('%Y-%m-%d-%H:%M:%S') + logcontent)
 
 # parent class of DC part
 class PipeController(object):
@@ -288,7 +297,7 @@ class PipeMACS2(PipeController):
                                        )
             self.run()
 
-    def median(self, nums):
+    def _median(self, nums):
         p = sorted(nums)
         l = len(p)
         if l%2 == 0:
@@ -297,7 +306,9 @@ class PipeMACS2(PipeController):
             return p[l/2]
 
     def extract(self, peak_file):
-        '''summary of peak calling
+        '''
+        get macsinfo of peak calling
+        from peaks.xls
         add fc_10 and ratio'''
         fhd = open( peak_file,"r" )
         d_wo_FDR = []
@@ -327,7 +338,7 @@ class PipeMACS2(PipeController):
                     else:
                         d = sorted(d_wo_FDR)
                         d = [x for x in d if x>=20]
-                        t += "peaks_fc_ge_20 = %d\n" % len(d)####20120514 modified by qinqian, from 'le_20' to 'ge_20' 
+                        t += "peaks_fc_ge_20 = %d\n" % len(d)####20120514 modified by qinqian, from 'le_20' to 'ge_20'
                         return t
 
     def process(self, shiftsize = ''):
@@ -361,13 +372,11 @@ class PipeMACS2(PipeController):
                                 'macs2/' + self.nameconfigs['macstmp']['treatrep_tmp_bdg'][rep], 'macs2/' + self.nameconfigs['macsresult']['treatrep_bw'][rep])
 
         if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
-            bowtietreat = ['bowtie/' + x for x in self.nameconfigs['bowtieresult']['bam_treat']]
-            print bowtietreat, 'test here'
             self.cmd = '{0} merge {1}  {2}'
-            self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-                            self.nameconfigs['bowtieresult']['bammerge'],
-                            '  '.join(map(lambda x: 'bowtie/' + x, self.nameconfigs['bowtieresult']['bam_treat']))
-                            )
+            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                       self.nameconfigs['bowtieresult']['bammerge'],
+                                       '  '.join(map(lambda x: 'bowtie/' + x, self.nameconfigs['bowtieresult']['bam_treat']))
+                                       )
             self.run()
 #            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
 #                                        self.nameconfigs['bowtieresult']['bam_treat'][rep],
@@ -382,24 +391,24 @@ class PipeMACS2(PipeController):
                                            self.nameconfigs['macstmp']['macs_init_mergename'])
 
                 self.run()
-
-                self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_peaks.bed', \
+                if self.has_run:
+                    self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_peaks.bed',
                                    self.nameconfigs['macsresult']['treat_peaks'])
-                self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_peaks.xls', \
+                    self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_peaks.xls', 
                                    self.nameconfigs['macsresult']['peaks_xls'])
-                self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_summits.bed', \
+                    self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_summits.bed', 
                                    self.nameconfigs['macsresult']['summits'])
-                self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', \
+                    self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', 
                                    self.nameconfigs['macstmp']['treat_bdg'])
-
-                self._format('macs2/' + self.nameconfigs['macstmp']['treat_bdg'], \
-                                 'macs2/' + self.nameconfigs['macstmp']['treat_bdgtmp'], \
+                    print 1
+                if self.has_run:
+                    self._format('macs2/' + self.nameconfigs['macstmp']['treat_bdg'], 
+                                 'macs2/' + self.nameconfigs['macstmp']['treat_bdgtmp'], 
                                  'macs2/' + self.nameconfigs['macsresult']['treat_bw'])
-
                # for control
-                if self.chilinconfigs['userinfo']['controlpath'] != '':
-                    self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
-                        '-t {2} -c {3} -n {4}' 
+            if self.chilinconfigs['userinfo']['controlpath'] != '':
+                self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
+                    '-t {2} -c {3} -n {4}'
 
 class PipeVennCor(PipeController):
     def __init__(self, chilinconfigs, nameconfigs, peaksnumber = '', OptionMethod = "Mean", replicates = False):
@@ -433,13 +442,16 @@ class PipeVennCor(PipeController):
         self.ratio[a_type] = float(lena_type) / lenall
         a_type.close()
 
-
     def process(self, rep):
-        # venn diagram
+        
+        self.extract('dhs')
+        self.extract('velcro')
+
         if len(self.chilinconfigs['trepn']) < 2:
             self.cmd = 'touch %s' % self.nameconfigs['represult']['ven_png']
             self.run()
         else:
+            # venn diagram
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
                             ' '.join(self.nameconfigs['macsreult']['treatrep_peaks']),
@@ -447,40 +459,64 @@ class PipeVennCor(PipeController):
                                              xrange(1, self.chilinconfigs['trepn'] + 1)))
                             )
             self.run()
-            self.cmd = '{}'
+            # correlation plot
+            if self.has_run:
+                self.cmd = '{0} {1} {2} {3} {4} {5}'
+                self.cmd.format()
+                self.render()
 
 
 class PipeCEAS(PipeController):
-    def __init__(self):
+    def __init__(self, chilinconfigs, nameconfigs, peaksnumber):
         """Get CEAS dependency info from
         Check Class"""
-        self.format = []
         super(PipeCEAS, self).__init__()
+        self.chilinconfigs = chilinconfigs
+        self.naemconfigs = nameconfigs
+        self.peaks = peaksnumber
 
     def _format(self):
-        self.format.append('BED or wiggele or both')
-        print "Get the random peaks number for speeding the CEAS"
+        # get peaksnumber ge >= 10 for ceas
+        xls = self.nameconfigs['macsresult']['peaks_xls']
+        bed = open(self.nameconfigs['ceasresult']['ceasge10_bed'])
+        peaksnum = 0
+        for line in open(xls, 'rU'):
+            if re.search('chr\w', line[0]):
+                line = line.strip()
+                line = line.split('\t')
+                peaksnum += 1
+                if peaksnum <= self.peaks and float(line[7]) >= 10:
+                    bed_line = line[0] + '\t' + str(int(line[1]) - 1) + '\t' + line[2] + '\t' +\
+                        "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
+                    bed.write(bed_line)
+        bed.close()
+        xls.close()
 
-    def _run(self):
 
+
+
+
+    def extract(self):
+        '''
+        get R code for QC measurement'''
         print "Run the Dependency Program for return FindPath string"
 
-    def summary(self):
+    def process(self):
         print "Call private _Run"
         print "Extract shell output"
         print "Write into the template"
 
 class PipeConserv(PipeController):
-    def __init__(self):
+    def __init__(self, chilinconfigs, nameconfigs):
         super(PipeConserv, self).__init__()
 
     def _format(self):
         print "Set input Peaks number for conservation Plot"
 
-    def _run(self):
+    def extract(self):
         print "Run the External conservation plot"
 
-    def summary(self):
+    def process(self):
         print "Call private _Run"
         print "Extract shell output" # generate temporary file
         print "Call FindPath DC to return path for QC"
@@ -489,19 +525,56 @@ class PipeConserv(PipeController):
         return # information for passing to TemplateParser
 
 class PipeMotif(PipeController):
-    def __init__(self):
+    def __init__(self, chilinconfigs, nameconfigs, peaksnumber):
         super(PipeMotif, self).__init__()
-    
+        self.peaksnumber =peaksnumber
+
     def _format(self):
-        print "Get the top peaks number for motif analysis"
-        
-    def _Run(self):
-        print "Run the default setting program"
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
-        print "Write into the template"
+        # generate top peaks from summits BED file
+        summitsfile = open(self.nameconfigs['macsresult']['summits'])
+        peaks = []
+        for i in summitsfile:
+            peaks.append( (i,float(i.split()[-1])) )
+            top_n = self.peaksnumber
+            top_n_summits = map(lambda x:x[0],sorted(peaks, key=lambda x:x[1], reverse=True)[:top_n])
+
+            top_n_summits_file = "top"+str(top_n)+"_summits.bed"
+            top_n_summits_fhd = open(top_n_summits_file,"w")
+        for i in top_n_summits:
+            top_n_summits_fhd.write(i)
+        top_n_summits_fhd.close()
+
+        # remove chrM from top n summits
+        f=open(top_n_summits_file,"rU")
+        temp=open("2.bed","w")
+        for i in f:
+            i=i.split()
+            if i[0]=="chrM":
+                continue
+            else:
+                temp.write(i[0]+"\t"+i[1]+"\t"+i[2]+"\t"+i[3]+"\t"+i[4]+"\n")
+                temp.close()
+
+    def extract(self, zip):
+        '''extract information for qc part'''
+        print 'get zip information'
+
+    def process(self):
+
+        self._format()
+        self.cmd = ''
+        self.extract()
+        self.render()
 
 class PipeGO(PipeController):
-    pass
+    def __init__(self, chilinconfigs, nameconfigs):
+        pass
+    def _format(self):
+        '''Use RegPotential'''
+
+        pass
+class API(PipeController):
+    '''internet interface'''
+    def __init__(self):
+        import cgi
+        pass

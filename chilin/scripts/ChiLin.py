@@ -28,28 +28,33 @@ def main():
         sys.exit('options missing')
 
     ChiLinConf = args[0]
-
     Preparation = PipePreparation(ChiLinConf)
-    checkresult = Preparation.checkconf()
-    if not checkresult:
-        sys.exit()
     conf = Preparation.ChiLinconfigs
-    conf['trepn'] = len(conf['userinfo']['treatpath'].split(','))
-    if conf['userinfo']['controlpath'] != '':
-        conf['crepn'] = len(conf['userinfo']['controlpath'].split(','))
-    else:
-        conf['crepn'] = 0
-    print conf['trepn'], conf['crepn']
+    checkresult = Preparation.checkconf()
     outputd = conf['userinfo']['outputdirectory']
     if not os.path.exists(outputd):
         call('mkdir %s' % outputd, shell = True)
         os.chdir(outputd)
     else:
         os.chdir(outputd)
+    log = LogWriter('%s_log' % conf['userinfo']['datasetid'])
+    if not checkresult:
+        log.record('Check config')
+        sys.exit()
 
-#    log = LogWriter('log')
- #   log.record('test')
+
     Path = PathFinder(outputd, conf['userinfo']['datasetid'], conf['userinfo']['treatpath'], conf['userinfo']['controlpath'])
+    log.record('Prepared Name for output & temporary files')
+
+
+
+    conf['trepn'] = len(conf['userinfo']['treatpath'].split(','))
+    if conf['userinfo']['controlpath'] != '':
+        conf['crepn'] = len(conf['userinfo']['controlpath'].split(','))
+    else:
+        conf['crepn'] = 0
+    print conf['trepn'], conf['crepn']
+
     Path.parseconfrep()
     paths = Path.Nameconfigs
     if not conf['userinfo']['outputdirectory'].endswith('/'):
@@ -58,7 +63,7 @@ def main():
         paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+paths['qcresult']['folder']
     if not os.path.exists(paths['qcresult']['folder']):
         call('mkdir %s' % paths['qcresult']['folder'],shell = True)
-    print paths['qcresult']['folder'] 
+
     texfile = open('tex.tex', 'wb')
 
 
