@@ -14,8 +14,8 @@ def main():
     parser = OptionParser(version = "%prog 1.0.0", description = description, usage = usage)
     parser.add_option("-m", dest = "cormethod", type = "string", default = "mean",
                       help = "specify method for correlation plot")
-    parser.add_option("-p", dest = "peaksnumber", type = "int", default = 3000,
-                      help = "specify peaks number for CEAS, Conservation and options")
+    parser.add_option("-p", dest = "peaksnumber", type = "int", default = 5000,
+                      help = "specify peaks number for CEAS, Conservation and Motif")
     parser.add_option("-t", dest = "type", type = "string",
                       help = "specify the analysis type, supported Dnase, Histone, TF")
     parser.add_option("-s", dest = "shiftsize", type = "string", default= '73',
@@ -88,14 +88,14 @@ def main():
            macs = PipeMACS2(conf, paths)
 #           macs.process(options.shiftsize)
            print '____________________________'
- 
+
 #           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, options.peaksnumber, options.cormethod)
                VennCor.process(conf['trepn'])
                if VennCor.has_run:
 
-                   CEAS = PipeCEAS(conf, paths)
+                   CEAS = PipeCEAS(conf, paths, options.peaksnumber)
                    if CEAS.has_run:
                        Motif = PipeMotif(conf, paths)
                        if Motif.has_run:
