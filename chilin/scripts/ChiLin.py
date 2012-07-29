@@ -58,25 +58,24 @@ def main():
     Path.parseconfrep()
     paths = Path.Nameconfigs
     paths['qcresult']['folder'] = os.path.join(conf['userinfo']['outputdirectory'],paths['qcresult']['folder'])
-    if not os.path.exists(paths['qcresult']['folder']):
-        call('mkdir %s' % paths['qcresult']['folder'],shell = True)
-    print paths['qcresult']['folder']
     texfile = open('tex.tex', 'wb')
 
 
 
     judge = Preparation.checkconf()
     if judge == False:
-        sys.exit()
+    print paths['qcresult']['folder']
     fastqc_check = RawQC(conf,paths,texfile).run()
 
+ 
     fastqc_judge = True
     if fastqc_judge:
 
         bowtie = PipeBowtie(conf, paths)
-        bowtie.process()
-        MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
-
+#        bowtie.process()
+#        MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
+        print '________________________________'
+ 
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
            macs.process(options.shiftsize)
@@ -91,7 +90,6 @@ def main():
                        Motif = PipeMotif(conf, paths)
                        if Motif.has_run:
                            pass
-    texfile.close()
 
 
 if __name__ == '__main__':
