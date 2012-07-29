@@ -1,0 +1,22 @@
+
+About ChiLin
+============
+
+ChiLin is the Chinese Unicorn. It is sometimes called the dragon horse, a mythical creature that has a lot of legends and stories associated to it.
+
+We use ChiLin for the name of our project as it has similar alphabet combination with **ChI**\ P-seq pipe\ **lin**\ e.
+
+Instruction
+=================
+Usage: ChiLin.py <ChiLin.conf Path> [optional]-m cormethod -p peaksnumber
+
+ChiLin : A clear ChIP-seq pipeline
+
+Options:
+  --version       show program's version number and exit
+  -h, --help      show this help message and exit
+  -m CORMETHOD    specify method for correlation plot
+  -p PEAKSNUMBER  specify peaks number for CEAS, Conservation and options
+  -t TYPE         specify the analysis type, supported Dnase, Histone, TF
+  -s SHIFTSIZE    specify the fixed shiftsize for MACS2, advice Dnase: 50,
+                  Histone and TF:73
