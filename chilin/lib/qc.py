@@ -4,6 +4,7 @@ import os
 import math
 import re
 import zipfile
+import subprocess
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 
 
@@ -103,26 +104,26 @@ class RawQC(QC_Controller):
         """
         npeakl = []
         nseqlen = []
+        print rawdata,names
         for i in range(len(rawdata)):
             d = rawdata[i]
             cmd = '{0} {1} --extract -t 3 -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.path['qcresult']['folder'])
             call(cmd,shell=True)
-            tem = d.split('/')[-1]
-            fastqc_out = self.path['qcresult']['folder']+'/'+tem.split('.')[0]+'_fastqc'
-            changed_name = self.path['qcresult']['folder']+'/'+names[i]+'_fastqc'
+            temp = os.path.split(d)[1]
+            fastqc_out = os.path.join(self.path['qcresult']['folder'],os.path.splitext(temp)[0]+'_fastqc')
+            changed_name = os.path.join(self.path['qcresult']['folder'],names[i]+'_fastqc')
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
             call(cmd,shell=True)
             call('rm %s.zip'% fastqc_out,shell=True)
             dataname = changed_name+'/fastqc_data.txt'
-            print dataname
             seqlen,peak = self._infile_parse(dataname)
             npeakl.append(peak)
             nseqlen.append(seqlen)
         fastqc_summary = []    #fasqtQC summary
-        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf_r']
-        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['fastqc_pdf']
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf_r'])
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fastqc_pdf'])
         for j in range(len(npeakl)):
             if npeakl[j] < 25:
                 judge = 'Fail'
@@ -130,7 +131,7 @@ class RawQC(QC_Controller):
                 judge = 'Pass'
             temp = '%s: %s/t%s/t%s ' %(names[j],str(nseqlen[j]),str(npeakl[j]),judge)
             fastqc_summary.append(temp)
-        print fastqc_summary
+
         historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/fastqc_value_list.txt'
         inf=open(historyData,'rU')
         peaklist1=inf.readline()
@@ -164,6 +165,8 @@ class RawQC(QC_Controller):
         else:
             rawdata = self.conf['userinfo']['treatpath'].split(',') +self.conf['userinfo']['controlpath'].split(',')
             names = self.path['qcresult']['treat_data']+self.path['qcresult']['control_data']
+            print rawdata
+            print names
         for i in range(len(rawdata)-1,-1,-1):
             if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.fq' in rawdata[i]:
                 pass
@@ -213,8 +216,8 @@ class MappingQC(QC_Controller):
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data. """
     def _mappable_ratio_info(self,ratioList,names):
         historyData = self.historyData[0]
-        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['mappable_ratio_r']
-        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['mappable_ratio']
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['mappable_ratio_r'])
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['mappable_ratio'])
         f=open("%s"% rCode,"w")
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
@@ -236,14 +239,31 @@ class MappingQC(QC_Controller):
         """ Cumulative percentage plot to  describe the  mappable ratio quality of all historic data."""
         print 'mappable_ratio'
 
-    def _redundant_ratio_info(self,SamList,names):
+    def _redundant_ratio_info(self,bamList):
         """ Show redundant  ratio of the dataset in all historic data"""
-        specise = ''
-        out = 'temp.bed'
-        
+        names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
+        ratioList = []
+        for bamfile in bamList:
+        	temp = 'temp.bed'
+        	if self.conf['userinfo']['species']=='hg19':
+        		cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
+        		cmd = cmd.format(bamfile,'hs',temp)
+        		a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True)
+        		
+        		content = a.communicate()
+        		content = list(content)[1].split('\n')
+        		print content
+        		os.system('rm temp.bed')
+        		for line in content:
+        			judge = re.findall(r'Redundant rate of alignment file',line)
+        			if judge:
+        				score = line.split(':')[-1].strip()
+        				score = round(1-float(score),3)
+        				ratioList.append(score)
+        print ratioList
         print 'redundant_ratio\n'
-        pdfName = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio']
-        rCode = self.path['qcresult']['folder']+'/'+self.path['qcresult']['redundant_ratio_r']
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['redundant_ratio'])
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['redundant_ratio_r'])
         historyData = self.historyData[2]
         f=open("%s"%rCode,"w")
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
@@ -268,19 +288,24 @@ class MappingQC(QC_Controller):
                 mappable_ratio_graph = self.mappable_ratio_stat)
         self.filehandle.write(temp)
         self.filehandle.flush()
-    def run(self,mapDict):
-        
+    def run(self,mapDict,bampath = ''):
+        """ Run some MappingQC function to get final result. """
         self.MappingQC_check = True
+        bampath = os.path.join(self.conf['userinfo']['outputdirectory'],'bowtie')
+        bamList = os.popen( "find %s -name \"%s\""%(bampath,'*.bam'))
+        bamList = bamList.readlines()
+        bamList = [i.strip() for i in bamList]
+        print bamList
         names = ['rep1']
         mapped_ratio = [0.8]
         historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
         f = open(historyData)
         self.historyData = f.readlines()
         f.close()
-        """ Run some MappingQC function to get final result. """
+
         self._basic_mapping_statistics_info()
         self.mappable_ratio_stat = self._mappable_ratio_info(mapped_ratio,names)
-#        self.redundant_ratio_stat = self._redundant_ratio_info(redundant_ratio,names)
+        self.redundant_ratio_stat = self._redundant_ratio_info(bamList)
         self._render()
     def check():
         """Check whether the MappingQC's result is ok. """
@@ -327,8 +352,8 @@ class PeakcallingQC(QC_Controller):
         """
         
         historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/lg_fold_10.txt'
-        pdfName = self.path['qcresult']['fold_ratio']
-        rCode = self.path['qcresult']['fold_ratio_r']
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio'])
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio_r'])
         lg_10 = math.log(self.fold_10,10)
         historyData = open(historyDataName).readlines()[0].strip()
         f = open(rCode,'w')
@@ -362,8 +387,8 @@ class PeakcallingQC(QC_Controller):
         fhd.close()
 
         velcro_ratio = float(num_overlapped_peaks)/self.totalpeaks
-        rCode = self.path['qcresult']['velcro_ratio_r']
-        pdfName = self.path['qcresult']['velcro_ratio']
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['velcro_ratio_r'])
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['velcro_ratio'])
         historyData = self.historyData[3][0:-1]
         f = open(rCode,'w')
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
@@ -399,8 +424,8 @@ class PeakcallingQC(QC_Controller):
         print num_overlapped_peaks
         print dhs_ratio
         historyData = self.historyData[2][0:-1]
-        rCode = self.path['qcresult']['dhs_ratio_r']
-        pdfName = self.path['qcresult']['dhs_ratio']
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['dhs_ratio_r'])
+        pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['dhs_ratio'])
         f = open(rCode,'w')
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
@@ -428,15 +453,16 @@ class PeakcallingQC(QC_Controller):
         """ Run some PeakcallingQC function to get final result. """
 
         historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
-        print self.path
         fph = open(historyDataName)
         self.historyData = fph.readlines()
         fph.close()
         self._peak_summary_info(peaksxls)
         self._high_confidentPeaks_info()
         self._DHS_ratio_info(peaksbed)
-        self._velcro_ratio_info(peaksbed)
-        self._replicate_info()
+        if self.conf['userinfo']['species']=='hg19':
+        	self._velcro_ratio_info(peaksbed)
+        if len(self.conf['userinfo']['treatpath'].split(',')) >= 2:
+        	self._replicate_info()
         self._render()
     def check():
         """ Check whether PeakcallingQC's result is ok. """
@@ -470,13 +496,14 @@ class AnnotationQC(QC_Controller):
         Metaregxcontent = re.findall(r'layout\(matrix\(c\(1, 2, 3, 3, 4, 5\)[^z]*abline\(v=3000\.000000,lty=2,col=c\("black"\)\)', ceastring)[0]
         Pieregxcontent = re.findall(r'# Thus, look at the labels of the pie chart[^z]*# ChIP regions over the genome', ceastring)[0]
         piescript = '\n'.join(Pieregxcontent.split('\n')[4:-3]) + '\n'
-        
+        Metascript = '\n'.join(Metaregxcontent.split('\n')[1:]) + '\n'
         # plot 
-        rCode = 'temp.r'
-        pdfName = 'ceasa.pdf'
+        rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['ceas_qc_r'])
+        Metagene = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['ceas_meta_pdf'])
+        Ceasprofile = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['ceas_profile_pdf'])
         f = open(rCode,'w')
         list_fcr = ','.join(list_fc)
-        f.write("pdf('test.pdf',height=11.5,width=8.5)\n")
+        f.write("pdf('%s',height=11.5,width=8.5)\n" %Metagene )
         f.write('nf <- layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow=TRUE),respect=TRUE)\n')
         f.write('peaks_fc <- c(%s)\n' %list_fcr)
         f.write('fn <- ecdf(peaks_fc)\n')
@@ -491,14 +518,13 @@ class AnnotationQC(QC_Controller):
         f.write(piescript)
         f.write('dev.off()\n')
 
-        f.write("pdf('dis.pdf',height=7,width=5.5)\n")
+        f.write("pdf('%s',height=7,width=5.5)\n" %Ceasprofile)
         f.write("nf <- layout(matrix(c(1,2,3,3), 2, 2, byrow=TRUE), width= c(1,1),height=c(1,1),respect=TRUE)\n")
-        Metascript = '\n'.join(Metaregxcontent.split('\n')[1:]) + '\n'
         f.write(Metascript)
         f.write('dev.off()\n')
+        f.close()
         call("Rscript %s"% rCode, shell = True)
         
-        f.close()
         
         print 'ceas qc'
     def _conservation_info(self):
@@ -552,11 +578,8 @@ class AnnotationQC(QC_Controller):
         print 'motif info\n'
     def _render(self):
         pass
-    def run(self):
+    def run(self,peaksxls,ceasCode,Zippath):
         """ Run some AnnotationQC function. """
-        peaksxls = '/Users/Samleo/mybin/testdata/1277_peaks.xls'
-        ceasCode = '/Users/Samleo/mybin/testdata/1277_ceas.R'
-        Zippath = '/Users/Samleo/mybin/testdata/1277_seqpos.zip'
         self._ceas_info(peaksxls,ceasCode)
         self._conservation_info()
         self._motif_info(Zippath)

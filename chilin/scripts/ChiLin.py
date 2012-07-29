@@ -57,38 +57,29 @@ def main():
 
     Path.parseconfrep()
     paths = Path.Nameconfigs
-    print paths
-    if not conf['userinfo']['outputdirectory'].endswith('/'):
-        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+'/'+paths['qcresult']['folder']
-    else:
-        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+paths['qcresult']['folder']
+    paths['qcresult']['folder'] = os.path.join(conf['userinfo']['outputdirectory'],paths['qcresult']['folder'])
     if not os.path.exists(paths['qcresult']['folder']):
         call('mkdir %s' % paths['qcresult']['folder'],shell = True)
-
+    print paths['qcresult']['folder']
     texfile = open('tex.tex', 'wb')
-    print '_____________________________'
-    print 'ss',paths
+
 
 
     judge = Preparation.checkconf()
     if judge == False:
         sys.exit()
     fastqc_check = RawQC(conf,paths,texfile).run()
-    print'___________________________'
-    print 'fastqc',paths
+
     fastqc_judge = True
     if fastqc_judge:
 
         bowtie = PipeBowtie(conf, paths)
         bowtie.process()
         MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
-        print '________________________________'
-        print 'bowtie',paths
+
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
            macs.process(options.shiftsize)
-           print '____________________________'
-           print 'macs',paths
            PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, peaksnumber, cormethod)
@@ -100,7 +91,6 @@ def main():
                        Motif = PipeMotif(conf, paths)
                        if Motif.has_run:
                            pass
-    print bowtie.bowtieinfo
     texfile.close()
 
 
