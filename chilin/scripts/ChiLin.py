@@ -57,20 +57,28 @@ def main():
 
     Path.parseconfrep()
     paths = Path.Nameconfigs
-    paths['qcresult']['folder'] = os.path.join(conf['userinfo']['outputdirectory'],paths['qcresult']['folder'])
-    texfile = open('tex.tex', 'wb')
+    print 'parse the built-in name rule', paths
 
+    if not conf['userinfo']['outputdirectory'].endswith('/'):
+        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+'/'+paths['qcresult']['folder']
+    else:
+        paths['qcresult']['folder'] = conf['userinfo']['outputdirectory']+paths['qcresult']['folder']
+    if not os.path.exists(paths['qcresult']['folder']):
+        call('mkdir %s' % paths['qcresult']['folder'],shell = True)
+
+    texfile = open('tex.tex', 'wb')
+    print '_____________________________'
+ 
 
 
     judge = Preparation.checkconf()
     if judge == False:
-    print paths['qcresult']['folder']
-    fastqc_check = RawQC(conf,paths,texfile).run()
-
+        sys.exit()
+#    fastqc_check = RawQC(conf,paths,texfile).run()
+    print'___________________________'
  
     fastqc_judge = True
     if fastqc_judge:
-
         bowtie = PipeBowtie(conf, paths)
 #        bowtie.process()
 #        MappingQC(conf,paths,texfile).run(bowtie.bowtieinfo)
@@ -78,10 +86,12 @@ def main():
  
         if bowtie.has_run:
            macs = PipeMACS2(conf, paths)
-           macs.process(options.shiftsize)
-           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
+#           macs.process(options.shiftsize)
+           print '____________________________'
+ 
+#           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
-               VennCor = PipeVennCor(conf, paths, peaksnumber, cormethod)
+               VennCor = PipeVennCor(conf, paths, options.peaksnumber, options.cormethod)
                VennCor.process(conf['trepn'])
                if VennCor.has_run:
 
@@ -90,10 +100,12 @@ def main():
                        Motif = PipeMotif(conf, paths)
                        if Motif.has_run:
                            pass
+#    print bowtie.bowtieinfo
+    texfile.close()
 
 
 if __name__ == '__main__':
-    print "Welcome to ChiLin"
+
     try:
         main()
     except KeyboardInterrupt():
