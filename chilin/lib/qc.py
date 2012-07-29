@@ -349,8 +349,7 @@ class PeakcallingQC(QC_Controller):
 
     def _high_confidentPeaks_info(self):
         """
-        """
-        
+        """       
         historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/lg_fold_10.txt'
         pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio'])
         rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio_r'])
@@ -443,6 +442,7 @@ class PeakcallingQC(QC_Controller):
         self.replicate_venn_stat = vennGraph
         self.replicate_corr_stat = correlationPlot
         print 'replicate_info\n'
+        print self.replicate_venn_stat,self.replicate_corr_stat
     def _render(self):
         rend = {}
         rend['PeakcallingQC_check'] = True
@@ -462,7 +462,9 @@ class PeakcallingQC(QC_Controller):
         if self.conf['userinfo']['species']=='hg19':
         	self._velcro_ratio_info(peaksbed)
         if len(self.conf['userinfo']['treatpath'].split(',')) >= 2:
-        	self._replicate_info()
+        	vennGraph = os.path.abspath('macs2/'+self.path['represult']['ven_png'])
+        	correlationPlot = os.path.abspath('macs2/'+self.path['represult']['cor_pdf'])
+        	self._replicate_info(vennGraph,correlationPlot)
         self._render()
     def check():
         """ Check whether PeakcallingQC's result is ok. """
