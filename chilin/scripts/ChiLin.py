@@ -92,7 +92,9 @@ def main():
            PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, peaksnumber, cormethod)
+               VennCor.process(conf['trepn'])
                if VennCor.has_run:
+
                    CEAS = PipeCEAS(conf, paths)
                    if CEAS.has_run:
                        Motif = PipeMotif(conf, paths)
