@@ -413,12 +413,12 @@ class PipeVennCor(PipeController):
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
         if a_type == 'dhs':
             self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       self.nameconfigs['macsresult']['treat_peaks'],
+                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'],
                                        self.chilinconfigs['venn']['dhs_bed_path'],
                                        self.nameconfigs['bedtoolstmp']['dhs_bed'])
         if a_type == 'velcro':
             self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       self.nameconfigs['macsresult']['treat_peaks'],
+                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'],
                                        self.chilinconfigs['venn']['velcro_path'],
                                        self.nameconfigs['bedtoolstmp']['velcro_bed'])
         self.run()
@@ -450,10 +450,11 @@ class PipeVennCor(PipeController):
             # venn diagram
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
-                                       ' '.join(self.nameconfigs['macsresult']['treatrep_peaks']),
+                                       ' '.join(map(lambda x: 'macs2/' + x, self.nameconfigs['macsresult']['treatrep_peaks'])),
                                        ' '.join(map(lambda x: "-l replicate_" + str(x), \
                                                         xrange(1, rep + 1)))
                                        )
+
             self.run()
             # correlation plot
             if self.has_run:
@@ -465,8 +466,8 @@ class PipeVennCor(PipeController):
                                            self.chilinconfigs['correlation']['wig_correlation_method'],
                                            self.chilinconfigs['correlation']['wig_correlation_min'],
                                            self.chilinconfigs['correlation']['wig_correlation_max'],
-                                           self.chilinconfigs['represult']['cor_R'],
-                                           ' '.join(self.chilinconfigs['macsresult']['treatrep_bw']),
+                                           self.nameconfigs['represult']['cor_r'],
+                                           ' '.join(map(lambda x: 'macs2/' + x, self.nameconfigs['macsresult']['treatrep_bw'])),
                                            ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, rep + 1))),
                                            )
                 self.run()
@@ -486,7 +487,7 @@ class PipeCEAS(PipeController):
         """
         1.use awk '{if ($2 >= 0 && $2 < $3) print}' 6576_peaks.bed > 6576_peaks.bed.temp
         2. to avoid negative peaks
-        3. use bedClip to avoid chromosome out of range 
+        3. use bedClip to avoid chromosome out of range
         4. get peaksnumber ge >= 10 for ceas, or pvalue top 5000
         """
         xls = 'macs2/' + self.nameconfigs['macsresult']['peaks_xls']
@@ -530,6 +531,8 @@ class PipeConserv(PipeController):
         super(PipeConserv, self).__init__()
 
     def _format(self):
+        """peak the top n significant peaks for conservation
+        plot"""
         print "Set input Peaks number for conservation Plot"
 
     def extract(self):
@@ -552,8 +555,9 @@ class PipeMotif(PipeController):
         self.peaksnumber =peaksnumber
 
     def _format(self):
-        """
-        generate top peaks from summits BED file
+        """ input: summits.bed for merge peaks
+        generate top peaks from summits BED file according to p value
+        remove chrM from top n summits
         """
         summitsfile = open(self.nameconfigs['macsresult']['summits'])
         peaks = []
