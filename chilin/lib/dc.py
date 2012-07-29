@@ -72,7 +72,6 @@ class PathFinder:
         self.treat_path = treatpath.split(',')
         self.control_path = controlpath.split(',')
         self.datasetid = datasetid
-        self.outputd = outputd
 
     def _readconf(self):
         '''read in conf and write datasetid information'''
@@ -95,7 +94,7 @@ class PathFinder:
                 if self.control_path[0] != '':
                     if '${control_rep}' in self.Nameconfigs[session][option]:
                         for control_rep in range(1, len(self.control_path) + 1):
-                            temp.append(self.outputd + '/' + self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                            temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
                         self.Nameconfigs[session][option] = temp
 
                 if self.treat_path[0] != '':
@@ -329,7 +328,7 @@ class PipeMACS2(PipeController):
                     fc10n += 1
         self.ratio['fc20n'] = fc20n/total
         self.ratio['fc10n'] = fc10n/total
-                    
+
 
     def process(self, shiftsize = ''):
         # macs2, original generated results
@@ -339,6 +338,9 @@ class PipeMACS2(PipeController):
         testid_macs_peaks.xls  # result
         testid_macs_summits.bed # result
         testid_macs_treat_pileup.bdg # -> bw result'''
+	# support for bed or other format, TODO
+	if 'input' is 'bed':
+            print 'do macs2'
         for rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
             self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                   '-t {2} -n {3}'
@@ -404,6 +406,8 @@ class PipeVennCor(PipeController):
         super(PipeVennCor, self).__init__()
         self.peaksnumber = ''
         self.ratio = {}
+        self.chilinconfigs = chilinconfigs
+        self.nameconfigs = nameconfigs
 
     def _format(self, a_type):
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
@@ -424,13 +428,13 @@ class PipeVennCor(PipeController):
         extract dhs overlap and velcro overlap information
         """
         self._format(a_type)
-        lenall = len(open(self.nameconfigs['macsresult']['treat_bed']))
+        lenall = len(open('macs2/' + self.nameconfigs['macsresult']['treat_peaks'], 'rU').readlines())
         if a_type == 'dhs':
             lena_type = len(open(self.nameconfigs['bedtoolstmp']['dhs_bed'], 'r').readlines())
         elif a_type == 'velcro':
             lena_type = len(open(self.nameconfigs['bedtoolstmp']['velcro_bed'], 'r').readlines())
         self.ratio[a_type] = float(lena_type) / lenall
-        print self.ratio, 'test here'
+        print self.ratio
 
     def process(self, rep):
         """
@@ -446,7 +450,7 @@ class PipeVennCor(PipeController):
             # venn diagram
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
-                                       ' '.join(self.nameconfigs['macsreult']['treatrep_peaks']),
+                                       ' '.join(self.nameconfigs['macsresult']['treatrep_peaks']),
                                        ' '.join(map(lambda x: "-l replicate_" + str(x), \
                                                         xrange(1, rep + 1)))
                                        )
@@ -486,9 +490,7 @@ class PipeCEAS(PipeController):
         4. get peaksnumber ge >= 10 for ceas, or pvalue top 5000
         """
         xls = 'macs2/' + self.nameconfigs['macsresult']['peaks_xls']
-        bed = open(self.nameconfigs['ceastmp']['ceasge10_bed'], 'w')
-#        bed = open(self.nameconfigs['ceas'][''], 'w')
-
+        bedge = open(self.nameconfigs['ceastmp']['ceasge10_bed'], 'w')
         peaksnum = 0
         # fold change
         for line in open(xls, 'rU'):
@@ -499,14 +501,13 @@ class PipeCEAS(PipeController):
                 if peaksnum <= self.peaks and float(line[7]) >= 10:
                     bed_line = line[0] + '\t' + str(int(line[1]) - 1) + '\t' + line[2] + '\t' +\
                         "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
-                    bed.write(bed_line)
-        """
-        or
-        sort -r -g -k 5 6576_peaks.bed > sorted.bed
-        head -5000 sorted.bed > peaks_pvalue_top5000.bed
-        rm sorted.bed
-        """
-        bed.close()
+                    bedge.write(bed_line)
+        self.cmd = 'sort -r -g -k 5 %s > sorted.bed' % 'macs2/' + self.nameconfigs['macsresult']['treat_peaks']
+	self.run()
+        self.cmd = 'head -5000 sorted.bed > peaks_pvalue_top5000.bed'
+	self.run()
+        self.cmd = 'rm sorted.bed'
+	self.run()
         xls.close()
 
     def extract(self):
