@@ -139,6 +139,7 @@ class PipeController(object):
 
     def run(self):
         self.shellextract = call(self.cmd, shell = True)
+        print self.cmd
         if self.shellextract !=0:
             self.has_run = False
         else:
@@ -307,41 +308,28 @@ class PipeMACS2(PipeController):
         else:
             return p[l/2]
 
-    def extract(self, peak_file):
+    def extract(self):
         '''
         get macsinfo of peak calling
         from peaks.xls
         add fc_10 and ratio'''
-        fhd = open( peak_file,"r" )
-        d_wo_FDR = []
-        d_w_FDR = []
-        t = ""
+        fhd = open( 'macs2/' + self.nameconfigs['macsresult']['peaksxls'],"r" )
+        total = 0
+        fc20n = 0
+        fc10n = 0
         for i in fhd:
             i = i.strip()
             if i and not i.startswith("#") and not i.startswith("chr\t"):
+                total += 1
                 fs = i.split("\t")
                 fc = fs[7]
-                if len(fs) == 9:
-                    # has FDR
-                    d_w_FDR.append((float(fc),float(fs[8])))
-                else:
-                    d_wo_FDR.append((float(fc)))
-                    if d_w_FDR:
-                        d = sorted(d_w_FDR,cmp=lambda x,y:cmp(x[0],y[0]))
-                        fdr = [x[1] for x in d if x[0] >= 20] # debug site ####JunSheng debug Sheng'en edit in 20110929, for correct fdr>20%number in summary file
-                        fdr_all = [x[1] for x in d]##### Sheng'en edit in 20111128, collect the condition no fc >= 20
-                        t += "peaks_fc_ge_20 = %d\n" % len(fdr)
-                        if len(fdr)>0:
-                            t += "max_FDR_of_fc_ge_20 = %.2f\n" % max(fdr)
-                            t += "median_FDR_of_fc_ge_20 = %.2f\n" % median(fdr)
-                        else:
-                            t += "No peaks FDR fc>=20\nmax_FDR_of_fc = %.2f\n"% max(fdr_all)
-                            t += "median_FDR_of_fc = %.2f\n" % median(fdr_all)
-                    else:
-                        d = sorted(d_wo_FDR)
-                        d = [x for x in d if x>=20]
-                        t += "peaks_fc_ge_20 = %d\n" % len(d)####20120514 modified by qinqian, from 'le_20' to 'ge_20'
-                        return t
+                if fc >= 20:
+                    fc20n += 1
+                if fc >= 10:
+                    fc10n += 1
+        self.ratio['fc20n'] = fc20n/total
+        self.ratio['fc10n'] = fc10n/total
+                    
 
     def process(self, shiftsize = ''):
         # macs2, original generated results
@@ -380,10 +368,7 @@ class PipeMACS2(PipeController):
                                        '  '.join(map(lambda x: 'bowtie/' + x, self.nameconfigs['bowtieresult']['bam_treat']))
                                        )
             self.run()
-#            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-#                                        self.nameconfigs['bowtieresult']['bam_treat'][rep],
-#                                        self.chilinconfigs['samtools']['chrom_len_bed_path'] + self.chilinconfigs['userinfo']['species'] + '.bed',
-#                                        self.nameconfigs['macstmp']['treatrep_bdg'][rep])
+
             if self.has_run:
                 self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                        '-t {2} -n {3}'
@@ -402,12 +387,12 @@ class PipeMACS2(PipeController):
                                    self.nameconfigs['macsresult']['summits'])
                     self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', 
                                    self.nameconfigs['macstmp']['treat_bdg'])
-                    print 1
+
                 if self.has_run:
                     self._format('macs2/' + self.nameconfigs['macstmp']['treat_bdg'], 
                                  'macs2/' + self.nameconfigs['macstmp']['treat_bdgtmp'], 
                                  'macs2/' + self.nameconfigs['macsresult']['treat_bw'])
-               # for control
+            # for control
             if self.chilinconfigs['userinfo']['controlpath'] != '':
                 self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                     '-t {2} -c {3} -n {4}'
@@ -419,7 +404,6 @@ class PipeVennCor(PipeController):
         super(PipeVennCor, self).__init__()
         self.peaksnumber = ''
         self.ratio = {}
-        print "if replicates, Do this Step"
 
     def _format(self, a_type):
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
@@ -439,33 +423,50 @@ class PipeVennCor(PipeController):
         """
         extract dhs overlap and velcro overlap information
         """
-        lena_type = len(open(a_type, 'r').readlines())
+        self._format(a_type)
         lenall = len(open(self.nameconfigs['macsresult']['treat_bed']))
+        if a_type == 'dhs':
+            lena_type = len(open(self.nameconfigs['bedtoolstmp']['dhs_bed'], 'r').readlines())
+        elif a_type == 'velcro':
+            lena_type = len(open(self.nameconfigs['bedtoolstmp']['velcro_bed'], 'r').readlines())
         self.ratio[a_type] = float(lena_type) / lenall
-        a_type.close()
+        print self.ratio, 'test here'
 
     def process(self, rep):
-        
+        """
+        example:
+        /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
+        """
         self.extract('dhs')
         self.extract('velcro')
 
-        if len(self.chilinconfigs['trepn']) < 2:
-            self.cmd = 'touch %s' % self.nameconfigs['represult']['ven_png']
-            self.run()
+        if rep < 2:
+            warn('No replicates, pass the venn diagram and correlation steps')
         else:
             # venn diagram
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
-            self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
-                            ' '.join(self.nameconfigs['macsreult']['treatrep_peaks']),
-                            ' '.join(map(lambda x: "-l replicate_" + str(x), \
-                                             xrange(1, self.chilinconfigs['trepn'] + 1)))
-                            )
+            self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
+                                       ' '.join(self.nameconfigs['macsreult']['treatrep_peaks']),
+                                       ' '.join(map(lambda x: "-l replicate_" + str(x), \
+                                                        xrange(1, rep + 1)))
+                                       )
             self.run()
             # correlation plot
             if self.has_run:
-                self.cmd = '{0} {1} {2} {3} {4} {5}'
-                self.cmd.format()
-                self.render()
+                self.cmd = '{0} -d {1} -s {2} -m {3} --min-score {4} --max-score {5} -r {6} {7} {8}'
+
+                self.cmd = self.cmd.format(self.chilinconfigs['correlation']['wig_correlation_main'],
+                                           self.chilinconfigs['userinfo']['species'],
+                                           self.chilinconfigs['correlation']['wig_correlation_step'],
+                                           self.chilinconfigs['correlation']['wig_correlation_method'],
+                                           self.chilinconfigs['correlation']['wig_correlation_min'],
+                                           self.chilinconfigs['correlation']['wig_correlation_max'],
+                                           self.chilinconfigs['represult']['cor_R'],
+                                           ' '.join(self.chilinconfigs['macsresult']['treatrep_bw']),
+                                           ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, rep + 1))),
+                                           )
+                self.run()
+            print 'correlation plot test only'
 
 
 class PipeCEAS(PipeController):
@@ -478,10 +479,18 @@ class PipeCEAS(PipeController):
         self.peaks = peaksnumber
 
     def _format(self):
-        # get peaksnumber ge >= 10 for ceas
-        xls = self.nameconfigs['macsresult']['peaks_xls']
-        bed = open(self.nameconfigs['ceasresult']['ceasge10_bed'])
+        """
+        1.use awk '{if ($2 >= 0 && $2 < $3) print}' 6576_peaks.bed > 6576_peaks.bed.temp
+        2. to avoid negative peaks
+        3. use bedClip to avoid chromosome out of range 
+        4. get peaksnumber ge >= 10 for ceas, or pvalue top 5000
+        """
+        xls = 'macs2/' + self.nameconfigs['macsresult']['peaks_xls']
+        bed = open(self.nameconfigs['ceastmp']['ceasge10_bed'], 'w')
+#        bed = open(self.nameconfigs['ceas'][''], 'w')
+
         peaksnum = 0
+        # fold change
         for line in open(xls, 'rU'):
             if re.search('chr\w', line[0]):
                 line = line.strip()
@@ -491,19 +500,26 @@ class PipeCEAS(PipeController):
                     bed_line = line[0] + '\t' + str(int(line[1]) - 1) + '\t' + line[2] + '\t' +\
                         "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
                     bed.write(bed_line)
+        """
+        or
+        sort -r -g -k 5 6576_peaks.bed > sorted.bed
+        head -5000 sorted.bed > peaks_pvalue_top5000.bed
+        rm sorted.bed
+        """
         bed.close()
         xls.close()
 
-
-
-
-
     def extract(self):
         '''
-        get R code for QC measurement'''
+        get R code for QC measurement
+        '''
         print "Run the Dependency Program for return FindPath string"
 
     def process(self):
+        """
+        ceasBw and ceas-exon to generate pdf
+        and merge together
+        """
         print "Call private _Run"
         print "Extract shell output"
         print "Write into the template"
@@ -519,6 +535,9 @@ class PipeConserv(PipeController):
         print "Run the External conservation plot"
 
     def process(self):
+        """
+        convert conservation pdf to png
+        """
         print "Call private _Run"
         print "Extract shell output" # generate temporary file
         print "Call FindPath DC to return path for QC"
@@ -532,7 +551,9 @@ class PipeMotif(PipeController):
         self.peaksnumber =peaksnumber
 
     def _format(self):
-        # generate top peaks from summits BED file
+        """
+        generate top peaks from summits BED file
+        """
         summitsfile = open(self.nameconfigs['macsresult']['summits'])
         peaks = []
         for i in summitsfile:
@@ -557,12 +578,11 @@ class PipeMotif(PipeController):
                 temp.write(i[0]+"\t"+i[1]+"\t"+i[2]+"\t"+i[3]+"\t"+i[4]+"\n")
                 temp.close()
 
-    def extract(self, zip):
+    def extract(self, zipfile = ''):
         '''extract information for qc part'''
-        print 'get zip information'
+        print 'qc part'
 
     def process(self):
-
         self._format()
         self.cmd = ''
         self.extract()
