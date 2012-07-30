@@ -20,3 +20,7 @@ Options:
   -t TYPE         specify the analysis type, supported Dnase, Histone, TF
   -s SHIFTSIZE    specify the fixed shiftsize for MACS2, advice Dnase: 50,
                   Histone and TF:73
+
+
+quick-install
+=================
