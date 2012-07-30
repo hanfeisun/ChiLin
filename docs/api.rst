@@ -11,7 +11,7 @@ DC class design instructions
      :members: readconf, checkconf
 
 .. autoclass:: chilin.dc.PathFinder
-    :members: bowtiefilepath, macs2filepath, venn_corfilepath, ceasfilepath, conservfilepath, qcfilepath
+    :members: readconf, parseconfrep
 
 .. autoclass:: chilin.chilin.LogWriter
      :members: record
@@ -20,23 +20,23 @@ DC class design instructions
      :members: run, partition, render
 
 .. autoclass:: chilin.dc.PipeBowtie
-     :members: _format, _run, summary
+     :members: _format, extract, process
      
 .. autoclass:: chilin.dc.PipeMACS2
-     :members: _format, _run, summary
+     :members: _format, _median, extract, process
 
  
 .. autoclass:: chilin.dc.PipeVennCor
-     :members: _format, _run, summary
+     :members: _format, extract, process
 
 .. autoclass:: chilin.dc.PipeCEAS
-     :members: _format, _run, summary
+     :members: _format, extract, process
  
 .. autoclass:: chilin.dc.PipeConserv
-     :members: _format, _run, summary
+     :members: _format, extract, process
 
 .. autoclass:: chilin.dc.PipeMotif  
-     :members: _format, _run, summary
+     :members: _format, extract, process
 
 
 Controllers of QC

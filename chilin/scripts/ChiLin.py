@@ -92,7 +92,7 @@ def main():
 #           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, options.peaksnumber, options.cormethod)
-               VennCor.process(conf['trepn'])
+              # VennCor.process(conf['trepn'])
                if VennCor.has_run:
 
                    CEAS = PipeCEAS(conf, paths, options.peaksnumber)
