@@ -67,6 +67,7 @@ def main():
         call('mkdir %s' % paths['qcresult']['folder'],shell = True)
 
     texfile = open('tex.tex', 'wb')
+    cutoffcheck = {}
     print '_____________________________'
  
 
@@ -89,20 +90,21 @@ def main():
 #           macs.process(options.shiftsize)
            print '____________________________'
 
-#           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
+           PeakcallingQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],'macs2/'+paths['macsresult']['treat_peaks'])
            if macs.has_run:
                VennCor = PipeVennCor(conf, paths, options.peaksnumber, options.cormethod)
-              # VennCor.process(conf['trepn'])
+#               VennCor.process(conf['trepn'])
                if VennCor.has_run:
 
                    CEAS = PipeCEAS(conf, paths, options.peaksnumber)
-        #           CEAS.process()
+#                   CEAS.process()
 
                    if CEAS.has_run:
-                       #                       conserv = PipeConserv(conf, paths, options.atype)
-                      # conserv.process()
+                       conserv = PipeConserv(conf, paths, options.atype)
+                       conserv.process()
                        Motif = PipeMotif(conf, paths)
                        Motif.process()
+                       AnnotationQC(conf,paths,texfile).run('macs2/'+paths['macsresult']['peaks_xls'],paths['ceasresult']['ceasr'],paths['motifresult']['seqpos'],paths['conservresult']['conserv_png'])
                        if Motif.has_run:
                            print 'sucess'
     texfile.close()
