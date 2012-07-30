@@ -64,7 +64,7 @@ class RawQC(QC_Controller):
         self.filehandle =  texfile
         
     def _infile_parse(self,dataname): # extract information from fastqc result file 
-    """ Extract information from fastqc result file. """
+        """ Extract information from fastqc result file. """
         fph = open(dataname)
         data = fph.readlines()
         fph.close()

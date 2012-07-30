@@ -421,14 +421,14 @@ class PipeVennCor(PipeController):
         """
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
         if a_type == 'dhs':
-            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'],
-                                       self.chilinconfigs['venn']['dhs_bed_path'],
+            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'], \
+                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'], \
+                                       self.chilinconfigs['venn']['dhs_bed_path'], \
                                        self.nameconfigs['bedtoolstmp']['dhs_bed'])
         if a_type == 'velcro':
-            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'],
-                                       self.chilinconfigs['venn']['velcro_path'],
+            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'], \
+                                       'macs2/' + self.nameconfigs['macsresult']['treat_peaks'], \
+                                       self.chilinconfigs['venn']['velcro_path'], \
                                        self.nameconfigs['bedtoolstmp']['velcro_bed'])
         self.run()
 
@@ -458,10 +458,10 @@ class PipeVennCor(PipeController):
         else:
             # venn diagram
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
-            self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
-                                       ' '.join(map(lambda x: 'macs2/' + x, self.nameconfigs['macsresult']['treatrep_peaks'])),
+            self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'], \
+                                       ' '.join(map(lambda x: 'macs2/' + x, self.nameconfigs['macsresult']['treatrep_peaks'])), \
                                        ' '.join(map(lambda x: "-l replicate_" + str(x), \
-                                                        xrange(1, rep + 1)))
+                                                        xrange(1, rep + 1))) \
                                        )
 
             self.run()
@@ -627,6 +627,9 @@ class PipeConserv(PipeController):
 
 class PipeMotif(PipeController):
     def __init__(self, chilinconfigs, nameconfigs, peaksnumber = 1000):
+        """
+        motif analysis
+        """
         super(PipeMotif, self).__init__()
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
