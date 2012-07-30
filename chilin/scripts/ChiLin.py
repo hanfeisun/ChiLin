@@ -100,11 +100,11 @@ def main():
 
                    if CEAS.has_run:
                        conserv = PipeConserv(conf, paths, options.atype)
-                       conserv.process()
+                      # conserv.process()
                        Motif = PipeMotif(conf, paths)
-                       if Motif.has_run:
-                           pass
-#    print bowtie.bowtieinfo
+                       Motif.process()
+                       if conserv.has_run:
+                           print 'sucess'
     texfile.close()
 
 

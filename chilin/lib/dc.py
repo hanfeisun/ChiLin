@@ -157,7 +157,7 @@ class PipeController(object):
                 self.run()
         print self.cmd
 
-    def render(self, template = ''):
+    def render(self):
         """
         write into the DA.txt template
         """
@@ -573,11 +573,13 @@ class PipeCEAS(PipeController):
                 self.run()
 
 class PipeConserv(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, a_type):
+    def __init__(self, chilinconfigs, nameconfigs, a_type, summitsnumber = ''):
+        # wait for determine the summits number
         super(PipeConserv, self).__init__()
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
         self.type = a_type
+        self.summitsn = summitsnumber
 
     def _format(self):
         """
@@ -624,52 +626,88 @@ class PipeConserv(PipeController):
 
 
 class PipeMotif(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, peaksnumber):
+    def __init__(self, chilinconfigs, nameconfigs, peaksnumber = 1000):
         super(PipeMotif, self).__init__()
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
-        self.peaksnumber =peaksnumber
+        self.peaksnumber =peaksnumber # wait for determine
 
     def _format(self):
+        '''package the mdseqpos result'''
+        self.cmd = 'zip -r %s' % self.nameconfigs['motifresult']['seqpos']
+        self.run()
+
+    def extract(self, zipfile = ''):
         """
-        input: summits.bed(filted by Venn_Cor._format
+        input: summits.bed(filted by Venn_Cor._format)
         macs result filtering again:
             generate top n peaks from summits BED file according to p value
             remove chrM from top n summits
         """
-        summitsfile = open(self.nameconfigs['macsresult']['summits'])
+        summitsfile = open('macs2/' + self.nameconfigs['macsresult']['summits'])
         peaks = []
         for i in summitsfile:
             peaks.append( (i,float(i.split()[-1])) )
             top_n = self.peaksnumber
-            top_n_summits = map(lambda x:x[0],sorted(peaks, key=lambda x:x[1], reverse=True)[:top_n])
-
-            top_n_summits_file = "top"+str(top_n)+"_summits.bed"
-            top_n_summits_fhd = open(top_n_summits_file,"w")
+            top_n_summits = map(lambda x:x[0],sorted(peaks, key=lambda x:x[1], reverse=True)[:top_n]) # get the most significant top_n summits
+        top_n_summits_file = "top"+str(top_n)+"_summits.bed"
+        top_n_summits_fhd = open(top_n_summits_file,"w")
         for i in top_n_summits:
             top_n_summits_fhd.write(i)
         top_n_summits_fhd.close()
 
         # remove chrM from top n summits
         f=open(top_n_summits_file,"rU")
-        temp=open("2.bed","w")
+        temp=open("topn_summitstmp.bed","w") # filtered file for motif, NEED added to NameRule
         for i in f:
             i=i.split()
             if i[0]=="chrM":
                 continue
             else:
-                temp.write(i[0]+"\t"+i[1]+"\t"+i[2]+"\t"+i[3]+"\t"+i[4]+"\n")
+                temp.write('\t'.join(i) + "\n")
                 temp.close()
 
-    def extract(self, zipfile = ''):
-        '''extract information for qc part'''
-        print 'qc part'
-
     def process(self):
-        self._format()
-        self.cmd = ''
+        """
+        get the top 1000 peaks(default)
+        shell example:
+            /usr/local/bin/MDSeqPos.py -d  -w 600  -p 0.001  -m cistrome.xml  -s hs top1000_summits.bed hg19
+        """
         self.extract()
-        self.render()
+        if self.chilinconfigs['seqpos']['seqpos_width']:
+            seqpos_width_option = ' -w  ' +  self.chilinconfigs['seqpos']['seqpos_width']
+        else:
+            seqpos_width_option = ' -w 600 '
+        if self.chilinconfigs['seqpos']['seqpos_pvalue_cutoff']:
+            seqpos_pvalue_option = ' -p  ' +  self.chilinconfigs['seqpos']['seqpos_pvalue_cutoff']
+        else:
+            seqpos_pvalue_option = ' -p 0.001 '
+        if self.chilinconfigs['seqpos']['seqpos_motif_db_selection']:
+            seqpos_db_option = self.chilinconfigs['seqpos']['seqpos_motif_db_selection']
+        else:
+            seqpos_db_option = ' -m transfac.xml,pbm.xml,jaspar.xml,cistrome.xls '
+        if self.chilinconfigs['userinfo']['species'] == 'hg19':
+            seqpos_species_option = ' -s hs '
+        elif self.chilinconfigs['userinfo']['species'] == 'mm9':
+            seqpos_species_option = ' -s mm '
+        elif self.chilinconfigs['userinfo']['species'] == 'dm4':
+            seqpos_species_option = ' -s dm '
+        else:
+            print "MDseqpos not support the species"
+
+        self.cmd = '{0} -d {1} {2}  {3} {4} {5} {6}'
+        self.cmd = self.cmd.format(self.chilinconfigs['seqpos']['seqpos_main'],
+                                   seqpos_width_option,
+                                   seqpos_pvalue_option,
+                                   seqpos_db_option,
+                                   seqpos_species_option,
+                                   'topn_summitstmp.bed',
+                                   self.chilinconfigs['userinfo']['species']
+                                   )
+        self.run()
+        if self.has_run():
+            self._format()
+            self.render()
 
 class PipeGO(PipeController):
     def __init__(self, chilinconfigs, nameconfigs):
