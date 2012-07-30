@@ -1,9 +1,9 @@
 [replicates]
-{% for rep in reps %}
+{%- for rep in reps %}
 treatment_bam = {{ rep.bam }}
 macs_peaks = {{ rep.peakbed }}
 macs_treat_bw = {{ rep.bw }}
-{% endfor %}
+{%- endfor %}
 
 [dataset]
 dataset_id = {{ id }}
@@ -40,7 +40,7 @@ verlcro overlap percentage is: {{ velcropercentage }}
 sam file = {{ sam.name }}
 total reads = {{ sam.total }}
 mapped reads = {{ sam.mapped }}
-unique location = {{ sam.uniloc }}
+unique location = {% if sam.uniloc not defined %}}
 unique reads = {{ sam.unireads}}
 usable percentage(unique/total reads) = {{ sam.percentage }}
 {% endfor %}

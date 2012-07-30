@@ -634,38 +634,19 @@ class PipeMotif(PipeController):
 
     def _format(self):
         '''package the mdseqpos result'''
-        self.cmd = 'zip -r %s' % self.nameconfigs['motifresult']['seqpos']
+        self.cmd = 'zip -r %s results/' % self.nameconfigs['motifresult']['seqpos']
         self.run()
 
-    def extract(self, zipfile = ''):
+    def extract(self):
         """
         input: summits.bed(filted by Venn_Cor._format)
         macs result filtering again:
             generate top n peaks from summits BED file according to p value
             remove chrM from top n summits
         """
-        summitsfile = open('macs2/' + self.nameconfigs['macsresult']['summits'])
-        peaks = []
-        for i in summitsfile:
-            peaks.append( (i,float(i.split()[-1])) )
-            top_n = self.peaksnumber
-            top_n_summits = map(lambda x:x[0],sorted(peaks, key=lambda x:x[1], reverse=True)[:top_n]) # get the most significant top_n summits
-        top_n_summits_file = "top"+str(top_n)+"_summits.bed"
-        top_n_summits_fhd = open(top_n_summits_file,"w")
-        for i in top_n_summits:
-            top_n_summits_fhd.write(i)
-        top_n_summits_fhd.close()
+        self.cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n 1000 > %s ' % (self.nameconfigs['ceastmp']['ceasp5000'], self.nameconfigs['motiftmp']['summits_p1000'])
+        self.run()
 
-        # remove chrM from top n summits
-        f=open(top_n_summits_file,"rU")
-        temp=open("topn_summitstmp.bed","w") # filtered file for motif, NEED added to NameRule
-        for i in f:
-            i=i.split()
-            if i[0]=="chrM":
-                continue
-            else:
-                temp.write('\t'.join(i) + "\n")
-                temp.close()
 
     def process(self):
         """
@@ -673,7 +654,9 @@ class PipeMotif(PipeController):
         shell example:
             /usr/local/bin/MDSeqPos.py -d  -w 600  -p 0.001  -m cistrome.xml  -s hs top1000_summits.bed hg19
         """
+        print 1
         self.extract()
+        print 2
         if self.chilinconfigs['seqpos']['seqpos_width']:
             seqpos_width_option = ' -w  ' +  self.chilinconfigs['seqpos']['seqpos_width']
         else:
@@ -683,7 +666,7 @@ class PipeMotif(PipeController):
         else:
             seqpos_pvalue_option = ' -p 0.001 '
         if self.chilinconfigs['seqpos']['seqpos_motif_db_selection']:
-            seqpos_db_option = self.chilinconfigs['seqpos']['seqpos_motif_db_selection']
+            seqpos_db_option = ' -m ' +  self.chilinconfigs['seqpos']['seqpos_motif_db_selection']
         else:
             seqpos_db_option = ' -m transfac.xml,pbm.xml,jaspar.xml,cistrome.xls '
         if self.chilinconfigs['userinfo']['species'] == 'hg19':
@@ -705,7 +688,7 @@ class PipeMotif(PipeController):
                                    self.chilinconfigs['userinfo']['species']
                                    )
         self.run()
-        if self.has_run():
+        if self.has_run:
             self._format()
             self.render()
 
