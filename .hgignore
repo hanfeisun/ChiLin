@@ -10,3 +10,4 @@ chilin.egg-info
 *.orig
 *.swp
 .DS_Store
+test.jinja

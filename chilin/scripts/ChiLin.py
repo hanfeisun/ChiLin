@@ -99,11 +99,11 @@ def main():
         #           CEAS.process()
 
                    if CEAS.has_run:
-                       conserv = PipeConserv(conf, paths, options.atype)
+                       #                       conserv = PipeConserv(conf, paths, options.atype)
                       # conserv.process()
                        Motif = PipeMotif(conf, paths)
                        Motif.process()
-                       if conserv.has_run:
+                       if Motif.has_run:
                            print 'sucess'
     texfile.close()
 
