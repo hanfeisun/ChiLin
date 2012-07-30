@@ -338,8 +338,8 @@ class PipeMACS2(PipeController):
         testid_macs_peaks.xls  # result
         testid_macs_summits.bed # result
         testid_macs_treat_pileup.bdg # -> bw result'''
-	# support for bed or other format, TODO
-	if 'input' is 'bed':
+        # support for bed or other format, TODO
+        if 'input' is 'bed':
             print 'do macs2'
         for rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
             self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
@@ -361,7 +361,8 @@ class PipeMACS2(PipeController):
                                     self.nameconfigs['macstmp']['treatrep_bdg'][rep])
             if self.has_run:
                 self._format('macs2/' + self.nameconfigs['macstmp']['treatrep_bdg'][rep], \
-                                'macs2/' + self.nameconfigs['macstmp']['treatrep_tmp_bdg'][rep], 'macs2/' + self.nameconfigs['macsresult']['treatrep_bw'][rep])
+                             'macs2/' + self.nameconfigs['macstmp']['treatrep_tmp_bdg'][rep], 
+                             'macs2/' + self.nameconfigs['macsresult']['treatrep_bw'][rep])
 
         if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
             self.cmd = '{0} merge {1}  {2}'
@@ -389,7 +390,6 @@ class PipeMACS2(PipeController):
                                    self.nameconfigs['macsresult']['summits'])
                     self.partition('macs2', self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', 
                                    self.nameconfigs['macstmp']['treat_bdg'])
-
                 if self.has_run:
                     self._format('macs2/' + self.nameconfigs['macstmp']['treat_bdg'], 
                                  'macs2/' + self.nameconfigs['macstmp']['treat_bdgtmp'], 
@@ -480,7 +480,7 @@ class PipeCEAS(PipeController):
         Check Class"""
         super(PipeCEAS, self).__init__()
         self.chilinconfigs = chilinconfigs
-        self.naemconfigs = nameconfigs
+        self.nameconfigs = nameconfigs
         self.peaks = peaksnumber
 
     def _format(self):
@@ -503,39 +503,91 @@ class PipeCEAS(PipeController):
                     bed_line = line[0] + '\t' + str(int(line[1]) - 1) + '\t' + line[2] + '\t' +\
                         "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
                     bedge.write(bed_line)
-        self.cmd = 'sort -r -g -k 5 %s > sorted.bed' % 'macs2/' + self.nameconfigs['macsresult']['treat_peaks']
-	self.run()
-        self.cmd = 'head -5000 sorted.bed > peaks_pvalue_top5000.bed'
-	self.run()
+        self.cmd = 'sort -r -g -k 5 %s > sorted.bed' % ('macs2/' + self.nameconfigs['macsresult']['treat_peaks'])
+        self.run()
+        self.cmd = 'head -%s sorted.bed > %s' % (self.peaks, self.nameconfigs['ceastmp']['ceasp5000'])
+        self.run()
         self.cmd = 'rm sorted.bed'
-	self.run()
-        xls.close()
+        self.run()
 
     def extract(self):
         '''
-        get R code for QC measurement
+        merge pdfs
+        need to install ghostscript
+        gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=6602_ceas_combined.pdf -f 6602_ceas.pdf 6602_ceas_CI.pdf
         '''
-        print "Run the Dependency Program for return FindPath string"
+        self.cmd = 'gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile={0} -f {1} {2}'
+        self.cmd = self.cmd.format(self.nameconfigs['root']['ceas_pdf'],
+                                   self.nameconfigs['ceasresult']['ceaspdf'],
+                                   self.nameconfigs['ceasresult']['ceasci']
+                                   )
+        self.run()
 
     def process(self):
         """
         ceasBw and ceas-exon to generate pdf
         and merge together
+        added : name option, refgene option, Not added: promotor sizes(--sizes), bipromotor sizes(--bisizes), relative distance(--rel-dist)
+        command_line = configs["ceas.ceas_main"]+ceas_name_option+ceas_gt_option+ceas_sizes_option+ceas_bisizes_option+ceas_rel_dist_option+" -b "+peak_bed_file+" -w "+wiggle_file+ " -l "+configs["ceas.chrom_len"]
+        /usr/local/bin/ceasBW --name 6602_ceas  -g /mnt/Storage/data/RefGene/hg19.refGene  -b peaks_top5000.bed -w 6602_treat.bw -l /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len
+        /opt/bin/ceas-exon --name 6602_ceas  -g /mnt/Storage/data/RefGene/hg19.refGene  -b peaks_top5000.bed -w 6602_treat.bw
         """
-        print "Call private _Run"
-        print "Extract shell output"
-        print "Write into the template"
+        self._format()
+        if self.chilinconfigs['ceas']['ceas_promoter_sizes']:
+            sizes_option = ' --sizes %s ' % self.chilinconfigs['ceas']['ceas_promoter_sizes']
+        else:
+            sizes_option = ' '
+        if self.chilinconfigs['ceas']['ceas_bipromoter_sizes']:
+            bisizes_option = ' --bisizes %s ' % self.chilinconfigs['ceas']['ceas_bipromoter_sizes']
+        else:
+            bisizes_option = ' '
+        if self.chilinconfigs['ceas']['ceas_rel_dist']:
+            rel_option = ' --rel-dist %s ' % self.chilinconfigs['ceas']['ceas_rel_dist']
+        else:
+            rel_option = ' '
+        if self.chilinconfigs['ceas']['ceas_genetable_path']:
+            gt_option = ' -g %s ' % (self.chilinconfigs['ceas']['ceas_genetable_path'] + self.chilinconfigs['userinfo']['species'] + '.refGene')
+        else:
+            gt_option = ' '
+
+        for main in ['ceas_main', 'ceas_ex']:
+            if main == 'ceas_ex':
+                len_option = ' '
+            else:
+                len_option = ' -l %s ' % (self.chilinconfigs['ceas']['chrom_len'] + self.chilinconfigs['userinfo']['species'] + '.len')
+            self.cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
+            self.cmd = self.cmd.format(self.chilinconfigs['ceas'][main],
+                                       self.nameconfigs['ceastmp']['ceasname'],
+                                       gt_option + sizes_option + bisizes_option + rel_option,
+                                       self.nameconfigs['ceastmp']['ceasp5000'],
+                                       'macs2/' + self.nameconfigs['macsresult']['treatrep_bw'][0], # test for a rep bw, TO change merge bw later
+                                       len_option)
+            if self.has_run:
+                self.run()
 
 class PipeConserv(PipeController):
     def __init__(self, chilinconfigs, nameconfigs):
         super(PipeConserv, self).__init__()
+        self.chilinconfigs = chilinconfigs
+        self.nameconfigs = nameconfigs
 
     def _format(self):
         """peak the top n significant peaks for conservation
         plot"""
+        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf png.png'
+        self.run()
+        self.cmd = 'mv png.png %s' % 'a'
         print "Set input Peaks number for conservation Plot"
 
     def extract(self):
+        """
+        get top n peaks
+        command_line = configs["conservation.conserv_plot_main"]+" -t Conservation_at_summits"+" -d "+configs["conservation.conserv_plot_phast_path"]+" -l Peak_summits "+peak_summits_file+" -w 4000"#Jing add here
+        run_cmd(command_line)
+        -w 4000 histone, default for TF
+        """
+        self.cmd = '{0} -t Conservation_at_summits -d {1} -l Peak_summits {2} {3}'
+        self.cmd = self.cmd.format(self.chilinconfigs[')
         print "Run the External conservation plot"
 
     def process(self):
