@@ -410,6 +410,15 @@ class PipeVennCor(PipeController):
         self.nameconfigs = nameconfigs
 
     def _format(self, a_type):
+        """
+        input : peaks.bed
+        filter macs2 exceptional positions
+        then replace the raw output of macs2
+        for summits.bed and peaks.bed
+        1.use awk '{if ($2 >= 0 && $2 < $3) print}' 6576_peaks.bed > 6576_peaks.bed.temp
+          to avoid negative peaks
+        2. use bedClip to avoid chromosome out of range
+        """
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
         if a_type == 'dhs':
             self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
@@ -485,10 +494,8 @@ class PipeCEAS(PipeController):
 
     def _format(self):
         """
-        1.use awk '{if ($2 >= 0 && $2 < $3) print}' 6576_peaks.bed > 6576_peaks.bed.temp
-        2. to avoid negative peaks
-        3. use bedClip to avoid chromosome out of range
-        4. get peaksnumber ge >= 10 for ceas, or pvalue top 5000
+        input : top n peaks bed( filtered by Venn_Cor._format and macs2 bw files
+        get peaksnumber ge >= 10 for ceas, or pvalue top 5000
         """
         xls = 'macs2/' + self.nameconfigs['macsresult']['peaks_xls']
         bedge = open(self.nameconfigs['ceastmp']['ceasge10_bed'], 'w')
@@ -528,7 +535,7 @@ class PipeCEAS(PipeController):
         ceasBw and ceas-exon to generate pdf
         and merge together
         added : name option, refgene option, Not added: promotor sizes(--sizes), bipromotor sizes(--bisizes), relative distance(--rel-dist)
-        command_line = configs["ceas.ceas_main"]+ceas_name_option+ceas_gt_option+ceas_sizes_option+ceas_bisizes_option+ceas_rel_dist_option+" -b "+peak_bed_file+" -w "+wiggle_file+ " -l "+configs["ceas.chrom_len"]
+        shell examples: 
         /usr/local/bin/ceasBW --name 6602_ceas  -g /mnt/Storage/data/RefGene/hg19.refGene  -b peaks_top5000.bed -w 6602_treat.bw -l /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len
         /opt/bin/ceas-exon --name 6602_ceas  -g /mnt/Storage/data/RefGene/hg19.refGene  -b peaks_top5000.bed -w 6602_treat.bw
         """
@@ -566,50 +573,69 @@ class PipeCEAS(PipeController):
                 self.run()
 
 class PipeConserv(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs):
+    def __init__(self, chilinconfigs, nameconfigs, a_type):
         super(PipeConserv, self).__init__()
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
+        self.type = a_type
 
     def _format(self):
-        """peak the top n significant peaks for conservation
-        plot"""
+        """
+        input: summits bed (filtered by VennCor._format)
+        *todo*:get the top n significant peaks for conservation plot
+        """
         self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf png.png'
         self.run()
-        self.cmd = 'mv png.png %s' % 'a'
-        print "Set input Peaks number for conservation Plot"
+        self.cmd = 'mv png.png %s' % self.nameconfigs['conservresult']['conserv_png']
+        self.run()
 
     def extract(self):
         """
         get top n peaks
-        command_line = configs["conservation.conserv_plot_main"]+" -t Conservation_at_summits"+" -d "+configs["conservation.conserv_plot_phast_path"]+" -l Peak_summits "+peak_summits_file+" -w 4000"#Jing add here
-        run_cmd(command_line)
-        -w 4000 histone, default for TF
+        to control the region widths for assessing conservation:
+            -w 4000 histone, default for TF or Dnase
+        shell example:
+        /usr/local/bin/conservation_plot.py -t Conservation_at_summits -d /mnt/Storage/data/sync_cistrome_lib/conservation/hg19/placentalMammals -l Peak_summits 6602_summits.bed {-w 4000}
         """
         self.cmd = '{0} -t Conservation_at_summits -d {1} -l Peak_summits {2} {3}'
-        self.cmd = self.cmd.format(self.chilinconfigs[')
+        if self.type == 'TF' or self.type == 'Dnase':
+            width_option = ' '
+        elif self.type == 'Histone':
+            width_option = ' -w ' + self.nameconfigs['macsresult']['summits']
+        else:
+            print "Not support"
+        self.cmd = self.cmd.format(self.chilinconfigs['conservation']['conserv_plot_main'],
+                                   self.chilinconfigs['conservation']['conserv_plot_phast_path'],
+                                   'macs2/' + self.nameconfigs['macsresult']['summits'],
+                                   width_option)
+        self.run()
         print "Run the External conservation plot"
 
     def process(self):
         """
-        convert conservation pdf to png
+        get top n summits(not yet)
+        conservation plot
+        convert pdf to png
         """
-        print "Call private _Run"
-        print "Extract shell output" # generate temporary file
-        print "Call FindPath DC to return path for QC"
-        print "Call FindPath to return path for DC"
-        print "Write into the template"
-        return # information for passing to TemplateParser
+        self.extract()
+        self._format()
+        if self.has_run():
+            self.render()
+
 
 class PipeMotif(PipeController):
     def __init__(self, chilinconfigs, nameconfigs, peaksnumber):
         super(PipeMotif, self).__init__()
+        self.chilinconfigs = chilinconfigs
+        self.nameconfigs = nameconfigs
         self.peaksnumber =peaksnumber
 
     def _format(self):
-        """ input: summits.bed for merge peaks
-        generate top peaks from summits BED file according to p value
-        remove chrM from top n summits
+        """
+        input: summits.bed(filted by Venn_Cor._format
+        macs result filtering again:
+            generate top n peaks from summits BED file according to p value
+            remove chrM from top n summits
         """
         summitsfile = open(self.nameconfigs['macsresult']['summits'])
         peaks = []
@@ -649,7 +675,7 @@ class PipeGO(PipeController):
     def __init__(self, chilinconfigs, nameconfigs):
         pass
     def _format(self):
-        '''Use RegPotential'''
+        '''Use RegPotential, ceasp5000'''
 
         pass
 class API(PipeController):
