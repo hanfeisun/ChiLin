@@ -16,14 +16,14 @@ def main():
                       help = "specify method for correlation plot")
     parser.add_option("-p", dest = "peaksnumber", type = "int", default = 5000,
                       help = "specify peaks number for CEAS, Conservation and Motif")
-    parser.add_option("-t", dest = "type", type = "string",
+    parser.add_option("-t", dest = "atype", type = "string",
                       help = "specify the analysis type, supported Dnase, Histone, TF")
     parser.add_option("-s", dest = "shiftsize", type = "string", default= '73',
                       help = "specify the fixed shiftsize for MACS2, advice Dnase: 50, Histone and TF:73")
     parser.add_option("-c", dest = "stepcontrol", type = "string", default = 'motif')
     (options, args) = parser.parse_args()
 
-    if not args or not options.type:
+    if not args or not options.atype or options.atype not in ['TF', 'Dnase', 'Histone']:
         parser.print_help()
         sys.exit('options missing')
 
@@ -96,8 +96,11 @@ def main():
                if VennCor.has_run:
 
                    CEAS = PipeCEAS(conf, paths, options.peaksnumber)
-                   CEAS.process()
+        #           CEAS.process()
+
                    if CEAS.has_run:
+                       conserv = PipeConserv(conf, paths, options.atype)
+                       conserv.process()
                        Motif = PipeMotif(conf, paths)
                        if Motif.has_run:
                            pass
