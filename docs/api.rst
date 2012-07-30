@@ -2,6 +2,28 @@
 API Documentation
 =================
 
+
+Controllers of QC
+------------------
+
+.. automodule:: chilin.qc
+
+.. autoclass:: chilin.qc.QC_Controller
+    :members: run, _check, _render
+
+
+.. autoclass:: chilin.qc.RawQC
+	:members:  _infile_parse, _fastqc_info, run, _check
+
+.. autoclass:: chilin.qc.MappingQC
+	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run, _check
+
+.. autoclass:: chilin.qc.PeakcallingQC
+	:members: _peak_summary_info, _high_confidentPeaks_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run, _check
+
+.. autoclass:: chilin.qc.AnnotationQC
+	:members: _ceas_info, _DictToList, _motif_info, run, _check
+    
 DC class design instructions
 --------------------------------
 
@@ -38,25 +60,3 @@ DC class design instructions
 .. autoclass:: chilin.dc.PipeMotif  
      :members: _format, extract, process
 
-
-Controllers of QC
-------------------
-
-.. automodule:: chilin.qc
-
-.. autoclass:: chilin.qc.QC_Controller
-    :members: run, _check, _render
-
-
-.. autoclass:: chilin.qc.RawQC
-	:members:  _infile_parse, _fastqc_info, run, _check
-
-.. autoclass:: chilin.qc.MappingQC
-	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run, _check
-
-.. autoclass:: chilin.qc.PeakcallingQC
-	:members: _peak_summary_info, _high_confidentPeaks_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run, _check
-
-.. autoclass:: chilin.qc.AnnotationQC
-	:members: _ceas_info, _DictToList, _motif_info, run, _check
-    
