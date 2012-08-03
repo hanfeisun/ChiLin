@@ -72,27 +72,24 @@ class PipePreparation:
         self._readconf('names', self.NameConfPath)
         has_treat = lambda s: "{treat_rep}" in s
         has_control = lambda s: "{control_rep}" in s
-        head = lambda a_list: a_list[0] != ""
         id = self.ChiLinconfigs['userinfo']['datasetid']
 
         treat_fmt = lambda s: [s.format(datasetid = id, treat_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
         control_fmt = lambda s:[s.format(datasetid = id, control_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
+        gfmt = lambda s: s.format(datasetid=id)
 
-        def fmt(s, nc = self.Nameconfigs):
-            if head(self.ChiLinconfigs['userinfo']['controlpath']) and has_control(nc[sec][opt]):
-                print control_fmt(nc[sec][opt])
-                return control_fmt(nc[sec][opt])
+        def fmt(s, sec, opt):
+            if has_control(self.Nameconfigs[sec][opt]):
+                return control_fmt(self.Nameconfigs[sec][opt])
+            elif has_treat(self.Nameconfigs[sec][opt]):
+                return treat_fmt(self.Nameconfigs[sec][opt])
             else:
-                return nc[sec][opt]
-
-            if head(self.ChiLinconfigs['userinfo']['treatpath']) and has_treat(nc[sec][opt]):
-                return treat_fmt(nc[sec][opt])
-            else:
-                return nc[sec][opt]
+                return gfmt(self.Nameconfigs[sec][opt])
 
         for sec in self.Nameconfigs:
             for opt in self.Nameconfigs[sec]:
-                self.Nameconfigs[sec][opt] = fmt(self.Nameconfigs[sec][opt])
+                name = self.Nameconfigs[sec][opt]
+                self.Nameconfigs[sec][opt] = fmt(name, sec, opt)
         print self.Nameconfigs
 
     def checkconf(self):
@@ -107,11 +104,12 @@ class PipePreparation:
         self.ChiLinconfigs['userinfo']['treatpath'] = parseinput(self.ChiLinconfigs['userinfo']['treatpath'])
         self.ChiLinconfigs['userinfo']['controlpath'] = parseinput(self.ChiLinconfigs['userinfo']['controlpath'])
         # get replicates number
-        if self.ChiLinconfigs['userinfo']['treatpath'] == ['']:
+        head = lambda a_list: a_list[0] != ""
+        if not head(self.ChiLinconfigs['userinfo']['treatpath']):
             error('forget to fill the treat file path')
         else:
             self.ChiLinconfigs['userinfo']['treatnumber'] = len(self.ChiLinconfigs['userinfo']['treatpath'])
-        if self.ChiLinconfigs['userinfo']['controlpath'] == ['']:
+        if not head(self.ChiLinconfigs['userinfo']['controlpath']):
             error('forget to fill the control file path')
         else:
             self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
