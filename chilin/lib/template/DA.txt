@@ -1,46 +1,57 @@
+{% if reps %}
 [replicates]
-{%- for rep in reps %}
+{% for rep in reps %}
 treatment_bam = {{ rep.bam }}
 macs_peaks = {{ rep.peakbed }}
 macs_treat_bw = {{ rep.bw }}
-{%- endfor %}
+{% endfor %}
+{% endif %}
 
+{% if names %}
 [dataset]
-dataset_id = {{ id }}
-username = {{ username }}
-treat_bam = {{ treatbam }}
-control_bam = {{ controlbam }}
-macs_xls = {{ peaksxls }}
-macs_peaks = {{ peaksbed }}
-macs_summits = {{ summitsbed }}
-macs_treat_bw = {{ treatbw }}
-macs_control_bw = {{ controlbw }}
-ceas_xls = {{ ceasxls }}
-ceas_pdf = {{ ceaspdf }}
-ceas_R = {{ ceasR }}
-venn_diagram_png = {{ vennpng }}
-dhs_summary_txt = {{ dhstxt }}
-correlation_pdf = {{ corRpdf }}
-correlation_R = {{ corR }}
-conservation_bmp = {{ conservpng }}
-conservation_R = {{ conservR }}
-seqpos_zip = {{ seqposzip }}
+dataset_id = {{ names.id }}
+username = {{ names.username }}
+treat_bam = {{ names.treatbam }}
+control_bam = {{ names.controlbam }}
+macs_xls = {{ names.peaksxls }}
+macs_peaks = {{ names.peaksbed }}
+macs_summits = {{ names.ssummitsbed }}
+macs_treat_bw = {{ names.treatbw }}
+macs_control_bw = {{ names.controlbw }}
+ceas_xls = {{ names.ceasxls }}
+ceas_pdf = {{ names.ceaspdf }}
+ceas_R = {{ names.ceasR }}
+venn_diagram_png = {{ names.vennpng }}
+dhs_summary_txt = {{ names.dhstxt }}
+correlation_pdf = {{ names.corRpdf }}
+correlation_R = {{ names.corR }}
+conservation_bmp = {{ names.conservpng }}
+conservation_R = {{ names.conservR }}
+seqpos_zip = {{ names.seqposzip }}
+{% endif %}
 
+{% if ratios %}
 [summary]
-total_peaks = {{ totalpeak }}
-peaks_overlapped_with_DHSs = {{ DHS }}
-percentage_of_peaks_overlapped_with_DHSs = {{ DHSpercentage }}
-peaks_fc_ge_20 = {{ peaksge20 }}
-d = {{ distance }}
-verlcro overlap peak number is: {{ velcro }}
-verlcro overlap percentage is: {{ velcropercentage }}
+total_peaks = {{ ratios.totalpeak }}
+peaks_overlapped_with_DHSs = {{ ratios.DHS }}
+percentage_of_peaks_overlapped_with_DHSs = {{ ratios.DHSpercentage }}
+peaks_fc_ge_20 = {{ ratios.peaksge20 }}
+peaks_fc_ge_20ratio = {{ ratios.peaksge20ratio }}
+peaks_fc_ge_10 = {{ ratios.peaksge10 }}
+peaks_fc_ge_20ratio = {{ ratios.peaksge20ratio }}
+d = {{ ratios.distance }}
+verlcro overlap peak number is: {{ ratios.velcro }}
+verlcro overlap percentage is: {{ ratios.velcropercentage }}
+{% endif %}
 
+{% if sams %}
 [Bowtie Quality information]
 {% for sam in sams %}
 sam file = {{ sam.name }}
 total reads = {{ sam.total }}
 mapped reads = {{ sam.mapped }}
-unique location = {% if sam.uniloc not defined %}}
+unique location = {{ sam.uniloc }}
 unique reads = {{ sam.unireads}}
 usable percentage(unique/total reads) = {{ sam.percentage }}
 {% endfor %}
+{% endif %}
