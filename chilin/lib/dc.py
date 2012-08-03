@@ -76,12 +76,12 @@ class PipePreparation:
 
         treat_fmt = lambda s: [s.format(datasetid = id, treat_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
         control_fmt = lambda s:[s.format(datasetid = id, control_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
-        fmt = lambda s: s.format(datasetid=id)
+        id_fmt = lambda s: s.format(datasetid=id)
 
         def fmt(str):
             if has_control(str): return control_fmt(str)
             elif has_treat(str): return treat_fmt(str)
-            else: return fmt(str)
+            else: return id_fmt(str)
 
         for sec in self.Nameconfigs:
             for opt in self.Nameconfigs[sec]:
