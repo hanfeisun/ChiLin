@@ -377,7 +377,7 @@ class PipeMACS2(PipeController):
         add fc_10 and ratio
         macs2info = {'ratios': {'totalpeak':a, 'total1': 5...}..} *args
         """
-        fhd = open(self.nameconfigs['macsresult']['peaksxls'],"r")
+        fhd = open(self.nameconfigs['macsresult']['peaks_xls'],"r")
         total = 0
         fc20n = 0
         fc10n = 0
@@ -397,6 +397,7 @@ class PipeMACS2(PipeController):
         self.macsinfo['peaksge10'] = fc10n
         self.macsinfo['peaksge10ratio'] = float(fc10n)/total
         self.rendercontent['ratios'] = self.macsinfo
+        print self.rendercontent
 
     def process(self):
         """
@@ -473,6 +474,7 @@ class PipeMACS2(PipeController):
                     self._format(self.nameconfigs['macstmp']['treat_bdg'], 
                                  self.nameconfigs['macstmp']['treat_bdgtmp'], 
                                  self.nameconfigs['macsresult']['treat_bw'])
+            self.extract()
 
 class PipeVennCor(PipeController):
     def __init__(self, chilinconfigs, nameconfigs, log,\
@@ -622,7 +624,6 @@ class PipeVennCor(PipeController):
                 self.run()
                 if self.has_run:
                     self.log('correlation plot succeed')
-                    self._render()
                 else:
                     self.log('correlation plot error')
 
