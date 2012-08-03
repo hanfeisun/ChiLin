@@ -47,6 +47,8 @@ def main():
     PipeCEAS(conf, names, log, s, p).process()
     PipeConserv(conf, names, options.atype, log, s).process()
     PipeMotif(conf, names, log, s).process()
+    datasummary.close()
+    package(conf, names, log)
 
 
 if __name__ == "__main__":
