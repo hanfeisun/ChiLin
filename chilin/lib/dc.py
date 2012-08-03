@@ -1,17 +1,19 @@
-from subprocess import call
-from jinja2 import Environment, PackageLoader
-from ConfigParser import ConfigParser
+import os
+import re
 import logging
 import string
 import datetime
-import os
+from subprocess import call
+from ConfigParser import ConfigParser
+
+from pkg_resources import resource_filename
+from jinja2 import Environment, PackageLoader
 import chilin
-import re
 
 # alias
 env = Environment(loader=PackageLoader('chilin', 'template'))
 j = os.path.join
-e = os.path.exists
+exists = os.path.exists
 error = logging.error
 warn = logging.warning
 
@@ -32,17 +34,20 @@ class PipePreparation:
         self.cf = ConfigParser()
         self.ChiLinconfigs = {}
 
+
     def readconf(self):
         """
         Read configuration and parse it into Dictionary
         """
         self.cf.read(self.ChiLinconfPath)
+        
+        uni = lambda str:str.strip().lower()
+        # strip, then make alphabets lower-case
+        
         for sec in self.cf.sections():
-            temp = {}
-            for opt in self.cf.options(sec):
-                optName = string.lower(opt)
-                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt))
-            self.ChiLinconfigs[string.lower(sec)] = temp
+            get = lambda an_opt:self.cf.get(sec, an_opt)
+            self.ChiLinconfigs[uni(sec)] = dict((uni(opt),
+                                                 uni(get(opt))) for opt in self.cf.options(sec))
 
     def checkconf(self):
         """
@@ -51,21 +56,24 @@ class PipePreparation:
         """
         self.readconf()
         print self.ChiLinconfigs
-        if not e(self.ChiLinconfigs['qc']['fastqc_main']):
+        if not exists(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
             return False
-        if not e(self.ChiLinconfigs['bowtie']['bowtie_main']):
+        if not exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
             print "bowtie program dependency has failed"
             return False
-        if not e(self.ChiLinconfigs['macs']['macs_main']):
+        if not exists(self.ChiLinconfigs['macs']['macs_main']):
             print "macs2 program dependency has failed"
             return False
         return True
 
 class PathFinder:
     """prepare path for each step"""
-    def __init__(self, outputd = '',  datasetid='', treatpath = '', controlpath = '',\
-            NameConfPath = os.path.split(chilin.__file__)[0] + '/' + 'db/NameRule.conf'):
+    def __init__(self, outputd = '',  datasetid='',
+                 treatpath = '', controlpath = '',
+                 NameConfPath = resource_filename("chilin","db.NameRule.conf"),
+                 ):
+        
         self.cf = ConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
@@ -91,11 +99,10 @@ class PathFinder:
         for session in self.Nameconfigs:
             for option in self.Nameconfigs[session]:
                 temp = []
-                if self.control_path[0] != '':
-                    if '${control_rep}' in self.Nameconfigs[session][option]:
-                        for control_rep in range(1, len(self.control_path) + 1):
-                            temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                        self.Nameconfigs[session][option] = temp
+                if self.control_path[0] != '' and '${control_rep}' in self.Nameconfigs[session][option]:
+                    for control_rep in range(1, len(self.control_path) + 1):
+                        temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
+                    self.Nameconfigs[session][option] = temp
 
                 if self.treat_path[0] != '':
                     if '${treat_rep}' in self.Nameconfigs[session][option]:
@@ -147,7 +154,7 @@ class PipeController(object):
     def partition(self, step, target = '', newname = ''):
         '''use step as folder'''
         if self.has_run:
-            if not e(step):
+            if not exists(step):
                 self.cmd = 'mkdir %s' % (step)
                 self.run()
                 self.cmd = 'mv %s %s' %(target, step + '/' + newname)
