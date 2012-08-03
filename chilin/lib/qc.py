@@ -1,10 +1,9 @@
-import chilin
-from chilin.dc import *
 import os
 import math
 import re
 import zipfile
 import subprocess
+from pkg_resources import resource_filename
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 
 
@@ -135,7 +134,7 @@ class RawQC(QC_Controller):
             temp = ['%s' % names[j],'%s' % str(nseqlen[j]),'%s' % str(npeakl[j]), '%s' % judge]
             fastqc_summary.append(temp)
 
-        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/fastqc_value_list.txt'
+        historyData = resource_filename("chilin","db.fastqc_value_list.txt")
         inf=open(historyData,'rU')
         peaklist1=inf.readline()
         f=open(rCode,'w')
@@ -301,7 +300,8 @@ class MappingQC(QC_Controller):
         bamList = os.popen( "find %s -name \"%s\""%(bampath,'*.bam'))
         bamList = bamList.readlines()
         bamList = [i.strip() for i in bamList]
-        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
+        historyData = resource_filename("chilin","db.all_data.txt")
+
         f = open(historyData)
         self.historyData = f.readlines()
         f.close()
@@ -355,7 +355,7 @@ class PeakcallingQC(QC_Controller):
         """
         cummulative percentage of peaks foldchange great than 10
         """       
-        historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/lg_fold_10.txt'
+        historyDataName =resource_filename("chilin","db.lg_fold_10.txt")
         pdfName = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio'])
         rCode = os.path.join(self.path['qcresult']['folder'],self.path['qcresult']['fold_ratio_r'])
         lg_10 = math.log(self.fold_10,10)
@@ -456,7 +456,8 @@ class PeakcallingQC(QC_Controller):
             input: peaks bed and excel file.
         """
         self.render['PeakcallingQC_check'] = True
-        historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
+        historyDataName = resource_filename("chilin","db.all_data.txt")
+
         fph = open(historyDataName)
         self.historyData = fph.readlines()
         fph.close()
