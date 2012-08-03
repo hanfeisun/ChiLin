@@ -63,7 +63,7 @@ class PipePreparation:
                                                      get(opt)) for opt in self.cf.options(sec))
             elif optconf == 'names': # NameRule.conf
                 self.Nameconfigs[uni(sec)] = dict((uni(opt),
-                                                   uni(get(opt))) for opt in self.cf.options(sec))
+                                                   get(opt)) for opt in self.cf.options(sec))
 
     def parseconfrep(self):
         """
@@ -74,9 +74,9 @@ class PipePreparation:
         has_control = lambda s: "{control_rep}" in s
         id = self.ChiLinconfigs['userinfo']['datasetid']
 
-        treat_fmt = lambda s: [s.format(datasetid = id, treat_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
-        control_fmt = lambda s:[s.format(datasetid = id, control_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
-        gfmt = lambda s: s.format(datasetid=id)
+        treat_fmt = lambda s: [s.format(DatasetID = id, treat_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
+        control_fmt = lambda s:[s.format(DatasetID = id, control_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
+        gfmt = lambda s: s.format(DatasetID=id)
 
         def fmt(s, sec, opt):
             if has_control(self.Nameconfigs[sec][opt]):
@@ -395,11 +395,11 @@ class PipeMACS2(PipeController):
                     fc20n += 1
                 if fc >= 10:
                     fc10n += 1
-        self.macsinfo['totalpeak'] = {'totalpeak': total}
+        self.macsinfo['totalpeak'] = total
         self.macsinfo['peaksge20'] = fc20n
-        self.macsinfo['peaksge20ratio'] = fc20n/total
+        self.macsinfo['peaksge20ratio'] = float(fc20n)/total
         self.macsinfo['peaksge10'] = fc10n
-        self.macsinfo['peaksge10ratio'] = fc10n/total
+        self.macsinfo['peaksge10ratio'] = float(fc10n)/total
         self.rendercontent['ratios'] = self.macsinfo
 
     def process(self):
@@ -426,6 +426,8 @@ class PipeMACS2(PipeController):
                                        '  '.join(self.nameconfigs['bowtieresult']['bam_treat'])
                                        )
             self.run()
+
+        # control option, use control merge bam file for control
         if len(self.nameconfigs['bowtieresult']['bam_control']) > 1:
             self.cmd = '{0} merge -f {1}  {2}'
             self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
@@ -433,15 +435,13 @@ class PipeMACS2(PipeController):
                                        '  '.join(self.nameconfigs['bowtieresult']['bam_control'])
                                        )
             self.run()
-
-        # control option, use control merge bam file for control
         if self.chilinconfigs['userinfo']['controlnumber'] == 1:
-            control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control']
+            control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control'][0]
         elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
             control_option = ' -c ' + self.nameconfigs['bowtieresult']['bamcontrolmerge']
         else:
             control_option = ' '
-        control_option = '' # test
+
         for treat_rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
             self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                   '-t {2} {3} -n {4}'
@@ -461,24 +461,26 @@ class PipeMACS2(PipeController):
                              self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
 
         if self.has_run:
-            self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
-                   '-t {2} {3} -n {4}'
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
-                                       self.shiftsize,
-                                       self.nameconfigs['bowtieresult']['bamtreatmerge'],
-                                       control_option,
-                                       self.nameconfigs['macstmp']['macs_init_mergename'])
-            self.run()
-            # convert macs default name to NameRule
-            self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
-            self.run()
-            if self.has_run:
-                self._format(self.nameconfigs['macstmp']['treat_bdg'], 
-                             self.nameconfigs['macstmp']['treat_bdgtmp'], 
-                             self.nameconfigs['macsresult']['treat_bw'])
+            if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
+                self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
+                       '-t {2} {3} -n {4}'
+                self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
+                                           self.shiftsize,
+                                           self.nameconfigs['bowtieresult']['bamtreatmerge'],
+                                           control_option,
+                                           self.nameconfigs['macstmp']['macs_init_mergename'])
+                self.run()
+                # convert macs default name to NameRule
+                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
+                self.run()
+                if self.has_run:
+                    self._format(self.nameconfigs['macstmp']['treat_bdg'], 
+                                 self.nameconfigs['macstmp']['treat_bdgtmp'], 
+                                 self.nameconfigs['macsresult']['treat_bw'])
 
 class PipeVennCor(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log, datasummary, stepcontrol, ratios, peaksnumber = '', OptionMethod = "Mean"):
+    def __init__(self, chilinconfigs, nameconfigs, log,\
+                 datasummary, stepcontrol, ratios, peaksnumber = '', OptionMethod = "Mean"):
         """
         replicates qc measurement 
         using venn diagram and correlation 
@@ -487,8 +489,6 @@ class PipeVennCor(PipeController):
         self.peaksnumber = peaksnumber
         self.OptionMethod = OptionMethod
         self.ratio = {}
-        #self.ratios = ratios
-        self.ratios = {'ratios': {}}
         self.chilinconfigs = chilinconfigs
         self.nameconfigs = nameconfigs
         self.log = log
@@ -536,7 +536,6 @@ class PipeVennCor(PipeController):
           to avoid negative peaks
         2. use bedClip to avoid chromosome out of range use ceas chr len
           bedClip testid_1_peaks.bed /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len test.bed
-          
         example:
         /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
         """
@@ -589,9 +588,10 @@ class PipeVennCor(PipeController):
             sys.exit(1)
         self.extract('dhs')
         self.extract('velcro') # mouse velcro?
+        print self.rendercontent
         for k, v in self.ratio.iteritems():
-            print k, v
-            self.ratios['ratios'][k] = v
+            self.rendercontent['ratios'][k] = v
+        self._render()
 
         if self.chilinconfigs['userinfo']['treatnumber'] < 2:
             self.log('No replicates, pass the venn diagram and correlation steps')
@@ -638,6 +638,7 @@ class PipeCEAS(PipeController):
         self.nameconfigs = nameconfigs
         self.peaks = peaksnumber
         self.log = log
+        self.stepcontrol = stepcontrol
 
     def _format(self):
         """
@@ -747,9 +748,7 @@ class PipeConserv(PipeController):
         input: summits bed (filtered by VennCor._format)
         *todo*:get the top n significant peaks for conservation plot
         """
-        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf png.png'
-        self.run()
-        self.cmd = 'mv png.png %s' % self.nameconfigs['conservresult']['conserv_png']
+        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s ' % self.nameconfigs['conservresult']['conserv_png']
         self.run()
 
     def extract(self):
@@ -858,9 +857,29 @@ class PipeMotif(PipeController):
         if self.has_run:
             self._format()
 
-class package:
-    def __init__(self, outputdirectory, log):
-        self.bam =  ""
+
+def package(conf, names, log):
+    """
+    package all the results in datasetid folder
+    """
+    bams = glob('*.bam')
+    xls = glob('*.xls')
+    summits = glob('*_summits.bed')
+    peaks = glob('*_peaks.bed')
+    bw = glob('*.bw')
+    png = glob('*.png')
+    cor = glob('*cor*')
+    pdf = glob('_ceas_.pdf')
+    r = glob('*_ceas_*.R')
+    m = glob('*.zip')
+    su = glob('*.txt')
+    fls = [bams, xls, summits, peaks, bw, png, pdf, r, m, cor, su]
+    folder = 'dataset' + conf['userinfo']['datasetid']
+    call('mkdir %s' % folder, shell = True)
+    for fs in fls:
+        for f in fs:
+            call('mv %s %s' % (f, folder), shell = True)
+    log('package success')
 
 class PipeGO(PipeController):
     def __init__(self, chilinconfigs, nameconfigs):

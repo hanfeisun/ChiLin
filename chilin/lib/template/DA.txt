@@ -11,13 +11,16 @@ macs_treat_bw = {{ rep.bw }}
 [dataset]
 dataset_id = {{ names.id }}
 username = {{ names.username }}
+{% if names.treatbam %}
 treat_bam = {{ names.treatbam }}
+{% endif %}
+{% if names.controlbam %}
 control_bam = {{ names.controlbam }}
+{% endif %}
 macs_xls = {{ names.peaksxls }}
 macs_peaks = {{ names.peaksbed }}
-macs_summits = {{ names.ssummitsbed }}
+macs_summits = {{ names.summitsbed }}
 macs_treat_bw = {{ names.treatbw }}
-macs_control_bw = {{ names.controlbw }}
 ceas_xls = {{ names.ceasxls }}
 ceas_pdf = {{ names.ceaspdf }}
 ceas_R = {{ names.ceasR }}
