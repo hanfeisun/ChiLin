@@ -28,9 +28,9 @@ def main():
         sys.exit('options missing')
 
     ChiLinConf = args[0]
-    Preparation = PipePreparation(ChiLinConf)
-    conf = Preparation.ChiLinconfigs
-    checkresult = Preparation.checkconf()
+    prep = PipePreparation(ChiLinConf)
+    conf = prep.ChiLinconfigs
+    checkresult = prep.checkconf()
     outputd = conf['userinfo']['outputdirectory']
     if not os.path.exists(outputd):
         call('mkdir %s' % outputd, shell = True)
@@ -72,7 +72,7 @@ def main():
  
 
 
-    judge = Preparation.checkconf()
+    judge = prep.checkconf()
     if judge == False:
         sys.exit()
 #    fastqc_check = RawQC(conf,paths,texfile).run()

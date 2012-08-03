@@ -35,7 +35,7 @@ class PipePreparation:
         self.ChiLinconfigs = {}
 
 
-    def readconf(self):
+    def _readconf(self):
         """
         Read configuration and parse it into Dictionary
         """
@@ -54,7 +54,7 @@ class PipePreparation:
         Check the Meta configuration
         if up to our definition
         """
-        self.readconf()
+        self._readconf()
         print self.ChiLinconfigs
         if not exists(self.ChiLinconfigs['qc']['fastqc_main']):
             print 'fastqc not exists'
@@ -73,7 +73,6 @@ class PathFinder:
                  treatpath = '', controlpath = '',
                  NameConfPath = resource_filename("chilin","db.NameRule.conf"),
                  ):
-        
         self.cf = ConfigParser()
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
@@ -84,31 +83,41 @@ class PathFinder:
     def _readconf(self):
         '''read in conf and write datasetid information'''
         self.cf.read(self.NameConfPath)
+
+        uni = lambda str:str.strip().lower()
+        fmt = lambda str:str.format(DatasetID = self.datasetid)
+        
         for sec in self.cf.sections():
-            temp = {}
-            for opt in self.cf.options(sec):
-                optName = string.lower(opt)
-                temp[string.strip(optName)] = string.strip(self.cf.get(sec, opt).replace('${DatasetID}', self.datasetid))
-                self.Nameconfigs[string.lower(sec)] = temp
+            get = lambda an_opt:self.cf.get(sec, an_opt)
+            self.ChiLinconfigs[uni(sec)] = dict((uni(opt),
+                                                 fmt(uni(get(opt)))) for opt in self.cf.options(sec))
+
+
 
     def parseconfrep(self):
         '''only name means not plus the output directory, for legend only
         write in NameRule rep '''
         self._readconf()
+        has_treat = lambda str: "{treat_rep}" in str
+        has_control = lambda str: "{control_rep}" in str
+        head = lambda a_list: a_list[0]!=""
+        nc = self.Nameconfigs
 
-        for session in self.Nameconfigs:
-            for option in self.Nameconfigs[session]:
-                temp = []
-                if self.control_path[0] != '' and '${control_rep}' in self.Nameconfigs[session][option]:
-                    for control_rep in range(1, len(self.control_path) + 1):
-                        temp.append(self.Nameconfigs[session][option].replace('${control_rep}', str(control_rep)))
-                    self.Nameconfigs[session][option] = temp
+        treat_fmt = lambda str:[str.format(treat_rep = i+1) for i in range(len(self.treat_path))]
+        control_fmt = lambda str:[str.format(control_rep = i+1) for i in range(len(self.control_path))]
 
-                if self.treat_path[0] != '':
-                    if '${treat_rep}' in self.Nameconfigs[session][option]:
-                        for treat_rep in range(1, len(self.treat_path) + 1):
-                            temp.append(self.Nameconfigs[session][option].replace('${treat_rep}', str(treat_rep)))
-                        self.Nameconfigs[session][option] = temp
+        def fmt(str, nc=self.Nameconfigs):
+            if head(self.control_path) and has_control(nc[sec][opt]):
+                return control_fmt(nc[sec][opt])
+            if head(self.treat_path) and has_treat(nc[sec][opt]):
+                return treat_fmt(nc[sec][opt])
+            
+        
+        for sec in self.Nameconfigs:
+            for opt in self.Nameconfigs[sec]:
+                self.Nameconfigs[sec][opt] = fmt(self.Nameconfigs[sec][opt])
+
+
 
 # log
 class LogWriter:
