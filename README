@@ -22,5 +22,21 @@ Options:
                   Histone and TF:73
 
 
-quick-install
+quick-install three steps
 =================
+one R
+-------------------
+install R, recommended the newest version
+in R session
+> install.packages('gplots')
+> install.packages('Rcolorbrew')
+
+
+two python
+----------------------
+in the terminal, change directory to the folder 
+python setup.py install # need root
+
+three external program
+-----------------------
+we created a package containing all the sources
