@@ -37,7 +37,7 @@ The sequence quality score\footnote{* use 25 as cutoff}  listed in the table all
 \caption{FastQC measurement}\label{fastqctable}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Sample name & Sequence length & Sequence quality score & QC \\
+Sample name & Sequence length & Sequence quality score \\
 \hline
 \BLOCK{ for line in fastqc_table }
 \VAR{line|join(' & ')} \\
@@ -280,7 +280,7 @@ We might find several motifs different from the antibody we use. For example, we
 In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. 
 We search in cistrome database and use denovo motif finding methods 
 to generate prediction of experiment factor's motifs. 
-In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. (Table ~\\ref{motif})
+In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. (Table ~\ref{motif})
 \end{quotation}
 \newpage
 
@@ -297,7 +297,35 @@ factor name & Hits & Z-score & motif logo \tabularnewline
 \BLOCK{ endfor }
 \end{tabularx}
 \end{table}
-\end{document}
 %- endif
 
+%# Summary QC -----------
 
+%- if SummaryQC_check
+\section{ChIP-Seq QC Summary Table}
+\begin{quotation}
+\begin(itemize}
+In order to evaluate each QC item, we defined a set of man-made standard,  which include fastqc, mapped reads, overlap  with DHS site and so on. If the one QC item pass the defined standard, we call mark it with pass. The detail judement as followings:(Table: ~\ref{summarytable})
+FastQC: For each sample, pass if the median sequence score upper than 25.
+Reads QC: Pass if more than 5 million unique mapped reads.
+FDR QC: If more than 500 peaks with q equal 0.01 cutoff, it pass.
+Fold QC: Pass if more than 1000 peaks with fold change greater than 10.
+Replicate QC: If wig correlation  0.6, pass.
+Dnase QC: If overlap more than 0.8, pass.
+Velcro QC: Peaks overlap velcro region of all peaks. If less than 0.1, pass.
+/end{itemize}
+\end{quotation}
+\begin{table}[h]
+\caption{QC Summary Table}\label{summarytable}
+\begin{tabularx}{\textwidth}{ |X|X|X|X|X|X| } 
+\hline
+QC item & Sample or dataset & score & cutoff & Pass or Fail \\
+\hline
+\BLOCK{ for line in summary_table }
+\VAR{line|join(' & ')} \\
+\hline
+\BLOCK{ endfor }
+\end{tabularx}
+\end{table}
+\end{document}
+%- endif

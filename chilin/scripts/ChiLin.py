@@ -38,28 +38,32 @@ def main():
     s = options.stepcontrol
     p = options.peaksnumber
     m = options.cormethod
-    texfile = open('tex.tex', 'wb')
-    cutoffcheck = []
-    check = RawQC(conf,names,texfile).run()
-    cutoffcheck = cutoffcheck + check
-
-
     datasummary = Preparation.DataSummary
+
+    texfile,summarycheck = QC_Controller().QCpreparation(names)
+    print texfile
+    rawqc = RawQC(conf,names,texfile,summarycheck,log)
+    rawqc.run()
+
     PipeBowtie(conf, names, log, datasummary, s).process()
-    check = MappingQC(conf,names,texfile).run()
-    cutoffcheck = cutoffcheck + check
+    mappingqc = MappingQC(conf,names,texfile,rawqc.summarycheck,log)
+    mappingqc.run()
+
     macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize)
     macs2.process()
+
     PipeVennCor(conf, names, log, datasummary, s, macs2.rendercontent, p, m).process()
-    check = PeakcallingQC(conf,names,texfile).run()
-    cutoffcheck = cutoffcheck + check
+    peakcallingqc = PeakcallingQC(conf,names,texfile,mappingqc.summarycheck,log)
+    peakcallingqc.run()
+
     PipeCEAS(conf, names, log, s, p).process()
     PipeConserv(conf, names, options.atype, log, s).process()
     PipeMotif(conf, names, log, s).process()
-    AnnotationQC(conf,names,texfile).run()
-    SummaryQC(conf,names,texfile).run(cutoffcheck)
-    texfile.close()
-    os.system("pdflatex tex.tex")
+
+    annotationqc = AnnotationQC(conf,names,texfile,peakcallingqc.summarycheck,log)
+    annotationqc.run()
+    SummaryQC(conf,names,texfile).run(summarycheck)
+
 
 
 if __name__ == "__main__":
