@@ -33,8 +33,8 @@ seqpos_zip = {{ names.seqposzip }}
 {% if ratios %}
 [summary]
 total_peaks = {{ ratios.totalpeak }}
-peaks_overlapped_with_DHSs = {{ ratios.DHS }}
-percentage_of_peaks_overlapped_with_DHSs = {{ ratios.DHSpercentage }}
+peaks_overlapped_with_DHSs = {{ ratios.dhs }}
+percentage_of_peaks_overlapped_with_DHSs = {{ ratios.dhspercentage }}
 peaks_fc_ge_20 = {{ ratios.peaksge20 }}
 peaks_fc_ge_20ratio = {{ ratios.peaksge20ratio }}
 peaks_fc_ge_10 = {{ ratios.peaksge10 }}
