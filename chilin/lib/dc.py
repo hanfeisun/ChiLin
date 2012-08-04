@@ -45,7 +45,6 @@ class PipePreparation:
         self.ChiLinconfigs = {}
         self.log = ''
         self.DataSummary = ' '
-        self.has_run = True
 
     def _readconf(self, optconf, confpath):
         """
@@ -103,10 +102,11 @@ class PipePreparation:
         head = lambda a_list: a_list[0] != ""
         if not head(self.ChiLinconfigs['userinfo']['treatpath']):
             error('forget to fill the treat file path')
+            sys.exit(1)
         else:
             self.ChiLinconfigs['userinfo']['treatnumber'] = len(self.ChiLinconfigs['userinfo']['treatpath'])
         if not head(self.ChiLinconfigs['userinfo']['controlpath']):
-            error('forget to fill the control file path')
+            warn('No control file path')
         else:
             self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
 
@@ -114,49 +114,42 @@ class PipePreparation:
 
         if not os.path.isdir(self.ChiLinconfigs['userinfo']['outputdirectory']):
             error('check output directory name')
-            self.has_run = False
+            sys.exit(1)
         else:
             os.chdir(self.ChiLinconfigs['userinfo']['outputdirectory'])
         if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['treatpath']):
             error('check your input treat file, some error')
-            self.has_run = False
+            sys.exit(1)
         if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['controlpath']):
             error('check your input control file, some error')
-            self.has_run = False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['qc']['fastqc_main']):
             error('fastqc not exists')
-            self.has_run = False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
             error("bowtie program dependency has problem")
-            self.has_run = False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['samtools']['samtools_main']):
             error("samtools dependency has problem")
-            self.has_run = False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['macs']['macs_main']):
             error("macs2 program dependency has probelm")
-            self.has_run =False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['bedtools']['intersectbed_main']):
             error("bedtools program dependency has problem")
-            self.has_run = False
+            sys.exit(1)
         if not exists(self.ChiLinconfigs['conservation']['conserv_plot_main']):
             error("conservation_plot dependency has problem")
-            self.has_run = False
         if not exists(self.ChiLinconfigs['correlation']['wig_correlation_main']):
             error("correlation plot dependency has problem")
-            self.has_run = False
         if not exists(self.ChiLinconfigs['venn']['venn_diagram_main']):
             error("venn plot dependency has problem")
-            self.has_run = False
+            sys.exit(1)
 
         self.log = LogWriter(self.Nameconfigs['root']['log']).record
         self.log('ChiLin config parse success, and dependency check has passed!')
-        if self.has_run:
-            self.log('Successfully prepare the conf and Pass dependency check')
-            # open summary file for later rendering
-            self.DataSummary = open(self.Nameconfigs['root']['data_summary'], 'w')
-        else:
-            self.log('Check dependency according to docs')
-            sys.exit()
+        # open summary file for later rendering
+        self.DataSummary = open(self.Nameconfigs['root']['data_summary'], 'w')
 
 class PipeController(object):
     def __init__(self):
@@ -393,11 +386,15 @@ class PipeMACS2(PipeController):
                     fc10n += 1
         self.macsinfo['totalpeak'] = total
         self.macsinfo['peaksge20'] = fc20n
-        self.macsinfo['peaksge20ratio'] = float(fc20n)/total
         self.macsinfo['peaksge10'] = fc10n
-        self.macsinfo['peaksge10ratio'] = float(fc10n)/total
+        if total != 0:
+            self.macsinfo['peaksge10ratio'] = float(fc10n)/total
+            self.macsinfo['peaksge20ratio'] = float(fc20n)/total
+        else:
+            self.macsinfo['peaksge10ratio'] = 0.0001
+            self.macsinfo['peaksge20ratio'] = 0.0001
+        self.macsinfo['distance'] = float(self.shiftsize) * 2
         self.rendercontent['ratios'] = self.macsinfo
-        print self.rendercontent
 
     def process(self):
         """
@@ -412,7 +409,6 @@ class PipeMACS2(PipeController):
             sys.exit(1)
 
         # support for bed or other format, TODO
-        # involve bedops for BED files ,   TODO
         if self.chilinconfigs['userinfo']['treatpath'] is 'bed':
             print 'do macs2'
         # merge bam files
@@ -432,6 +428,7 @@ class PipeMACS2(PipeController):
                                        '  '.join(self.nameconfigs['bowtieresult']['bam_control'])
                                        )
             self.run()
+        # set control option, merge bam control for universal control
         if self.chilinconfigs['userinfo']['controlnumber'] == 1:
             control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control'][0]
         elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
@@ -439,6 +436,7 @@ class PipeMACS2(PipeController):
         else:
             control_option = ' '
 
+        # each bam file peak calling
         for treat_rep in range(len(self.nameconfigs['bowtieresult']['bam_treat'])):
             self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
                   '-t {2} {3} -n {4}'
@@ -452,11 +450,18 @@ class PipeMACS2(PipeController):
             self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
                    + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
             self.run()
+            self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
+                   + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
+            self.run()
             if self.has_run:
                 self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep], \
                              self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
                              self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
+                self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], \
+                             self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
+                             self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
 
+        # merge treat bam files for peaks calling
         if self.has_run:
             if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
                 self.cmd = '{0} callpeak -B -q 0.01 --keep-dup 1 --shiftsize {1} --nomodel ' + \
@@ -470,10 +475,15 @@ class PipeMACS2(PipeController):
                 # convert macs default name to NameRule
                 self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
                 self.run()
+                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.nameconfigs['macstmp']['control_bdg'])
+                self.run()
                 if self.has_run:
                     self._format(self.nameconfigs['macstmp']['treat_bdg'], 
                                  self.nameconfigs['macstmp']['treat_bdgtmp'], 
                                  self.nameconfigs['macsresult']['treat_bw'])
+                    self._format(self.nameconfigs['macstmp']['control_bdg'], 
+                                 self.nameconfigs['macstmp']['control_tmp_bdg'], 
+                                 self.nameconfigs['macsresult']['control_bw'])
             self.extract()
 
 class PipeVennCor(PipeController):
@@ -523,7 +533,12 @@ class PipeVennCor(PipeController):
             lena_type = len(open(self.nameconfigs['bedtoolstmp']['dhs_bed'], 'r').readlines())
         elif a_type == 'velcro':
             lena_type = len(open(self.nameconfigs['bedtoolstmp']['velcro_bed'], 'r').readlines())
-        self.ratio[a_type] = float(lena_type) / lenall
+        self.ratio[a_type] = lena_type
+        if lenall != 0:
+            self.ratio[a_type + 'percentage'] = float(lena_type)/lenall
+        else:
+            self.ratio[a_type + 'percentage'] = 0.0001
+
 
     def process(self):
         """
@@ -538,8 +553,19 @@ class PipeVennCor(PipeController):
         example:
         /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
         """
-        # filter bed files, 
-        # TODO, filter bdg files and bw
+        # filter bed files
+        def filter(peaks_summits, tmp):
+            self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
+                         (peaks_summits,
+                          tmp)
+            self.run()
+            self.cmd = "{0} {1} {2} {3}"
+            self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
+                                       tmp,
+                                       self.chilinconfigs['ceas']['chrom_len'],
+                                       peaks_summits)
+            self.run()
+
         for rep in range(self.chilinconfigs['userinfo']['treatnumber']):
             self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
                          (self.nameconfigs['macsresult']['treatrep_peaks'][rep],
@@ -878,11 +904,3 @@ def package(conf, names, log):
         for f in fs:
             call('mv %s %s' % (f, folder), shell = True)
     log('package success')
-
-class PipeGO(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs):
-        pass
-    def _format(self):
-        '''Use RegPotential, ceasp5000'''
-        pass
-

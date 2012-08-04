@@ -25,6 +25,10 @@ def parse_options():
     if not args or not options.atype or options.atype not in ['TF', 'Dnase', 'Histone']:
         parser.print_help()
         sys.exit(1)
+    if options.atype in ['TF', 'Histone']:
+        options.shiftsize = '73'
+    elif options.atype == 'Dnase':
+        options.shiftsize = '50'
     return options, args
 
 def main():
@@ -41,7 +45,6 @@ def main():
     datasummary = Preparation.DataSummary
 
     texfile,summarycheck = QC_Controller().QCpreparation(names)
-    print texfile
     rawqc = RawQC(conf,names,texfile,summarycheck,log)
     rawqc.run()
 
@@ -63,6 +66,8 @@ def main():
     annotationqc = AnnotationQC(conf,names,texfile,peakcallingqc.summarycheck,log)
     annotationqc.run()
     SummaryQC(conf,names,texfile).run(summarycheck)
+
+    package(conf, names, log)
 
 
 
