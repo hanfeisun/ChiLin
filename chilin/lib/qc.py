@@ -24,9 +24,7 @@ class QC_Controller(object):
     """
     All the class in the module derives from this class
     """
-    def __init__(self, configs ='',path = ''):
-        self.path = path
-        self.conf = configs
+    def __init__(self):
         self.env = jinja_env
         self.render = {}
         self.checkr = []
@@ -41,23 +39,29 @@ class QC_Controller(object):
     
     def _check(self):
         """ Check whether the quality of the dataset is ok. """
-        result = []
         for line in self.checkr:
             value = round(float(line[2]),3)
             cutoff = round(float(line[3]),3)
             if value >= cutoff:
                 line.append('pass')
-                result.append(line)
+                self.summarycheck.append(line)
             else:
                 line.append('Fail')
-                result.append(line)
-        print result
-        return result
+                self.summarycheck.append(line)
+        print self.summarycheck
+
+    def QCpreparation(self,names):
+        texname = names['qcresult']['qctex']
+        texfile = open(texname,'wa')
+        summarycheck = []
+        print texname
+        return texfile,summarycheck
 
 
     def _render(self):
         """ Generate the latex code for current section. """
         temp = self.template.render(self.render)
+        print temp
         self.filehandle.write(temp)
         self.filehandle.flush()
 
@@ -66,11 +70,12 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self,configs = '',path = '', texfile = '',log = ''):
+    def __init__(self,configs = '',path = '', texfile = '',summarycheck = '',log = ''):
         super(RawQC, self).__init__()
         self.conf = configs
         self.path = path
         self.log = log
+        self.summarycheck = summarycheck
         self.filehandle =  texfile
         
     def _infile_parse(self,dataname): # extract information from fastqc result file 
@@ -188,17 +193,19 @@ class RawQC(QC_Controller):
         else:
             self.render['fastqc_check'] = Fasle
         self._render()
-        return self._check()
+        self._check()
 
          
         
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
-    def __init__(self,configs = '',path = '', texfile = ''):
+    def __init__(self,configs = '',path = '', texfile = '',summarycheck = '',log = ''):
         super(MappingQC, self).__init__()
         self.conf = configs
         self.path = path
+        self.log = log
         self.filehandle = texfile
+        self.summarycheck = summarycheck
         self.bampath = self.conf['userinfo']['outputdirectory']
         self.bowtieresult = self.path['root']['data_summary']
 
@@ -319,17 +326,19 @@ class MappingQC(QC_Controller):
         self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
         self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
         self._render()
-        return self._check()
+        self._check()
 
 
 
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""
-    def __init__(self,configs = '',path = '',texfile = ''):
+    def __init__(self,configs = '',path = '',texfile = '',summarycheck = '',log = ''):
         super(PeakcallingQC, self).__init__()
         self.conf = configs
         self.path = path
+        self.log = log
         self.filehandle = texfile
+        self.summarycheck = summarycheck
         self.peaksxls = self.path['macsresult']['peaks_xls']
         self.peaksbed = self.path['macsresult']['treat_peaks']
         self.vennGraph = self.path['represult']['ven_png']
@@ -516,17 +525,19 @@ class PeakcallingQC(QC_Controller):
             correlationPlot = os.path.abspath('macs2/'+self.path['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
         self._render()
-        return self._check()
+        self._check()
         
 
         
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
-    def __init__(self,configs = '',path = '', texfile = ''):
+    def __init__(self,configs = '',path = '', texfile = '',summarycheck = '',log = ''):
         super(AnnotationQC, self).__init__()
         self.conf = configs
         self.path = path
+        self.log = log
         self.filehandle = texfile
+        self.summarycheck = summarycheck
         self.peaksxls = self.path['macsresult']['peaks_xls']
         self.ceasCode = self.path['ceasresult']['ceasr']
         self.Zippath = self.path['motifresult']['seqpos']
@@ -681,7 +692,8 @@ class AnnotationQC(QC_Controller):
             self.render['conservation_graph'] = conservationFile
  #       self.render['motif_table'] = self._motif_info(Zippath)
         self._conservation_info(conservationR)
-        return self._render()
+        self._render()
+
 
 class SummaryQC(QC_Controller):
     """Generate summary report for each QC item and package function"""
@@ -695,6 +707,7 @@ class SummaryQC(QC_Controller):
         self.render['SummaryQC_check'] = True 
         self.render['summary_table'] = checkList
         self._render()
+        self.filehandle.close()
 
     def packfile(self):
         pass
