@@ -745,7 +745,8 @@ class PipeConserv(PipeController):
         input: summits bed (filtered by VennCor._format)
         *todo*:get the top n significant peaks for conservation plot
         """
-        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s ' % self.nameconfigs['conservresult']['conserv_png']
+        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s | mv %s %s ' % (self.nameconfigs['conservresult']['conserv_png'],\
+			'tmp.R', self.nameconfigs['conservresult']['conserv_r'])
         self.run()
 
     def extract(self):
