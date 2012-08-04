@@ -38,15 +38,28 @@ def main():
     s = options.stepcontrol
     p = options.peaksnumber
     m = options.cormethod
+    texfile = open('tex.tex', 'wb')
+    cutoffcheck = []
+    check = RawQC(conf,names,texfile).run()
+    cutoffcheck = cutoffcheck + check
+
 
     datasummary = Preparation.DataSummary
     PipeBowtie(conf, names, log, datasummary, s).process()
+    check = MappingQC(conf,names,texfile).run()
+    cutoffcheck = cutoffcheck + check
     macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize)
     macs2.process()
     PipeVennCor(conf, names, log, datasummary, s, macs2.rendercontent, p, m).process()
+    check = PeakcallingQC(conf,names,texfile).run()
+    cutoffcheck = cutoffcheck + check
     PipeCEAS(conf, names, log, s, p).process()
     PipeConserv(conf, names, options.atype, log, s).process()
     PipeMotif(conf, names, log, s).process()
+    AnnotationQC(conf,names,texfile).run()
+    SummaryQC(conf,names,texfile).run(cutoffcheck)
+    texfile.close()
+    os.system("pdflatex tex.tex")
 
 
 if __name__ == "__main__":
