@@ -279,9 +279,25 @@ class PipeBowtie(PipeController):
     def process(self):
         """
         sra => fastqdump => fastq
-        example : ./fastq-dump.2.1.6.x86_64 SRR065250.sra
+        example : ./fastq-dump.2.1.6.x86_64 SRR065250.sra -O 
         bam or bed skip
         """
+        has_sra = lambda f: f.endswith('.sra')
+        has_fq = lambda f: f.endswith('.fastq')
+        get_newfqpath = lambda f: os.path.split(f)[0]
+        get_newfqname = lambda f: f.replace('sra', 'fastq')
+        for num in self.chilinconfigs['userinfo']['treatnumber']:
+            if has_sra(self.chilinconfigs['userinfo']['treatpath'][num]):
+                self.cmd = '{0} {1} -O {2}'
+                self.cmd = self.cmd.format(self.chilinconfigs['userinfo']['sra'],
+                                           self.chilinconfigs['userinfo']['treatpath'][num],
+                                           get_newfqpath(self.chilinconfigs['userinfo']['treatpath'][num])
+                                           )
+                self.run()
+                self.chilinconfigs['userinfo']['treatnumber'][num] = get_newfqname(self.chilinconfigs['userinfo']['treatpath'])
+            elif has_fq(self.chilinconfigs['userinfo']['treatnumber'][num]):
+                pass
+
         self.rendercontent['sams'] = []
         if self.has_run: # fastqc judge
             for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
