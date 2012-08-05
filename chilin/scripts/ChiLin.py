@@ -62,7 +62,7 @@ def main():
     PipeCEAS(conf, names, log, s, p).process()
     PipeConserv(conf, names, options.atype, log, s).process()
     PipeMotif(conf, names, log, s).process()
-
+    print 'ceas'
     annotationqc = AnnotationQC(conf,names,texfile,peakcallingqc.summarycheck,log)
     annotationqc.run()
     SummaryQC(conf,names,texfile).run(summarycheck)

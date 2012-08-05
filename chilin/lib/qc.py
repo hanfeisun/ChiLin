@@ -48,20 +48,17 @@ class QC_Controller(object):
             else:
                 line.append('Fail')
                 self.summarycheck.append(line)
-        print self.summarycheck
 
     def QCpreparation(self,names):
         texname = names['qcresult']['qctex']
         texfile = open(texname,'wa')
         summarycheck = []
-        print texname
         return texfile,summarycheck
 
 
     def _render(self):
         """ Generate the latex code for current section. """
         temp = self.template.render(self.render)
-        print temp
         self.filehandle.write(temp)
         self.filehandle.flush()
 
@@ -119,6 +116,7 @@ class RawQC(QC_Controller):
         """ QC analysis of the raw Chip-seq data.
             input: the rawdata list and corresponding lable
         """
+        self.log("Begine processing fasctqc")
         self.has_fastqc = True
         npeakl = []
         nseqlen = []
@@ -126,13 +124,16 @@ class RawQC(QC_Controller):
             d = rawdata[i]
             cmd = '{0} {1} --extract -t 3 -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.conf['userinfo']['outputdirectory'])
+            self.log(cmd)
             call(cmd,shell=True)
             temp = os.path.split(d)[1]
             fastqc_out = os.path.splitext(temp)[0]+'_fastqc'
             changed_name = names[i]+'_fastqc'
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
+            self.log(cmd)
             call(cmd,shell=True)
+            self.log(cmd)
             call('rm %s.zip'% fastqc_out,shell=True)
             dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
@@ -147,8 +148,7 @@ class RawQC(QC_Controller):
             fastqc_summary.append(temp)
             tempcheck = ['FastqQC','%s' % names[j],'%s' % str(npeakl[j]),25]
             self.checkr.append(tempcheck)
-
-        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/fastqc_value_list.txt'
+        historyData = resource_filename('chilin', 'db/fastqc_value_list.txt')
         inf=open(historyData,'rU')
         peaklist1=inf.readline()
         f=open(rCode,'w')
@@ -206,14 +206,14 @@ class MappingQC(QC_Controller):
         self.log = log
         self.filehandle = texfile
         self.summarycheck = summarycheck
-        self.bampath = self.conf['userinfo']['outputdirectory']
-        self.bowtieresult = self.path['root']['data_summary']
+        self.bowtiesummary = self.path['root']['data_summary']
 
-    def _basic_mapping_statistics_info(self,bowtieresult = ''):
+    def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
-        fhd = open(bowtieresult)
+        fhd = open(bowtiesummary)
         summary = []
         names,totleReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
+        mapRatior = []
         for line in fhd:
             line.strip()
             if line.startswith('sam file'):
@@ -227,11 +227,12 @@ class MappingQC(QC_Controller):
             if line.startswith('unique location'):
                 uniqueLocation.append(line.split('=')[1].strip())
                 ratio = round(float(mapped)/float(totle),3)
+                mapRatior.append(str(ratio*100)+'%')
                 mapRatio.append(ratio)
         namesr = map(lambda x: x.replace('_', ' '), names)
         for i in range(len(namesr)):
-            temp = [namesr[i],totleReads[i],mappedReads[i],uniqueLocation[i],mapRatio[i]]
-            tempcheck = ['Mapped reads',namesr[i],mappedReads[i],5000000]
+            temp = [namesr[i],totleReads[i],mappedReads[i],mapRatior[i],uniqueLocation[i]]
+            tempcheck = ['Unique mappable reads',namesr[i],mappedReads[i],5000000]
             self.checkr.append(tempcheck)
             summary.append(temp)
         print summary
@@ -263,18 +264,18 @@ class MappingQC(QC_Controller):
 
     def _redundant_ratio_info(self,bamList):
         """ Show redundant  ratio of the dataset in all historic data"""
+        self.log('Processing redundant reads')
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
         ratioList = []
         for bamfile in bamList:
             temp = 'temp.bed'
             if self.conf['userinfo']['species']=='hg19':
                 cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
-                cmd = cmd.format(bamfile,'hs',temp)
-                a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True)
-                
+                cmd = cmd.format(bamfile,self.conf['qc']['filterdup_species'],temp)
+                self.log(cmd)
+                a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True) 
                 content = a.communicate()
                 content = list(content)[1].split('\n')
-                print content
                 os.system('rm temp.bed')
                 for line in content:
                     judge = re.findall(r'Redundant rate of alignment file',line)
@@ -282,7 +283,7 @@ class MappingQC(QC_Controller):
                         score = line.split(':')[-1].strip()
                         score = round(1-float(score),3)
                         ratioList.append(score)
-
+        self.ratioListr = [str(score*100)+'%' for i in ratioList]
         pdfName = self.path['qcresult']['redundant_ratio']
         rCode = self.path['qcresult']['redundant_ratio_r']
         historyData = self.historyData[2]
@@ -292,7 +293,7 @@ class MappingQC(QC_Controller):
         f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
         f.write("redun_data<-c(%s)\n" % str(historyData)[0:-1])
         f.write("fn<-ecdf(redun_data)\n")
-        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Unique reads rate ',xlab='Unique reads ratio',ylab='Fn(Unique reads ratio)')"+"\n")
+        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Redundant rate ',xlab='Redundant ratio',ylab='Fn(Redundant rate)')"+"\n")
         j=0
         for p in ratioList:
             f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
@@ -311,20 +312,22 @@ class MappingQC(QC_Controller):
         """ Run some MappingQC function to get final result.
             input: mapping result and path of bam file.  
         """
-        bowtieresult,bampath = self.bowtieresult,self.bampath
+        print 'MappingQC'
+        bowtiesummary = self.bowtiesummary
+        print bowtiesummary
         self.render['MappingQC_check'] = True
-        bamList = os.popen( "find %s -name \"%s\""%(bampath,'*.bam'))
-        bamList = bamList.readlines()
-        bamList = [i.strip() for i in bamList]
+        bamList = self.path['bowtieresult']['bam_treat']+self.path['bowtieresult']['bam_control']
+        print bamList
         historyData = resource_filename('chilin', 'db/all_data.txt')
-#        historyData = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
         f = open(historyData)
         self.historyData = f.readlines()
         f.close()
 
-        self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtieresult)
+        self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+        print 'stastic'
         self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
-        self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+        print 'mappable'
+#        self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
         self._render()
         self._check()
 
@@ -367,7 +370,7 @@ class PeakcallingQC(QC_Controller):
         self.fold_20 = len(d20)+0.01
         self.fold_10 = len(d10)+0.01
         fhd.close()
-        peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_20,'%s'%shiftsize]
+        peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%shiftsize]
         self.checkr.append(['Totle peaks ','%s'%name,'%d'%self.totalpeaks,500])
         print peaks_summary
         return peaks_summary
@@ -377,11 +380,12 @@ class PeakcallingQC(QC_Controller):
         """
         cummulative percentage of peaks foldchange great than 10
         """
-        name = 'dataset'+self.conf['userinfo']['datasetid']       
-        historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/lg_fold_10.txt'
+        name = 'dataset'+self.conf['userinfo']['datasetid']
+        historyDataName = resource_filename('chilin', 'db/lg_fold_10.txt')
         pdfName = self.path['qcresult']['fold_ratio']
         rCode = self.path['qcresult']['fold_ratio_r']
-        lg_10 = math.log(self.fold_10,10)
+        lg_10 = round(math.log(self.fold_10,10),4)
+        pointText = str(lg_10)
         historyData = open(historyDataName).readlines()[0].strip()
         f = open(rCode,'w')
         f.write('peaks_fc <- c(%s)\n' %historyData)
@@ -390,7 +394,7 @@ class PeakcallingQC(QC_Controller):
         f.write("pdf('%s')\n" %pdfName)
         f.write("plot(ecdf(peaks_fc),verticals=TRUE,col.hor='blue', col.vert='black',main='Fold 10 peaks Distribution',xlab='lg(number of fold_enrichment>10 peaks)',ylab='Cumulative density function of all public data')\n")
         f.write("points(%f,fn(%f),pch=21,pt.bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
-        f.write("legend('topleft',c('ratio of foldchange great than 10'),pch=21,pt.bg=c('#FFB5C5'))\n")
+        f.write("legend('topleft',c('ratio of foldchange great than 10 : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
         f.write('abline(v=3,col="red")\n')
         f.write("text(3.5,0,'cutoff=3')\n")
         f.write('dev.off()\n')
@@ -417,10 +421,11 @@ class PeakcallingQC(QC_Controller):
         num_overlapped_peaks = len(fhd.readlines())
         fhd.close()
 
-        velcro_ratio = float(num_overlapped_peaks)/self.totalpeaks
+        velcro_ratio = round(float(num_overlapped_peaks)/self.totalpeaks,3)
         rCode = self.path['qcresult']['velcro_ratio_r']
         pdfName = self.path['qcresult']['velcro_ratio']
         historyData = self.historyData[3][0:-1]
+        pointText = str(velcro_ratio*100)+'%'
         f = open(rCode,'w')
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
         pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
@@ -429,11 +434,15 @@ class PeakcallingQC(QC_Controller):
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='velro ratio',xlab='velcro ratio',ylab='Fn(velcro ratio)')\n")
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(velcro_ratio,velcro_ratio,int(pch[0]),col[0]))
-        f.write("legend('topleft',c('ratio overlap with verlcro'),pch=21,pt.bg=c('#FFB5C5'))\n")
+        f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21,pt.bg=c('#FFB5C5'))\n" %pointText)
         f.write("dev.off()\n")
         f.close()
         call('Rscript %s' % rCode, shell = True)
-        self.checkr.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1])
+        if velcro_ratio >= 0.1:
+            judge = 'pass'
+        else:
+            judge = 'fail'
+        self.summarycheck.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1,judge])
         return pdfName
         
     def _DHS_ratio_info(self,peakbed):
@@ -452,8 +461,9 @@ class PeakcallingQC(QC_Controller):
         call(cmd,shell = True)
         fhd = open(overlapped_bed_file,"r")
         num_overlapped_peaks = len(fhd.readlines())
-        dhs_ratio = float(num_overlapped_peaks)/self.totalpeaks
+        dhs_ratio = round(float(num_overlapped_peaks)/self.totalpeaks,3)
         historyData = self.historyData[2][0:-1]
+        pointText = str(dhs_ratio*100)+'%'
         rCode = self.path['qcresult']['dhs_ratio_r']
         pdfName = self.path['qcresult']['dhs_ratio']
         f = open(rCode,'w')
@@ -464,7 +474,7 @@ class PeakcallingQC(QC_Controller):
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='overlapped_with_DHSs',xlab='overlapped_with_DHSs',ylab='Fn(overlapped_with_DHSs)')"+"\n")
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(dhs_ratio,dhs_ratio,int(pch[0]),col[0]))
-        f.write("legend('topleft',c('ratio overlap with DHSs'),pch=21,pt.bg=c('#FFB5C5'))\n")
+        f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
         f.write("dev.off()\n")
         f.close()
         call('Rscript %s' % rCode, shell = True)
@@ -501,16 +511,21 @@ class PeakcallingQC(QC_Controller):
             cor = 0.0001
         else:
             cor = round(sum(cors)/len(cors),3)
-        self.checkr.append(['Replication QC','%s rep treatment'%m,'%f'%cor,'0.6'])
+        if cor >= 0.6:
+            judge = 'pass'
+        else:
+            judge = 'fail'
+        self.summarycheck.append(['Replication QC','%s rep treatment'%m,'%s'%str(cor*100)+'%','0.6',judge])
 
 
     def run(self):
         """ Run some PeakcallingQC function to get final result. 
             input: peaks bed and excel file.
         """
+        print 'PeakcallingQC'
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
         self.render['PeakcallingQC_check'] = True
-        historyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/all_data.txt'
+        historyDataName = resource_filename('chilin', 'db/all_data.txt')
         fph = open(historyDataName)
         self.historyData = fph.readlines()
         fph.close()
@@ -521,6 +536,7 @@ class PeakcallingQC(QC_Controller):
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
         if len(self.conf['userinfo']['treatpath']) >= 2:
+            print 'corre'
             vennGraph = os.path.abspath('macs2/'+self.path['represult']['ven_png'])
             correlationPlot = os.path.abspath('macs2/'+self.path['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
@@ -613,11 +629,9 @@ class AnnotationQC(QC_Controller):
                 value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
                 value = value.split(',')
         fph.close()
-        print line
         value = [float(i) for i in value]
         sumvalue = sum(value)
         value = [i/sumvalue for i in value]
-        print value
         histotyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/TFcenters.txt'
         fph = open(histotyDataName)
         historyData = fph.readlines()
@@ -628,11 +642,14 @@ class AnnotationQC(QC_Controller):
 
             score = self._distance(value,line)
             scoreList.append(score)
-        print scoreList
-        judge = scoreList.index(min(scoreList))
-        if judge <=3:
-            print 'pass'
+        mindist = round(scoreList.index(min(scoreList)),3)
+        if mindist <=3:
+            judge = 'pass'
+        else:
+            judge = 'fail'
         fph.close()
+        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
+        self.summarycheck.append(temp)
 
 
     def _DictToList(self,root):
@@ -679,7 +696,6 @@ class AnnotationQC(QC_Controller):
                         if len(output) >= 7:
                             break
         print output
-        print 'motif info\n'
         return output
 
     def run(self):
@@ -693,6 +709,7 @@ class AnnotationQC(QC_Controller):
  #       self.render['motif_table'] = self._motif_info(Zippath)
         self._conservation_info(conservationR)
         self._render()
+        print self.summarycheck
 
 
 class SummaryQC(QC_Controller):
@@ -712,9 +729,6 @@ class SummaryQC(QC_Controller):
     def packfile(self):
         pass
 
-
-    def unpackage(self):
-        pass
 
 
 
