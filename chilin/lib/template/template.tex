@@ -10,8 +10,8 @@
 \usepackage{color}
 \DeclareGraphicsExtensions{.eps,.png,.pdf,.ps}
 \begin{document}
-\title{dataset \VAR{prefix_datasetid} Chip-Seq QC Report Version 1}
-\author {DC group}
+\title{Chip-Seq QC Report For Dataset \VAR{prefix_datasetid} }
+%#\author {DC group}
 \vspace{-1cm}
 \maketitle
 \abstract{Modern High Throughput experiment analysis always output large amount of information, which sometimes may confuse us. An objective system of assessment throughout all Chip-seq pipeline has been established to
@@ -79,7 +79,7 @@ Unique reads ratio: percentage of unique mappable reads in mappable reads.(Table
 \caption{Basic QC statistics} \label{basicqc}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Sample & Total reads & Mappable reads & Unique Mappable location & Mappable ratio  \\
+Sample & Total reads & Unique Mappable reads & Unique Mappable rate & Unique Mappable location & Redundant rate \\
 \hline
 \BLOCK{ for line in basic_map_table }
 \VAR{line|join(' & ')} \\
@@ -136,7 +136,7 @@ The 'Shift size' shows that the distance between the Watson or Crick tags enrich
 	\caption{Peak summary table} \label{peaksum}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Run name & Cutoff & Peak count & peaks $\geq$ 20FC & Shift size \\
+Run name & Cutoff & Peak count & High confident peaks & Shift size \\
 \hline
 \VAR{peak_summary_table|join(' & ')} \\
 \hline
