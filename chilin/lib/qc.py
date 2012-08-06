@@ -4,6 +4,7 @@ import os
 import math
 import re
 import zipfile
+import MotifParser as MP
 import subprocess
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
@@ -321,13 +322,13 @@ class MappingQC(QC_Controller):
         self.historyData = f.readlines()
         f.close()
         self.render['MappingQC_check'] = True
-        if bedfile=='bedfile':
+        if bedfile=='bedfiles':
             bamList = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
             self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
         else:
             self.render['Bowtie_check'] = True
             bamList = self.path['bowtieresult']['bam_treat']+self.path['bowtieresult']['bam_control']
-            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+ #           self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
             self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
             self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
@@ -653,8 +654,7 @@ class AnnotationQC(QC_Controller):
         temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
         self.summarycheck.append(temp)
 
-
-    def _DictToList(self,root):
+    def DictToList(self,root):
         """extract each node information"""
         result = []
         if "node" not in root.keys():
@@ -664,41 +664,86 @@ class AnnotationQC(QC_Controller):
         else:
             result.append(root['node'])
             for each in root['children']:
-                result.extend(self._DictToList(each))
+                result.extend(self.DictToList(each))
             return result
 
-    def _motif_info(self,Zippath):
-        """ QC of Sepose. """
-        outdir = self.path['qcresult']['folder']
-        species = 'Homo sapiens'
+    def get_seqpos(self,Zippath):
         zipFile = zipfile.ZipFile(Zippath)
-        data = zipFile.read('results/mdseqpos_out.html') 
-        if  not os.path.isdir(outdir+"seqposimg/"):
-            cmd = 'unzip ' + Zippath + ' -d ' + outdir + ' \"results/img/*\"'
-            call(cmd, shell=True)
-            print cmd
+        data = zipFile.read('results/mdseqpos_out.html')
+        inf = data.split('\n')
+        count = 0
         output = []
-        content = ""
-        for i in data.split('\n'):
+        for i in inf:
             if i.startswith('var mtree'):
-                content = i.rstrip().replace('var mtree = ', '')#str type
-        exec("mdict = %s" % content)#dict type
-        mlist = self._DictToList(mdict)
+                data = i.rstrip().replace('var mtree = ','')
+        exec('mdict=%s'%data)
+        mlist = self.DictToList(mdict)
         for i in mlist:
             if i['zscore'] == 'None':
                 i['zscore'] = 65535
-                if i['factors'] == []:
-                    i['factors'] = ['denovo']
+            if i['factors'] == []:
+                i['factors'] = ['denovo']
         mlist.sort(key=lambda x:x['zscore'])
         for i in mlist:
-            if i['zscore'] < -10 and i['id'].find('observed') > 0 \
-                    and species in i['species']:
-                        logo = '\includegraphics[angle=0,width=0.28\\textwidth]{%s}'%(outdir+'/results/img/'+i['id']+'_192x120'+'.png')
-                        output.append([i['factors'][0].upper(),str(i['hits']),str(i['zscore']),logo])
-                        if len(output) >= 7:
-                            break
+            if i['zscore']<-15 and i['id'].find('observed')>0:
+                count += 1
+                output.append([('00000%d'%count)[-4:],'|'.join(i['factors']), str(i['zscore']), '|'.join(i['species']), '['+str(i['pssm'])+']',str(i['logoImg']),str(i['hits'])])
+        print i
+        outf = open('seqpose.txt','w')
+        outf.write('\t'.join(['id','synonym', 'zscore', 'species', 'pssm','logoImg','hits']) + '\n')
+    
+        for i in output:
+            outf.write('\t'.join(i)+'\n')
+        outf.close()
+        return 'seqpose.txt'
+
+
+
+
+    def motif_info(self,sqposeTable,Zippath):
+        outdir = self.conf['userinfo']['outputdirectory']
+        p=MP.MotifParser()
+        p.ParserTable(sqposeTable)
+        s2 = p.motifs.values()
+        logoList = []
+        i = 0
+        while i<len(s2):
+            logo = [s2[i]['synonym'][0]]
+            for j in range(len(s2)-1,i,-1):
+                if p._Similarity(s2[i]['id'][0],s2[j]['id'][0])[0]>3:
+                    logo.append(s2[j]['synonym'][0])
+                    id = s2[j]['id'][0]
+                    del p.motifs[id]
+                    del s2[j]
+            s2[i]['synonym'] = logo
+            i = i+1
+        output = []
+        for i in s2:
+            logo = i['synonym']
+            logoList += logo
+            denovoNum = logo.count('denovo')
+            if denovoNum >=2:
+                log = list(set(logo))
+                logo[logo.index('denovo')] = 'denovo::%d'%denovoNum
+            cmd = 'unzip ' + Zippath + ' -d ' + outdir + ' \'results/%s\'' %str(i['logoImg'][0])
+            logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
+            logorr  = '\includegraphics[angle=0,width=0.28\\textwidth]{%s}'% logor
+            tempt = [' '.join(logo),str(i['zscore'][0]),str(i['hits'][0]),logorr]
+            os.system(cmd)
+            output.append(tempt)
         print output
-        return output
+
+        return output,logoList
+
+    def motif_check(self,logoList):
+        factor = 'RORB'
+        if factor in logoList:
+            judge = 'pass'
+        else:
+            judge = 'fail'
+        temp = ['Motif QC','dataste%s'%s,factro,'-15',judge]
+        self.summarycheck.append(temp)
+
 
     def run(self):
         """ Run some AnnotationQC function. """
@@ -711,10 +756,13 @@ class AnnotationQC(QC_Controller):
             self.render['conservation_check'] = True
             self.render['conservation_graph'] = self._conservation_info(conservationR)
         if os.path.exists(Zippath):
-            motifTable = self._motif_info(Zippath)
+            tempfile = self.get_seqpos(Zippath)
+            motifTable,logoList = self.motif_info(tempfile,Zippath)
             if len(motifTable)>0:
                 self.render['motif_check'] = True
                 self.render['motif_table'] = motifTable
+#                self.motif_check(logoList)
+
 
         self._render()
         print self.summarycheck
