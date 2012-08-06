@@ -191,6 +191,7 @@ class RawQC(QC_Controller):
                 pass
             else:
                 del rawdata[i]
+        print rawdata
         if len(rawdata)!=0:
             self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
             self.render['fastqc_check'] = True
@@ -316,6 +317,7 @@ class MappingQC(QC_Controller):
         """ Run some MappingQC function to get final result.
             input: mapping result and path of bam file.  
         """
+        print 'mapping qc'
         bowtiesummary = self.bowtiesummary
         historyData = resource_filename('chilin', 'db/all_data.txt')
         f = open(historyData)
@@ -328,7 +330,7 @@ class MappingQC(QC_Controller):
         else:
             self.render['Bowtie_check'] = True
             bamList = self.path['bowtieresult']['bam_treat']+self.path['bowtieresult']['bam_control']
- #           self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
             self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
             self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
@@ -397,8 +399,8 @@ class PeakcallingQC(QC_Controller):
         f.write('density <- fn(peaks_fc)\n')
         f.write("pdf('%s')\n" %pdfName)
         f.write("plot(ecdf(peaks_fc),verticals=TRUE,col.hor='blue', col.vert='black',main='Fold 10 peaks Distribution',xlab='lg(number of fold_enrichment>10 peaks)',ylab='Cumulative density function of all public data')\n")
-        f.write("points(%f,fn(%f),pch=21,pt.bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
-        f.write("legend('topleft',c('ratio of foldchange great than 10 : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
+        f.write("points(%f,fn(%f),pch=21,bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
+        f.write("legend('topleft',c('ratio of foldchange greater than 10 : %s'),pch=21,bg=c('#FFB5C5'))\n"%pointText)
         f.write('abline(v=3,col="red")\n')
         f.write("text(3.5,0,'cutoff=3')\n")
         f.write('dev.off()\n')
@@ -482,8 +484,6 @@ class PeakcallingQC(QC_Controller):
         f.write("dev.off()\n")
         f.close()
         call('Rscript %s' % rCode, shell = True)
-        print num_overlapped_peaks
-        print dhs_ratio
         self.checkr.append(['Overlap with DHSs  ','%s'%name,'%f'%dhs_ratio,0.8])
         return pdfName
         
@@ -526,7 +526,6 @@ class PeakcallingQC(QC_Controller):
         """ Run some PeakcallingQC function to get final result. 
             input: peaks bed and excel file.
         """
-        print 'PeakcallingQC'
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
         self.render['PeakcallingQC_check'] = True
         historyDataName = resource_filename('chilin', 'db/all_data.txt')
@@ -688,7 +687,6 @@ class AnnotationQC(QC_Controller):
             if i['zscore']<-15 and i['id'].find('observed')>0:
                 count += 1
                 output.append([('00000%d'%count)[-4:],'|'.join(i['factors']), str(i['zscore']), '|'.join(i['species']), '['+str(i['pssm'])+']',str(i['logoImg']),str(i['hits'])])
-        print i
         outf = open('seqpose.txt','w')
         outf.write('\t'.join(['id','synonym', 'zscore', 'species', 'pssm','logoImg','hits']) + '\n')
     
@@ -723,7 +721,7 @@ class AnnotationQC(QC_Controller):
             logoList += logo
             denovoNum = logo.count('denovo')
             if denovoNum >=2:
-                log = list(set(logo))
+                logo = list(set(logo))
                 logo[logo.index('denovo')] = 'denovo::%d'%denovoNum
             cmd = 'unzip ' + Zippath + ' -d ' + outdir + ' \'results/%s\'' %str(i['logoImg'][0])
             logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
