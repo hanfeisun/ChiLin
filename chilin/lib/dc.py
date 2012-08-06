@@ -53,39 +53,26 @@ class PipePreparation:
         """
         self.cf = SafeConfigParser() # reinitialized the parser for ChiLin, NameRule
         self.cf.read(confpath)
-
         uni = lambda s: s.strip().lower()
+        has_treat = lambda s: '(treat_rep)' in s
+        has_control = lambda s: '(control_rep)' in s
+        id_fmt = lambda s,o: self.cf.get(s, o, 0)
         for sec in self.cf.sections():
-            get = lambda an_opt: self.cf.get(sec, an_opt)
+            get = lambda an_opt: self.cf.get(sec, an_opt, 1)  # for NameConf, get raw value 
             if optconf == 'conf': # ChiLin.conf
                 self.ChiLinconfigs[uni(sec)] = dict((uni(opt),
                                                      get(opt)) for opt in self.cf.options(sec))
-            elif optconf == 'names': # NameRule.conf
+            elif optconf == 'names': # Use ConfigParser DEFAULT to parse NameRule.conf
+                self.cf.set('DEFAULT', 'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])  # change default
+                # substitute all %()s using SafeConfigParser
+                treat_fmt = lambda s, o: [self.cf.get(s, o, 0, {'treat_rep': str(i+1)}) for i  in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
+                control_fmt = lambda s, o: [self.cf.get(s, o, 0, {'control_rep': str(i+1)}) for i  in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
+                def fmt(str, s, o):
+                    if has_control(str): return control_fmt(s, o)
+                    elif has_treat(str): return treat_fmt(s, o)
+                    else:  return id_fmt(s,o)
                 self.Nameconfigs[uni(sec)] = dict((uni(opt),
-                                                   get(opt)) for opt in self.cf.options(sec))
-
-    def parseconfrep(self):
-        """
-        parse the NameRule replicates information
-        """
-        self._readconf('names', self.NameConfPath)
-        has_treat = lambda s: "{treat_rep}" in s
-        has_control = lambda s: "{control_rep}" in s
-        id = self.ChiLinconfigs['userinfo']['datasetid']
-
-        treat_fmt = lambda s: [s.format(DatasetID = id, treat_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
-        control_fmt = lambda s:[s.format(DatasetID = id, control_rep = i+1) for i in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
-        id_fmt = lambda s: s.format(DatasetID=id)
-
-        def fmt(str):
-            if has_control(str): return control_fmt(str)
-            elif has_treat(str): return treat_fmt(str)
-            else: return id_fmt(str)
-
-        for sec in self.Nameconfigs:
-            for opt in self.Nameconfigs[sec]:
-                self.Nameconfigs[sec][opt] = fmt(self.Nameconfigs[sec][opt])
-        print self.Nameconfigs
+                                                   fmt(get(opt), sec, opt)) for opt in self.cf.options(sec))
 
     def checkconf(self):
         """
@@ -110,7 +97,7 @@ class PipePreparation:
         else:
             self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
 
-        self.parseconfrep() # Read in and  Parse replicates for NameRule
+        self._readconf('names', self.NameConfPath)
 
         if not os.path.isdir(self.ChiLinconfigs['userinfo']['outputdirectory']):
             error('check output directory name')
@@ -301,17 +288,20 @@ class PipeBowtie(PipeController):
             has_fq = lambda f: f.endswith('.fastq')
             get_newfqpath = lambda f: os.path.split(f)[0]
             get_newfqname = lambda f: f.replace('sra', 'fastq')
-            for num in self.chilinconfigs['userinfo']['treatnumber']:
-                if has_sra(self.chilinconfigs['userinfo']['treatpath'][num]):
-                    self.cmd = '{0} {1} -O {2}'
-                    self.cmd = self.cmd.format(self.chilinconfigs['userinfo']['sra'],
-                                               self.chilinconfigs['userinfo']['treatpath'][num],
-                                               get_newfqpath(self.chilinconfigs['userinfo']['treatpath'][num])
-                                               )
-                    self.run()
-                    self.chilinconfigs['userinfo']['treatnumber'][num] = get_newfqname(self.chilinconfigs['userinfo']['treatpath'])
-                elif has_fq(self.chilinconfigs['userinfo']['treatnumber'][num]):
-                    pass
+            def srarep(typ):
+                for num in range(self.chilinconfigs['userinfo'][typ + 'number']):
+                    if has_sra(self.chilinconfigs['userinfo'][typ + 'path'][num]):
+                        self.cmd = '{0} {1} -O {2}'
+                        self.cmd = self.cmd.format(self.chilinconfigs['userinfo']['sra'],
+                                                   self.chilinconfigs['userinfo'][typ + 'path'][num],
+                                                   get_newfqpath(self.chilinconfigs['userinfo'][typ + 'path'][num])
+                                                   )
+                        self.run()
+                        self.chilinconfigs['userinfo'][typ + 'path'][num] = get_newfqname(self.chilinconfigs['userinfo'][typ + 'path'][num])
+                    elif has_fq(self.chilinconfigs['userinfo'][typ + 'path'][num]):
+                        pass
+            srarep('treat')
+            srarep('control')
 
             self.rendercontent['sams'] = []
             if self.has_run: # fastqc judge
