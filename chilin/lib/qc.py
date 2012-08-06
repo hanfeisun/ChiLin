@@ -39,15 +39,16 @@ class QC_Controller(object):
     
     def _check(self):
         """ Check whether the quality of the dataset is ok. """
-        for line in self.checkr:
-            value = round(float(line[2]),3)
-            cutoff = round(float(line[3]),3)
-            if value >= cutoff:
-                line.append('pass')
-                self.summarycheck.append(line)
-            else:
-                line.append('Fail')
-                self.summarycheck.append(line)
+        if len(self.checkr)!=0:
+            for line in self.checkr:
+                value = round(float(line[2]),3)
+                cutoff = round(float(line[3]),3)
+                if value >= cutoff:
+                    line.append('pass')
+                    self.summarycheck.append(line)
+                else:
+                    line.append('Fail')
+                    self.summarycheck.append(line)
 
     def QCpreparation(self,names):
         texname = names['qcresult']['qctex']
@@ -172,6 +173,8 @@ class RawQC(QC_Controller):
         inf.close()
         call('Rscript %s' % rCode, shell = True)
         return fastqc_summary, pdfName
+
+
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
@@ -308,26 +311,26 @@ class MappingQC(QC_Controller):
         else:
             return Fasle
         
-    def run(self):
+    def run(self,bedfile = ''):
         """ Run some MappingQC function to get final result.
             input: mapping result and path of bam file.  
         """
-        print 'MappingQC'
         bowtiesummary = self.bowtiesummary
-        print bowtiesummary
-        self.render['MappingQC_check'] = True
-        bamList = self.path['bowtieresult']['bam_treat']+self.path['bowtieresult']['bam_control']
-        print bamList
         historyData = resource_filename('chilin', 'db/all_data.txt')
         f = open(historyData)
         self.historyData = f.readlines()
         f.close()
+        self.render['MappingQC_check'] = True
+        if bedfile=='bedfile':
+            bamList = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
+            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+        else:
+            self.render['Bowtie_check'] = True
+            bamList = self.path['bowtieresult']['bam_treat']+self.path['bowtieresult']['bam_control']
+            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+            self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+            self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
-        self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
-        print 'stastic'
-        self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
-        print 'mappable'
-#        self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
         self._render()
         self._check()
 
@@ -371,7 +374,7 @@ class PeakcallingQC(QC_Controller):
         self.fold_10 = len(d10)+0.01
         fhd.close()
         peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%shiftsize]
-        self.checkr.append(['Totle peaks ','%s'%name,'%d'%self.totalpeaks,500])
+        self.checkr.append(['Totle peaks ','%s'%name,'%d'%self.totalpeaks,1000])
         print peaks_summary
         return peaks_summary
         
@@ -536,7 +539,6 @@ class PeakcallingQC(QC_Controller):
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
         if len(self.conf['userinfo']['treatpath']) >= 2:
-            print 'corre'
             vennGraph = os.path.abspath('macs2/'+self.path['represult']['ven_png'])
             correlationPlot = os.path.abspath('macs2/'+self.path['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
@@ -702,12 +704,18 @@ class AnnotationQC(QC_Controller):
         """ Run some AnnotationQC function. """
         peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
-        self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-        if os.path.exists(conservationFile):
+        if os.path.exists(ceasCode):
+            self.render['ceas_check'] = True
+            self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
+        if os.path.exists(conservationFile) and os.path.exists(conservationR):
             self.render['conservation_check'] = True
-            self.render['conservation_graph'] = conservationFile
- #       self.render['motif_table'] = self._motif_info(Zippath)
-        self._conservation_info(conservationR)
+            self.render['conservation_graph'] = self._conservation_info(conservationR)
+        if os.path.exists(Zippath):
+            motifTable = self._motif_info(Zippath)
+            if len(motifTable)>0:
+                self.render['motif_check'] = True
+                self.render['motif_table'] = motifTable
+
         self._render()
         print self.summarycheck
 

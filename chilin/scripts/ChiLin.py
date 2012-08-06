@@ -48,20 +48,20 @@ def main():
     rawqc = RawQC(conf,names,texfile,summarycheck,log)
     rawqc.run()
 
-    PipeBowtie(conf, names, log, datasummary, s).process()
+#    PipeBowtie(conf, names, log, datasummary, s).process()
     mappingqc = MappingQC(conf,names,texfile,rawqc.summarycheck,log)
     mappingqc.run()
 
-    macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize)
-    macs2.process()
+#    macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize)
+ #   macs2.process()
 
-    PipeVennCor(conf, names, log, datasummary, s, macs2.rendercontent, p, m).process()
+#    PipeVennCor(conf, names, log, datasummary, s, macs2.rendercontent, p, m).process()
     peakcallingqc = PeakcallingQC(conf,names,texfile,mappingqc.summarycheck,log)
     peakcallingqc.run()
 
-    PipeCEAS(conf, names, log, s, p).process()
-    PipeConserv(conf, names, options.atype, log, s).process()
-    PipeMotif(conf, names, log, s).process()
+#    PipeCEAS(conf, names, log, s, p).process()
+#    PipeConserv(conf, names, options.atype, log, s).process()
+#    PipeMotif(conf, names, log, s).process()
     print 'ceas'
     annotationqc = AnnotationQC(conf,names,texfile,peakcallingqc.summarycheck,log)
     annotationqc.run()
