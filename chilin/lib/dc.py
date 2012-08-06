@@ -2,7 +2,6 @@ import os
 import re
 import logging
 import sys
-
 from subprocess import call
 from ConfigParser import SafeConfigParser
 from glob import glob
@@ -109,10 +108,10 @@ class PipePreparation:
             sys.exit(1)
         if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['treatpath']):
             error('check your input treat file, some error')
-            sys.exit(1)
+ #           sys.exit(1)
         if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['controlpath']):
             error('check your input control file, some error')
-            sys.exit(1)
+ #           sys.exit(1)
         if not exists(self.ChiLinconfigs['qc']['fastqc_main']):
             error('fastqc not exists')
             sys.exit(1)
@@ -484,7 +483,7 @@ class PipeMACS2(PipeController):
                                  self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
                                  self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
 
-            # merge treat bam files for peaks calling
+            # merge treat bed files for peaks calling
             if self.has_run:
                 if self.chilinconfigs['userinfo']['treatnumber'] > 1:
                     self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
@@ -514,79 +513,87 @@ class PipeMACS2(PipeController):
                     self.run()
                 self.extract()
 
-        # bam files peak calling
-        # control option, use control merge bam file for control
-        if self.chilinconfigs['userinfo']['controlnumber'] > 1:
-            self.cmd = '{0} merge -f {1}  {2}'
-            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-                                       self.nameconfigs['bowtieresult']['bamcontrolmerge'],
-                                       '  '.join(self.nameconfigs['bowtieresult']['bam_control'])
-                                       )
-            self.run()
-
-        # set control option, merge bam control for universal control
-        if self.chilinconfigs['userinfo']['controlnumber'] == 1:
-            control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control'][0]
-        elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
-            control_option = ' -c ' + self.nameconfigs['bowtieresult']['bamcontrolmerge']
+        # for bam files, merge 
         else:
-            control_option = ' '
+            if self.chilinconfigs['userinfo']['treatnumber'] > 1:
+                self.cmd = '{0} merge -f {1}  {2}'
+                self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                           self.nameconfigs['bowtieresult']['bamtreatmerge'],
+                                           '  '.join(self.nameconfigs['bowtieresult']['bam_treat'])
+                                           )
+                self.run()
 
-        # each bam file peak calling
-        for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
-            self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                  '-t {3} {4} -n {5}'
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
-                                       genome_option,
-                                       self.shiftsize,
-                                       self.nameconfigs['bowtieresult']['bam_treat'][treat_rep],
-                                       control_option,
-                                       self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep])
-            # convert macs default name to NameRule
-            self.run()
-            self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
-                   + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
-            self.run()
-            self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
-                   + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
-            self.run()
-            if self.has_run:
-                self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep], \
-                             self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
-                             self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
-                self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], \
-                             self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
-                             self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
+            if self.chilinconfigs['userinfo']['controlnumber'] > 1:
+                self.cmd = '{0} merge -f {1}  {2}'
+                self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+                                           self.nameconfigs['bowtieresult']['bamcontrolmerge'],
+                                           '  '.join(self.nameconfigs['bowtieresult']['bam_control'])
+                                           )
+                self.run()
 
-        # merge treat bam files for peaks calling
-        if self.has_run:
-            if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
-                self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                       '-t {3} {4} -n {5}'
+            # set control option, merge bam control for universal control
+            if self.chilinconfigs['userinfo']['controlnumber'] == 1:
+                control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control'][0]
+            elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
+                control_option = ' -c ' + self.nameconfigs['bowtieresult']['bamcontrolmerge']
+            else:
+                control_option = ' '
+
+            # each bam file peak calling
+            for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
+                self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
+                      '-t {3} {4} -n {5}'
                 self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
                                            genome_option,
                                            self.shiftsize,
-                                           self.nameconfigs['bowtieresult']['bamtreatmerge'],
+                                           self.nameconfigs['bowtieresult']['bam_treat'][treat_rep],
                                            control_option,
-                                           self.nameconfigs['macstmp']['macs_init_mergename'])
-                self.run()
+                                           self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep])
                 # convert macs default name to NameRule
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
                 self.run()
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.nameconfigs['macstmp']['control_bdg'])
+                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
+                       + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
+                self.run()
+                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
+                       + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
                 self.run()
                 if self.has_run:
-                    self._format(self.nameconfigs['macstmp']['treat_bdg'], 
-                                 self.nameconfigs['macstmp']['treat_bdgtmp'], 
-                                 self.nameconfigs['macsresult']['treat_bw'])
-                    self._format(self.nameconfigs['macstmp']['control_bdg'], 
-                                 self.nameconfigs['macstmp']['control_tmp_bdg'], 
-                                 self.nameconfigs['macsresult']['control_bw'])
-            elif len(self.nameconfigs['bowtieresult']['bam_treat']) == 1:
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macsresult']['peaksrep_xls'][0],
-                                         self.nameconfigs['macsresult']['peaks_xls'])
-                self.run()
-            self.extract()
+                    self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep], \
+                                 self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
+                                 self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
+                    self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], \
+                                 self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
+                                 self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
+
+            # merge treat bam files for peaks calling
+            if self.has_run:
+                if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
+                    self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
+                           '-t {3} {4} -n {5}'
+                    self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
+                                               genome_option,
+                                               self.shiftsize,
+                                               self.nameconfigs['bowtieresult']['bamtreatmerge'],
+                                               control_option,
+                                               self.nameconfigs['macstmp']['macs_init_mergename'])
+                    self.run()
+                    # convert macs default name to NameRule
+                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
+                    self.run()
+                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.nameconfigs['macstmp']['control_bdg'])
+                    self.run()
+                    if self.has_run:
+                        self._format(self.nameconfigs['macstmp']['treat_bdg'], 
+                                     self.nameconfigs['macstmp']['treat_bdgtmp'], 
+                                     self.nameconfigs['macsresult']['treat_bw'])
+                        self._format(self.nameconfigs['macstmp']['control_bdg'], 
+                                     self.nameconfigs['macstmp']['control_tmp_bdg'], 
+                                     self.nameconfigs['macsresult']['control_bw'])
+                elif len(self.nameconfigs['bowtieresult']['bam_treat']) == 1:
+                    self.cmd = 'mv %s %s' % (self.nameconfigs['macsresult']['peaksrep_xls'][0],
+                                             self.nameconfigs['macsresult']['peaks_xls'])
+                    self.run()
+                self.extract()
 
 class PipeVennCor(PipeController):
     def __init__(self, chilinconfigs, nameconfigs, log,\
