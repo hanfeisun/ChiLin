@@ -35,7 +35,7 @@ def main():
     options, args = parse_options()
     ChiLinConf = args[0]
     Preparation = PipePreparation(ChiLinConf)
-    Preparation.checkconf()
+    bedft = Preparation.checkconf()
     conf = Preparation.ChiLinconfigs
     names = Preparation.Nameconfigs
     log = Preparation.log
@@ -48,11 +48,11 @@ def main():
     rawqc = RawQC(conf,names,texfile,summarycheck,log)
     rawqc.run()
 
-    PipeBowtie(conf, names, log, datasummary, s).process()
+    PipeBowtie(conf, names, log, datasummary, s, bedft).process() # for sra
     mappingqc = MappingQC(conf,names,texfile,rawqc.summarycheck,log)
     mappingqc.run()
 
-    macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize)
+    macs2 = PipeMACS2(conf, names, log, datasummary, s, options.shiftsize, bedft)
     macs2.process()
 
     PipeVennCor(conf, names, log, datasummary, s, macs2.rendercontent, p, m).process()
