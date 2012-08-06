@@ -9,7 +9,7 @@ Controllers of QC
 .. automodule:: chilin.qc
 
 .. autoclass:: chilin.qc.QC_Controller
-    :members: run, _check, _render
+    :members: run, _check, QCpreparation, _render
 
 
 .. autoclass:: chilin.qc.RawQC
