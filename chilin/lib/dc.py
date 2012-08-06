@@ -157,7 +157,7 @@ class PipePreparation:
         # support for bed format
         is_bed = lambda x: 'bed' in x.lower()
         bedc = lambda files: map(is_bed, [' '.join(f) for f in files])
-        files = [self.chilinconfigs['userinfo']['treatpath'], self.chilinconfigs['userinfo']['controlpath']]
+        files = [self.ChiLinconfigs['userinfo']['treatpath'], self.ChiLinconfigs['userinfo']['controlpath']]
         if False not in bedc(files):
             return 'bedfiles'
 
