@@ -8,6 +8,7 @@ We use ChiLin for the name of our project as it has similar alphabet combination
 
 Instruction
 =================
+
 Usage: ChiLin.py <ChiLin.conf Path> [optional]-m cormethod -p peaksnumber
 
 ChiLin : A clear ChIP-seq pipeline
@@ -24,19 +25,23 @@ Options:
 
 quick-install three steps
 =================
-one R
+
+R
 -------------------
+
 install R, recommended the newest version
 in R session
 > install.packages('gplots')
 > install.packages('Rcolorbrew')
 
 
-two python
+Python
 ----------------------
+
 in the terminal, change directory to the folder 
 python setup.py install # need root
 
-three external program
+External program
 -----------------------
+
 we created a package containing all the sources
