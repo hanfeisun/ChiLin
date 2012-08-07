@@ -52,26 +52,33 @@ class PipePreparation:
         """
         self.cf = SafeConfigParser() # reinitialized the parser for ChiLin, NameRule
         self.cf.read(confpath)
-        uni = lambda s: s.strip().lower()
-        has_treat = lambda s: '(treat_rep)' in s
-        has_control = lambda s: '(control_rep)' in s
-        id_fmt = lambda s,o: self.cf.get(s, o, 0)
+        self.cf.set('DEFAULT',
+                    'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])
+
+        uni = lambda str: str.strip().lower()
         for sec in self.cf.sections():
-            get = lambda an_opt: self.cf.get(sec, an_opt, 1)  # for NameConf, get raw value 
-            if optconf == 'conf': # ChiLin.conf
+            get_raw = lambda opt: self.cf.get(sec, opt, 1)
+            get_expand = lambda opt: self.cf.get(sec, opt, 0)
+            
+            if optconf == 'conf': 
                 self.ChiLinconfigs[uni(sec)] = dict((uni(opt),
-                                                     get(opt)) for opt in self.cf.options(sec))
-            elif optconf == 'names': # Use ConfigParser DEFAULT to parse NameRule.conf
-                self.cf.set('DEFAULT', 'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])  # change default
-                # substitute all %()s using SafeConfigParser
-                treat_fmt = lambda s, o: [self.cf.get(s, o, 0, {'treat_rep': str(i+1)}) for i  in range(self.ChiLinconfigs['userinfo']['treatnumber'])]
-                control_fmt = lambda s, o: [self.cf.get(s, o, 0, {'control_rep': str(i+1)}) for i  in range(self.ChiLinconfigs['userinfo']['controlnumber'])]
-                def fmt(str, s, o):
-                    if has_control(str): return control_fmt(s, o)
-                    elif has_treat(str): return treat_fmt(s, o)
-                    else:  return id_fmt(s,o)
+                                                     get_raw(opt)) for opt in self.cf.options(sec))
+                
+            elif optconf == 'names':
+                def fmt(opt):
+                    get_rep_expand = lambda raw_str, rep_cnt: map(lambda x:self.cf.get(sec, opt, 0, {raw_str: str(x+1)}),
+                                                                  range(rep_cnt))
+                    if '(treat_rep)' in get_raw(opt):
+                        return get_rep_expand("treat_rep",
+                                              self.ChiLinconfigs['userinfo']['treatnumber'])
+                    elif '(control_rep)' in get_raw(opt):
+                        return get_rep_expand("control_rep",
+                                              self.ChiLinconfigs['userinfo']['controlnumber'])
+                    else:
+                        return get_expand(opt)
+                    
                 self.Nameconfigs[uni(sec)] = dict((uni(opt),
-                                                   fmt(get(opt), sec, opt)) for opt in self.cf.options(sec))
+                                                   fmt(opt)) for opt in self.cf.options(sec))
 
     def checkconf(self):
         """
