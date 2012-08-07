@@ -37,7 +37,6 @@ class PipePreparation:
         Parse the Name Rule and 
         Customer filled Chilinconf
         """
-        self.cf = SafeConfigParser()
         self.ChiLinconfPath = ChiLinconfPath
         self.NameConfPath = NameConfPath
         self.Nameconfigs = {}
@@ -45,114 +44,134 @@ class PipePreparation:
         self.log = ''
         self.DataSummary = ' '
 
-    def _readconf(self, optconf, confpath):
-        """
-        Read in the conf of NameRule.Conf replace ${DatasetID} 
-        and ChiLin.conf without replace
-        """
-        self.cf = SafeConfigParser() # reinitialized the parser for ChiLin, NameRule
-        self.cf.read(confpath)
-        self.cf.set('DEFAULT',
-                    'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])
+        self._read_conf(self.ChiLinconfPath)
 
+        
+        parseinput = lambda x: x.split(',')
+        self.ChiLinconfigs['userinfo']['treatpath'] = parseinput(self.ChiLinconfigs['userinfo']['treatpath'])
+        self.ChiLinconfigs['userinfo']['controlpath'] = parseinput(self.ChiLinconfigs['userinfo']['controlpath'])
+        self.ChiLinconfigs['userinfo']['treatnumber'] = len(self.ChiLinconfigs['userinfo']['treatpath'])
+        self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
+        os.chdir(self.ChiLinconfigs['userinfo']['outputdirectory'])
+
+        self._read_rule(self.NameConfPath)
+        self.log = LogWriter(self.Nameconfigs['root']['log']).record
+
+        
+        
+    def _read_rule(self, rule_path):
+        """
+        Read in the conf of NameRule.Conf with replacement of %(DatasetID), %(treat_rep) and %(control_rep)
+        """
+
+        cf = SafeConfigParser()
+        cf.read(rule_path)
+        cf.set('DEFAULT',
+               'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])
         uni = lambda str: str.strip().lower()
-        for sec in self.cf.sections():
-            get_raw = lambda opt: self.cf.get(sec, opt, 1)
-            get_expand = lambda opt: self.cf.get(sec, opt, 0)
-            
-            if optconf == 'conf': 
-                self.ChiLinconfigs[uni(sec)] = dict((uni(opt),
-                                                     get_raw(opt)) for opt in self.cf.options(sec))
-                
-            elif optconf == 'names':
-                def fmt(opt):
-                    get_rep_expand = lambda raw_str, rep_cnt: map(lambda x:self.cf.get(sec, opt, 0, {raw_str: str(x+1)}),
-                                                                  range(rep_cnt))
-                    if '(treat_rep)' in get_raw(opt):
-                        return get_rep_expand("treat_rep",
-                                              self.ChiLinconfigs['userinfo']['treatnumber'])
-                    elif '(control_rep)' in get_raw(opt):
-                        return get_rep_expand("control_rep",
-                                              self.ChiLinconfigs['userinfo']['controlnumber'])
-                    else:
-                        return get_expand(opt)
+        
+        for sec in cf.sections():
+            get_raw = lambda opt: cf.get(sec, opt, 1)
+            get_expand = lambda opt: cf.get(sec, opt, 0)
+            def get_fmt(opt):
+                get_rep_expand = lambda raw_str, rep_cnt: map(lambda x:cf.get(sec, opt, 0, {raw_str: str(x+1)}),
+                                                              range(rep_cnt))
+                print sec
+                print opt
+                if '(treat_rep)' in get_raw(opt):
+                    return get_rep_expand("treat_rep",
+                                          self.ChiLinconfigs['userinfo']['treatnumber'])
+                elif '(control_rep)' in get_raw(opt):
+                    return get_rep_expand("control_rep",
+                                          self.ChiLinconfigs['userinfo']['controlnumber'])
+                else:
+                    return get_expand(opt)
                     
-                self.Nameconfigs[uni(sec)] = dict((uni(opt),
-                                                   fmt(opt)) for opt in self.cf.options(sec))
+            self.Nameconfigs[uni(sec)] = dict((uni(opt), get_fmt(opt)) for opt in cf.options(sec))
+        
+    def _read_conf(self, conf_path):
+        """
+        Read in ChiLin.conf without replacement
+        """
+        cf = SafeConfigParser() 
+        cf.read(conf_path)
+        uni = lambda str: str.strip().lower()
+        for sec in cf.sections():
+            get_raw = lambda opt: cf.get(sec, opt, 1)
+            self.ChiLinconfigs[uni(sec)] = dict((uni(opt), get_raw(opt)) for opt in cf.options(sec))
+
 
     def checkconf(self):
         """
         Check the Meta configuration
         if up to our definition
         """
-        self._readconf('conf', self.ChiLinconfPath)
 
-        parseinput = lambda x: x.split(',')
         # Convert treat, control in to list
-        self.ChiLinconfigs['userinfo']['treatpath'] = parseinput(self.ChiLinconfigs['userinfo']['treatpath'])
-        self.ChiLinconfigs['userinfo']['controlpath'] = parseinput(self.ChiLinconfigs['userinfo']['controlpath'])
         # get replicates number
         head = lambda a_list: a_list[0] != ""
-        if not head(self.ChiLinconfigs['userinfo']['treatpath']):
-            error('forget to fill the treat file path')
-            sys.exit(1)
-        else:
-            self.ChiLinconfigs['userinfo']['treatnumber'] = len(self.ChiLinconfigs['userinfo']['treatpath'])
-        if not head(self.ChiLinconfigs['userinfo']['controlpath']):
-            warn('No control file path')
-        else:
-            self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
 
-        self._readconf('names', self.NameConfPath)
+        def fatal(prediction, error_info,
+                  side_effect=lambda : True):
+            def check():
+                if prediction:
+                    error(error_info)
+                    sys.exit(1)
+                else:
+                    side_effect()
+            return check
+        def danger(prediction, warn_info):
+            def check():
+                if prediction:
+                    warn(warn_info)
+            return check
+        
+        check_list = lambda check_funcs: (f() for f in check_funcs)
+        
+        c = []
+        c.append(fatal(not head(self.ChiLinconfigs['userinfo']['treatpath']),
+                       'forget to fill the treat file path'))
+        c.append(danger(not head(self.ChiLinconfigs['userinfo']['controlpath']),
+                        'No control file path'))
+        c.append(fatal(not os.path.isdir(self.ChiLinconfigs['userinfo']['outputdirectory']),
+                       'check output directory name'))
+        c.append(fatal(self.ChiLinconfigs['userinfo']['species'] not in ['hg19', 'mm9'],
+                       'forget to fill the species or species input not supported'))
+        c.append(fatal(False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['treatpath']),
+                       'check your input treat file, some error'))
+        c.append(fatal(False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['controlpath']),
+                       'check your input control file, some error'))
+        c.append(fatal(not exists(self.ChiLinconfigs['qc']['fastqc_main']),
+                       'fastqc not exists'))
+        c.append(fatal(not exists(self.ChiLinconfigs['bowtie']['bowtie_main']),
+                       "bowtie program dependency has problem"))
+        c.append(fatal(not exists(self.ChiLinconfigs['samtools']['samtools_main']),
+                       "samtools dependency has problem"))
+        c.append(fatal(not exists(self.ChiLinconfigs['macs']['macs_main']),
+                       "macs2 program dependency has probelm"))
+        c.append(fatal(not exists(self.ChiLinconfigs['bedtools']['intersectbed_main']),
+                       "bedtools program dependency has problem"))
+        c.append(fatal(not exists(self.ChiLinconfigs['conservation']['conserv_plot_main']),
+                       "conservation_plot dependency has problem"))
+        c.append(fatal(not exists(self.ChiLinconfigs['correlation']['wig_correlation_main']),
+                       "correlation plot dependency has problem"))
+        c.append(fatal(not exists(self.ChiLinconfigs['venn']['venn_diagram_main']),
+                       "venn plot dependency has problem"),)
 
-        if not os.path.isdir(self.ChiLinconfigs['userinfo']['outputdirectory']):
-            error('check output directory name')
-            sys.exit(1)
-        else:
-            os.chdir(self.ChiLinconfigs['userinfo']['outputdirectory'])
-        if self.ChiLinconfigs['userinfo']['species'] not in ['hg19', 'mm9']:
-            error('forget to fill the species or species input not supported')
-            sys.exit(1)
-        if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['treatpath']):
-            error('check your input treat file, some error')
- #           sys.exit(1)
-        if False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['controlpath']):
-            error('check your input control file, some error')
- #           sys.exit(1)
-        if not exists(self.ChiLinconfigs['qc']['fastqc_main']):
-            error('fastqc not exists')
-            sys.exit(1)
-        if not exists(self.ChiLinconfigs['bowtie']['bowtie_main']):
-            error("bowtie program dependency has problem")
-            sys.exit(1)
-        if not exists(self.ChiLinconfigs['samtools']['samtools_main']):
-            error("samtools dependency has problem")
-            sys.exit(1)
-        if not exists(self.ChiLinconfigs['macs']['macs_main']):
-            error("macs2 program dependency has probelm")
-            sys.exit(1)
-        if not exists(self.ChiLinconfigs['bedtools']['intersectbed_main']):
-            error("bedtools program dependency has problem")
-            sys.exit(1)
-        if not exists(self.ChiLinconfigs['conservation']['conserv_plot_main']):
-            error("conservation_plot dependency has problem")
-        if not exists(self.ChiLinconfigs['correlation']['wig_correlation_main']):
-            error("correlation plot dependency has problem")
-        if not exists(self.ChiLinconfigs['venn']['venn_diagram_main']):
-            error("venn plot dependency has problem")
-            sys.exit(1)
+        check_list(c)
+        self.log('ChiLin config parse success, and dependency check has passed!')        
 
-        self.log = LogWriter(self.Nameconfigs['root']['log']).record
-        self.log('ChiLin config parse success, and dependency check has passed!')
         # open summary file for later rendering
+        # to improve
         self.DataSummary = open(self.Nameconfigs['root']['data_summary'], 'w')
 
-        # support for bed format
-        is_bed = lambda x: 'bed' in x.lower()
-        bedc = lambda files: map(is_bed, [' '.join(f) for f in files])
-        files = [self.ChiLinconfigs['userinfo']['treatpath'], self.ChiLinconfigs['userinfo']['controlpath']]
-        if False not in bedc(files):
-            return 'bedfiles'
+        ## support for bed format
+        ## to improve
+        # is_bed = lambda x: 'bed' in x.lower()
+        # bedc = lambda files: map(is_bed, [' '.join(f) for f in files])
+        # files = [self.ChiLinconfigs['userinfo']['treatpath'], self.ChiLinconfigs['userinfo']['controlpath']]
+        # if False not in bedc(files):
+        #     return 'bedfiles'
 
 class PipeController(object):
     def __init__(self):
