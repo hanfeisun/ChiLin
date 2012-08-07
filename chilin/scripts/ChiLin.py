@@ -1,11 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 Main program of DC pipeline
 """
+import sys
+import os
+from pkg_resources import resource_filename
+from optparse import OptionParser
 from chilin.dc import *
 from chilin.qc import *
-from optparse import OptionParser
-import sys
 
 def parse_options():
     usage = "usage: %prog <ChiLin.conf Path> [optional]"
@@ -21,7 +23,14 @@ def parse_options():
                       help = "specify the fixed shiftsize for MACS2, advice Dnase: 50, Histone and TF:73")
     parser.add_option("-c", dest = "stepcontrol", type = "int", default = 6,
                       help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
+    parser.add_option("-e", action="store_true", dest="example_conf", default=False,
+                      help = "Show an example of configuration file")
     (options, args) = parser.parse_args()
+
+    if options.example_conf:
+        with open(resource_filename("chilin", os.path.join("db", "ChiLin_human.conf"))) as f:
+            print f.read()
+        sys.exit(1)
     if not args or not options.atype or options.atype not in ['TF', 'Dnase', 'Histone']:
         parser.print_help()
         sys.exit(1)
