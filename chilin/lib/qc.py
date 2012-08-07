@@ -1,12 +1,13 @@
 import os
+import zipfile
 import math
 import re
-import zipfile
-from chilin.motifparser import MotifParser
-import subprocess
+
+
+from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
-from chilin.dc import LogWriter
+from chilin.motifparser import MotifParser
 
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
