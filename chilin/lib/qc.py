@@ -1,13 +1,12 @@
-import chilin
-from chilin.dc import *
 import os
 import math
 import re
 import zipfile
-import MotifParser as MP
+from chilin.motifparser import MotifParser
 import subprocess
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
+from chilin.dc import LogWriter
 
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
@@ -634,7 +633,7 @@ class AnnotationQC(QC_Controller):
         value = [float(i) for i in value]
         sumvalue = sum(value)
         value = [i/sumvalue for i in value]
-        histotyDataName = os.path.split(chilin.__file__)[0] + '/' + 'db/TFcenters.txt'
+        histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
         fph = open(histotyDataName)
         historyData = fph.readlines()
         scoreList = []
@@ -700,7 +699,7 @@ class AnnotationQC(QC_Controller):
 
     def motif_info(self,sqposeTable,Zippath):
         outdir = self.conf['userinfo']['outputdirectory']
-        p=MP.MotifParser()
+        p = MotifParser()
         p.ParserTable(sqposeTable)
         s2 = p.motifs.values()
         logoList = []

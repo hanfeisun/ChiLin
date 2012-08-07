@@ -460,7 +460,7 @@ class PipeMACS2(PipeController):
             # each bed file peak calling
             for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
                 self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                      '-t {3} {4} -n {5}'
+                    '-t {3} {4} -n {5}'
                 self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
                                            genome_option,
                                            self.shiftsize,
@@ -470,16 +470,16 @@ class PipeMACS2(PipeController):
                 # convert macs default name to NameRule
                 self.run()
                 self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
-                       + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
+                                             + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
                 self.run()
                 self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
                        + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
                 self.run()
                 if self.has_run:
-                    self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep], \
+                    self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep],
                                  self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
                                  self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
-                    self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], \
+                    self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], 
                                  self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
                                  self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
 
@@ -735,8 +735,8 @@ class PipeVennCor(PipeController):
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
                                        ' '.join(self.nameconfigs['macsresult']['treatrep_peaks']),
-                                       ' '.join(map(lambda x: "-l replicate_" + str(x), \
-                                                        xrange(1, self.chilinconfigs['userinfo']['treatnumber'] + 1)))
+                                       ' '.join(map(lambda x: "-l replicate_" + str(x), 
+                                                    xrange(1, self.chilinconfigs['userinfo']['treatnumber'] + 1)))
                                        )
             self.run()
             if not self.has_run:

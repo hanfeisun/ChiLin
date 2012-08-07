@@ -17,7 +17,7 @@ def main():
     setup(name="chilin",
           version="1.0.0",
           description="QC report pipline",
-          author='Shenglin Mei, Qian Qin',
+          author='Shenglin Mei, Qian Qin, Hanfei Sun',
           author_email='samleomei@gmail.com',
           packages = ["chilin"],
           package_dir={'chilin' : 'chilin/lib'},
