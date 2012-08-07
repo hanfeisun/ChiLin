@@ -2,7 +2,6 @@
 from xml.etree.ElementTree import *
 import xml.dom.minidom as minidom
 import os, sys
-import mdseqpos.bayesian_motif_comp as bayesian_motif_comp
 #import mdseqpos.motif as motif
 
 SEP = "|"
@@ -680,22 +679,6 @@ class MotifParser:
         p = motif.Motif()
         p = p.from_dict(self.motifs[motifid])
         return p
-    
-    def _Similarity(self, motifid1, motifid2, metric='Bayesian'):
-        """_Similarity(self, motifid1, motifid2, metric='Bayesian')
-        Return a score for the similarity between two motifs.
-        offset -- number of basepairs to shift the first motif
-        antisense -- whether to take the reverse complement of the first motif
-        """
-        if len(self.motifs[motifid1]['pssm']) == 1 and len(self.motifs[motifid2]['pssm']) == 1:
-            m1 = self._ConvertToOldMotif(motifid1)
-            m2 = self._ConvertToOldMotif(motifid2)
-            similarity_score, offset, antisense = bayesian_motif_comp.BLiC_score(m1.pssm, m2.pssm)
-            antisense = bool(antisense)
-            return similarity_score, offset, antisense
-        else:
-            Info('ERROR: It has no matrix or more than 1 matrix: %s, %s'%(motifid1, motifid2))
-
     def _ParserTable(self, tfile):
         """Parser from a "\t" splitted table txt file. 
         The first col should be col name and in lowercase letter.
