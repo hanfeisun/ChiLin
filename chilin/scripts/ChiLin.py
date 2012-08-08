@@ -81,11 +81,11 @@ def main():
 
             mappingqc = MappingQC(conf = conf, rule = rule, log = log_func,
                                   texfile = f_tex, summarycheck = rawqc.summarycheck)
-            mappingqc.run(bedft)
+            mappingqc.run()
             
             macs2 = PipeMACS2(conf = conf, rule = rule, log = log_func,
                               datasummary = f_sum, stepcontrol = opt.step_end,
-                              shiftsize = opt.shiftsize, bedft = bedft)
+                              shiftsize = opt.shiftsize)
             macs2.run()
             
             pipevenncor = PipeVennCor(conf = conf, rule = rule, log = log_func,

@@ -306,7 +306,7 @@ class MappingQC(QC_Controller):
         else:
             return Fasle
         
-    def run(self,bedfile = ''):
+    def run(self):
         """ Run some MappingQC function to get final result.
             input: mapping result and path of bam file.  
         """
@@ -317,15 +317,11 @@ class MappingQC(QC_Controller):
         self.historyData = f.readlines()
         f.close()
         self.render['MappingQC_check'] = True
-        if bedfile=='bedfiles':
-            bamList = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
-            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
-        else:
-            self.render['Bowtie_check'] = True
-            bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
-            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
-            self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
-            self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
+        self.render['Bowtie_check'] = True
+        bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
+        self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+        self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+        self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
         self._render()
         self._check()
