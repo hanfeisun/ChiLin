@@ -39,25 +39,40 @@ class PipePreparation:
         """
         self.ChiLinconfPath = ChiLinconfPath
         self.NameConfPath = NameConfPath
-        self.Nameconfigs = {}
-        self.ChiLinconfigs = {}
+        self._rule = {}
+        self._conf = {}
         self.log = ''
         self.DataSummary = ' '
-
+        self.checked = False
         self._read_conf(self.ChiLinconfPath)
-
-        
         parseinput = lambda x: x.split(',')
-        self.ChiLinconfigs['userinfo']['treatpath'] = parseinput(self.ChiLinconfigs['userinfo']['treatpath'])
-        self.ChiLinconfigs['userinfo']['controlpath'] = parseinput(self.ChiLinconfigs['userinfo']['controlpath'])
-        self.ChiLinconfigs['userinfo']['treatnumber'] = len(self.ChiLinconfigs['userinfo']['treatpath'])
-        self.ChiLinconfigs['userinfo']['controlnumber'] = len(self.ChiLinconfigs['userinfo']['controlpath'])
-        os.chdir(self.ChiLinconfigs['userinfo']['outputdirectory'])
+        self._conf['userinfo']['treatpath'] = parseinput(self._conf['userinfo']['treatpath'])
+        self._conf['userinfo']['controlpath'] = parseinput(self._conf['userinfo']['controlpath'])
+        self._conf['userinfo']['treatnumber'] = len(self._conf['userinfo']['treatpath'])
+        self._conf['userinfo']['controlnumber'] = len(self._conf['userinfo']['controlpath'])
+        os.chdir(self._conf['userinfo']['outputdirectory'])
 
         self._read_rule(self.NameConfPath)
-        self.log = LogWriter(self.Nameconfigs['root']['log']).record
+        self.log = LogWriter(self._rule['root']['log']).record
 
+    def get_config(self):
+        if self.checked == False:
+            self.check_conf()
+        return self._conf
         
+    def get_rule(self):
+        if self.checked == False:
+            self.check_conf()
+        return self._rule
+        
+    def get_tex(self):
+        return self._rule["qcresult"]["qctex"]
+    
+    def get_summary(self):
+        return self._rule['root']['data_summary']
+        
+    def func_log(self):
+        return self.log
         
     def _read_rule(self, rule_path):
         """
@@ -67,7 +82,7 @@ class PipePreparation:
         cf = SafeConfigParser()
         cf.read(rule_path)
         cf.set('DEFAULT',
-               'DatasetID', self.ChiLinconfigs['userinfo']['datasetid'])
+               'DatasetID', self._conf['userinfo']['datasetid'])
         uni = lambda str: str.strip().lower()
         
         for sec in cf.sections():
@@ -80,14 +95,14 @@ class PipePreparation:
                 print opt
                 if '(treat_rep)' in get_raw(opt):
                     return get_rep_expand("treat_rep",
-                                          self.ChiLinconfigs['userinfo']['treatnumber'])
+                                          self._conf['userinfo']['treatnumber'])
                 elif '(control_rep)' in get_raw(opt):
                     return get_rep_expand("control_rep",
-                                          self.ChiLinconfigs['userinfo']['controlnumber'])
+                                          self._conf['userinfo']['controlnumber'])
                 else:
                     return get_expand(opt)
                     
-            self.Nameconfigs[uni(sec)] = dict((uni(opt), get_fmt(opt)) for opt in cf.options(sec))
+            self._rule[uni(sec)] = dict((uni(opt), get_fmt(opt)) for opt in cf.options(sec))
         
     def _read_conf(self, conf_path):
         """
@@ -98,10 +113,10 @@ class PipePreparation:
         uni = lambda str: str.strip().lower()
         for sec in cf.sections():
             get_raw = lambda opt: cf.get(sec, opt, 1)
-            self.ChiLinconfigs[uni(sec)] = dict((uni(opt), get_raw(opt)) for opt in cf.options(sec))
+            self._conf[uni(sec)] = dict((uni(opt), get_raw(opt)) for opt in cf.options(sec))
 
 
-    def checkconf(self):
+    def check_conf(self):
         """
         Check the Meta configuration
         if up to our definition
@@ -129,49 +144,39 @@ class PipePreparation:
         check_list = lambda check_funcs: (f() for f in check_funcs)
         
         c = []
-        c.append(fatal(not head(self.ChiLinconfigs['userinfo']['treatpath']),
+        c.append(fatal(not head(self._conf['userinfo']['treatpath']),
                        'forget to fill the treat file path'))
-        c.append(danger(not head(self.ChiLinconfigs['userinfo']['controlpath']),
+        c.append(danger(not head(self._conf['userinfo']['controlpath']),
                         'No control file path'))
-        c.append(fatal(not os.path.isdir(self.ChiLinconfigs['userinfo']['outputdirectory']),
+        c.append(fatal(not os.path.isdir(self._conf['userinfo']['outputdirectory']),
                        'check output directory name'))
-        c.append(fatal(self.ChiLinconfigs['userinfo']['species'] not in ['hg19', 'mm9'],
+        c.append(fatal(self._conf['userinfo']['species'] not in ['hg19', 'mm9'],
                        'forget to fill the species or species input not supported'))
-        c.append(fatal(False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['treatpath']),
+        c.append(fatal(False in map(os.path.isfile, self._conf['userinfo']['treatpath']),
                        'check your input treat file, some error'))
-        c.append(fatal(False in map(os.path.isfile, self.ChiLinconfigs['userinfo']['controlpath']),
+        c.append(fatal(False in map(os.path.isfile, self._conf['userinfo']['controlpath']),
                        'check your input control file, some error'))
-        c.append(fatal(not exists(self.ChiLinconfigs['qc']['fastqc_main']),
+        c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
                        'fastqc not exists'))
-        c.append(fatal(not exists(self.ChiLinconfigs['bowtie']['bowtie_main']),
+        c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
                        "bowtie program dependency has problem"))
-        c.append(fatal(not exists(self.ChiLinconfigs['samtools']['samtools_main']),
+        c.append(fatal(not exists(self._conf['samtools']['samtools_main']),
                        "samtools dependency has problem"))
-        c.append(fatal(not exists(self.ChiLinconfigs['macs']['macs_main']),
+        c.append(fatal(not exists(self._conf['macs']['macs_main']),
                        "macs2 program dependency has probelm"))
-        c.append(fatal(not exists(self.ChiLinconfigs['bedtools']['intersectbed_main']),
+        c.append(fatal(not exists(self._conf['bedtools']['intersectbed_main']),
                        "bedtools program dependency has problem"))
-        c.append(fatal(not exists(self.ChiLinconfigs['conservation']['conserv_plot_main']),
+        c.append(fatal(not exists(self._conf['conservation']['conserv_plot_main']),
                        "conservation_plot dependency has problem"))
-        c.append(fatal(not exists(self.ChiLinconfigs['correlation']['wig_correlation_main']),
+        c.append(fatal(not exists(self._conf['correlation']['wig_correlation_main']),
                        "correlation plot dependency has problem"))
-        c.append(fatal(not exists(self.ChiLinconfigs['venn']['venn_diagram_main']),
+        c.append(fatal(not exists(self._conf['venn']['venn_diagram_main']),
                        "venn plot dependency has problem"),)
 
         check_list(c)
         self.log('ChiLin config parse success, and dependency check has passed!')        
-
-        # open summary file for later rendering
-        # to improve
-        self.DataSummary = open(self.Nameconfigs['root']['data_summary'], 'w')
-
-        ## support for bed format
-        ## to improve
-        # is_bed = lambda x: 'bed' in x.lower()
-        # bedc = lambda files: map(is_bed, [' '.join(f) for f in files])
-        # files = [self.ChiLinconfigs['userinfo']['treatpath'], self.ChiLinconfigs['userinfo']['controlpath']]
-        # if False not in bedc(files):
-        #     return 'bedfiles'
+        self.checked = True
+        
 
 class PipeController(object):
     def __init__(self):
@@ -184,7 +189,7 @@ class PipeController(object):
         self.has_run = True
         self.env = Environment(loader=PackageLoader('chilin', 'template'))
 
-    def run(self):
+    def run_(self):
         """
         univeral call shell and judge
         """
@@ -207,17 +212,16 @@ class PipeController(object):
             self.datasummary.flush()
 
 class PipeBowtie(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log, datasummary, stepcontrol, bedft):
+    def __init__(self, conf, rule, log, datasummary, stepcontrol):
         """
         pipeline bowtie part"""
         super(PipeBowtie, self).__init__()
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = conf
+        self.rule = rule
         self.log = log
         self.datasummary = datasummary
         self.bowtieinfo = {}
         self.rendercontent = {}
-        self.bedft = bedft
         self.stepcontrol = stepcontrol
 
     def _format(self, sam, bam):
@@ -228,13 +232,13 @@ class PipeBowtie(PipeController):
         """
         if self.has_run:
             self.cmd = '{0} view -bt {1} {2} -o {3}'
-            self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
+            self.cmd = self.cmd.format(self.conf['samtools']['samtools_main'],
                                       # remember to change chrom_len to up to species
-                                       self.chilinconfigs['samtools']['samtools_chrom_len_path'],
+                                       self.conf['samtools']['samtools_chrom_len_path'],
                                        sam,
                                        bam,
                                        )
-            self.run()
+            self.run_()
 
     def _extract(self, filenumber, inputfiles):
         """
@@ -291,7 +295,7 @@ class PipeBowtie(PipeController):
                 if location_dict[location] >= 1: # the location was only covered once
                     uniq_location += 1
             usable_percentage = float(uniq_read)/float(total_reads)*100
-            self.bowtieinfo['name'] = self.nameconfigs['bowtietmp']['treat_sam'][sam_rep]
+            self.bowtieinfo['name'] = self.rule['bowtietmp']['treat_sam'][sam_rep]
             self.bowtieinfo['total'] = total_reads
             self.bowtieinfo['mapped'] = mapped_reads
             self.bowtieinfo['unireads'] = uniq_read
@@ -299,69 +303,66 @@ class PipeBowtie(PipeController):
             self.bowtieinfo['percentage'] = str(usable_percentage) + '%'
             self.rendercontent['sams'].append(self.bowtieinfo)
 
-    def process(self):
+    def run(self):
         """
         sra => fastqdump => fastq
         example : ./fastq-dump.2.1.6.x86_64 SRR065250.sra -O 
         bam or bed skip
         """
-        if self.bedft == 'bedfiles': 
-            warn('file has been aligned, skip bowtie, start run macs2')
-            self.log('bowtie skipped')
-        else:
-            has_sra = lambda f: f.endswith('.sra')
-            has_fq = lambda f: f.endswith('.fastq')
-            get_newfqpath = lambda f: os.path.split(f)[0]
-            get_newfqname = lambda f: f.replace('sra', 'fastq')
-            def srarep(typ):
-                for num in range(self.chilinconfigs['userinfo'][typ + 'number']):
-                    if has_sra(self.chilinconfigs['userinfo'][typ + 'path'][num]):
-                        self.cmd = '{0} {1} -O {2}'
-                        self.cmd = self.cmd.format(self.chilinconfigs['userinfo']['sra'],
-                                                   self.chilinconfigs['userinfo'][typ + 'path'][num],
-                                                   get_newfqpath(self.chilinconfigs['userinfo'][typ + 'path'][num])
-                                                   )
-                        self.run()
-                        self.chilinconfigs['userinfo'][typ + 'path'][num] = get_newfqname(self.chilinconfigs['userinfo'][typ + 'path'][num])
-                    elif has_fq(self.chilinconfigs['userinfo'][typ + 'path'][num]):
-                        pass
-            srarep('treat')
-            srarep('control')
+        has_sra = lambda f: f.endswith('.sra')
+        has_fq = lambda f: f.endswith('.fastq')
+        get_newfqpath = lambda f: os.path.split(f)[0]
+        get_newfqname = lambda f: f.replace('sra', 'fastq')
+        def srarep(typ):
+            for num in range(self.conf['userinfo'][typ + 'number']):
+                if has_sra(self.conf['userinfo'][typ + 'path'][num]):
+                    self.cmd = '{0} {1} -O {2}'
+                    self.cmd = self.cmd.format(self.conf['userinfo']['sra'],
+                                               self.conf['userinfo'][typ + 'path'][num],
+                                               get_newfqpath(self.conf['userinfo'][typ + 'path'][num])
+                                               )
+                    self.run_()
+                    self.conf['userinfo'][typ + 'path'][num] = get_newfqname(self.conf['userinfo'][typ + 'path'][num])
+                elif has_fq(self.conf['userinfo'][typ + 'path'][num]):
+                    pass
+        srarep('treat')
+        srarep('control')
 
-            self.rendercontent['sams'] = []
-            if self.has_run: # fastqc judge
-                for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
-                    self.cmd  = '{0} -S -m {1} {2} {3} {4} '
-                    self.cmd = self.cmd.format(self.chilinconfigs['bowtie']['bowtie_main'],
-                                                self.chilinconfigs['bowtie']['nbowtie_max_alignment'],
-                                                self.chilinconfigs['bowtie']['bowtie_genome_index_path'],
-                                                self.chilinconfigs['userinfo']['treatpath'][treat_rep],
-                                                self.nameconfigs['bowtietmp']['treat_sam'][treat_rep])
-                    self.log("bowtie is processing %s" % (self.chilinconfigs['userinfo']['treatpath'][treat_rep]))
-                    self.run()
-                    self._format(self.nameconfigs['bowtietmp']['treat_sam'][treat_rep], self.nameconfigs['bowtieresult']['bam_treat'][treat_rep])
-                self._extract(self.chilinconfigs['userinfo']['treatnumber'], self.nameconfigs['bowtietmp']['treat_sam'])
+        self.rendercontent['sams'] = []
+        if self.has_run: # fastqc judge
+            for treat_rep in range(self.conf['userinfo']['treatnumber']):
+                self.cmd  = '{0} -S -m {1} {2} {3} {4} '
+                self.cmd = self.cmd.format(self.conf['bowtie']['bowtie_main'],
+                                           self.conf['bowtie']['nbowtie_max_alignment'],
+                                           self.conf['bowtie']['bowtie_genome_index_path'],
+                                           self.conf['userinfo']['treatpath'][treat_rep],
+                                           self.rule['bowtietmp']['treat_sam'][treat_rep])
+                self.log("bowtie is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
+                self.run_()
+                self._format(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
+            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'])
 
-                for control_rep in range(self.chilinconfigs['userinfo']['controlnumber']):
-                    self.cmd  = '{0} -S -m {1} {2} {3} {4} '
-                    self.cmd = self.cmd.format(self.chilinconfigs['bowtie']['bowtie_main'],
-                                                self.chilinconfigs['bowtie']['nbowtie_max_alignment'],
-                                                self.chilinconfigs['bowtie']['bowtie_genome_index_path'],
-                                                self.chilinconfigs['userinfo']['controlpath'][control_rep],
-                                                self.nameconfigs['bowtietmp']['control_sam'][control_rep])
-                    self.log("bowtie is processing %s" % (self.chilinconfigs['userinfo']['controlpath'][control_rep]))
-                    self.run()
-                    self._format(self.nameconfigs['bowtietmp']['control_sam'][control_rep], self.nameconfigs['bowtieresult']['bam_control'][control_rep])
-                self._extract(self.chilinconfigs['userinfo']['controlnumber'], self.nameconfigs['bowtietmp']['control_sam'])
-                self._render()
-                if not self.has_run:  # bowtie check
-                    self.log("bowtie stoped accidentally, check the config")
-                    error("bowtie has problem")
-                else:
-                    self.log("bowtie run successfully")
+            for control_rep in range(self.conf['userinfo']['controlnumber']):
+                self.cmd  = '{0} -S -m {1} {2} {3} {4} '
+                self.cmd = self.cmd.format(self.conf['bowtie']['bowtie_main'],
+                                           self.conf['bowtie']['nbowtie_max_alignment'],
+                                           self.conf['bowtie']['bowtie_genome_index_path'],
+                                           self.conf['userinfo']['controlpath'][control_rep],
+                                           self.rule['bowtietmp']['control_sam'][control_rep])
+                self.log("bowtie is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
+                self.run_()
+                self._format(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
+            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'])
+            
+            self._render()
+            if not self.has_run:  # bowtie check
+                self.log("bowtie stoped accidentally, check the config")
+                error("bowtie has problem")
+            else:
+                self.log("bowtie run successfully")
 
 class PipeMACS2(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log, datasummary, stepcontrol, shiftsize, bedft):
+    def __init__(self, conf, rule, log, datasummary, stepcontrol, shiftsize):
         """
         MACS step, separately and merge for sorted bam
         shell example:
@@ -369,14 +370,13 @@ class PipeMACS2(PipeController):
                 --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__()
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = config
+        self.rule = rule
         self.macsinfo = {}
         self.log = log
         self.datasummary = datasummary
         self.stepcontrol = stepcontrol
         self.shiftsize = shiftsize
-        self.bedft = bedft
         self.rendercontent = {}
 
     def _format(self, bdg, tmp, bw):
@@ -392,21 +392,21 @@ class PipeMACS2(PipeController):
         """
         if self.has_run:
             self.cmd = '{0} -a {1} -b {2} -wa -f 1.00 > {3}'  # bdg filter
-            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
+            self.cmd = self.cmd.format(self.conf['bedtools']['intersectbed_main'],
                                        bdg,
-                                       self.chilinconfigs['samtools']['chrom_len_bed_path'],
+                                       self.conf['samtools']['chrom_len_bed_path'],
                                        tmp)
-            self.run()
+            self.run_()
         else:
             self.log('interactbed filter treat bdg file error')
         if self.has_run:
             self.cmd = '{0} {1} {2} {3} ' # bedGraphTobigwiggle
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedgraphtobigwig_main'],
+            self.cmd = self.cmd.format(self.conf['macs']['bedgraphtobigwig_main'],
                                        tmp,
-                                       self.chilinconfigs['samtools']['samtools_chrom_len_path'],
+                                       self.conf['samtools']['samtools_chrom_len_path'],
                                        bw
                                        )
-            self.run()
+            self.run_()
         else:
             self.log('bedGraph convert to bigwiggle error')
 
@@ -417,7 +417,7 @@ class PipeMACS2(PipeController):
         add fc_10 and ratio
         macs2info = {'ratios': {'totalpeak':a, 'total1': 5...}..} *args
         """
-        fhd = open(self.nameconfigs['macsresult']['peaks_xls'],"r")
+        fhd = open(self.rule['macsresult']['peaks_xls'],"r")
         total = 0
         fc20n = 0
         fc10n = 0
@@ -443,7 +443,7 @@ class PipeMACS2(PipeController):
         self.macsinfo['distance'] = float(self.shiftsize) * 2
         self.rendercontent['ratios'] = self.macsinfo
 
-    def process(self):
+    def run(self):
         """
         testid_macs_control_lambda.bdg # temp
         testid_macs_peaks.encodePeak   # temp
@@ -457,172 +457,92 @@ class PipeMACS2(PipeController):
         if self.stepcontrol < 2:
             sys.exit(1)
         # genome option
-        if 'hg' in self.chilinconfigs['userinfo']['species']:
+        if 'hg' in self.conf['userinfo']['species']:
             genome_option = ' -g hs '
-        elif 'mm' in self.chilinconfigs['userinfo']['species']:
+        elif 'mm' in self.conf['userinfo']['species']:
             genome_option = ' -g mm '
         else:
             genome_option = ' '
- 
-        # bed alignment files input
-        if self.bedft == 'bedfiles':
-            if self.chilinconfigs['userinfo']['treatnumber'] > 1:
-                self.cmd = 'cat %s %s' % (' '.join(self.chilinconfigs['userinfo']['treatpath'],
-                                          self.nameconfigs['macstmp']['mergebedtreat'])
-                                          )
-                self.run()
-            if self.chilinconfigs['userinfo']['controlnumber'] > 1:  
-                self.cmd = 'cat %s %s' % (' '.join(self.chilinconfigs['userinfo']['controlpath'],
-                                          self.nameconfigs['macstmp']['mergebedcontrol'])
-                                          )
-                self.run()
-            # set control option, merge bam control for universal control
-            if self.chilinconfigs['userinfo']['controlnumber'] == 1:
-                control_option = ' -c ' + self.chilinconfigs['userinfo']['treatpath'][0]
-            elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
-                control_option = ' -c ' + self.nameconfigs['macstmp']['mergebedcontrol']
-            else:
-                control_option = ' '
-            # each bed file peak calling
-            for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
-                self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                    '-t {3} {4} -n {5}'
-                self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
-                                           genome_option,
-                                           self.shiftsize,
-                                           self.chilinconfigs['userinfo']['treatpath'][treat_rep],
-                                           control_option,
-                                           self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep])
-                # convert macs default name to NameRule
-                self.run()
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
-                                             + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
-                self.run()
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
-                       + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
-                self.run()
-                if self.has_run:
-                    self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep],
-                                 self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
-                                 self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
-                    self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], 
-                                 self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
-                                 self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
+        if self.conf['userinfo']['treatnumber'] > 1:
+            self.cmd = '{0} merge -f {1}  {2}'
+            self.cmd = self.cmd.format(self.conf['samtools']['samtools_main'],
+                                       self.rule['bowtieresult']['bamtreatmerge'],
+                                       '  '.join(self.rule['bowtieresult']['bam_treat']))
+            self.run_()
 
-            # merge treat bed files for peaks calling
-            if self.has_run:
-                if self.chilinconfigs['userinfo']['treatnumber'] > 1:
-                    self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                           '-t {3} {4} -n {5}'
-                    self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
-                                               genome_option,
-                                               self.shiftsize,
-                                               self.nameconfigs['macstmp']['mergebedtreat'],
-                                               control_option,
-                                               self.nameconfigs['macstmp']['macs_init_mergename'])
-                    self.run()
-                    # convert macs default name to NameRule
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
-                    self.run()
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.nameconfigs['macstmp']['control_bdg'])
-                    self.run()
-                    if self.has_run:
-                        self._format(self.nameconfigs['macstmp']['treat_bdg'], 
-                                     self.nameconfigs['macstmp']['treat_bdgtmp'], 
-                                     self.nameconfigs['macsresult']['treat_bw'])
-                        self._format(self.nameconfigs['macstmp']['control_bdg'], 
-                                     self.nameconfigs['macstmp']['control_tmp_bdg'], 
-                                     self.nameconfigs['macsresult']['control_bw'])
-                elif self.chilinconfigs['userinfo']['treatnumber'] == 1:
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macsresult']['peaksrep_xls'][0],
-                                             self.nameconfigs['macsresult']['peaks_xls'])
-                    self.run()
-                self.extract()
+        if self.conf['userinfo']['controlnumber'] > 1:
+            self.cmd = '{0} merge -f {1}  {2}'
+            self.cmd = self.cmd.format(self.conf['samtools']['samtools_main'],
+                                       self.rule['bowtieresult']['bamcontrolmerge'],
+                                       '  '.join(self.rule['bowtieresult']['bam_control']))
+            self.run_()
 
-        # for bam files, merge 
+        # set control option, merge bam control for universal control
+        if self.conf['userinfo']['controlnumber'] == 1:
+            control_option = ' -c ' + self.rule['bowtieresult']['bam_control'][0]
+        elif self.conf['userinfo']['controlnumber'] > 1:
+            control_option = ' -c ' + self.rule['bowtieresult']['bamcontrolmerge']
         else:
-            if self.chilinconfigs['userinfo']['treatnumber'] > 1:
-                self.cmd = '{0} merge -f {1}  {2}'
-                self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-                                           self.nameconfigs['bowtieresult']['bamtreatmerge'],
-                                           '  '.join(self.nameconfigs['bowtieresult']['bam_treat'])
-                                           )
-                self.run()
+            control_option = ' '
 
-            if self.chilinconfigs['userinfo']['controlnumber'] > 1:
-                self.cmd = '{0} merge -f {1}  {2}'
-                self.cmd = self.cmd.format(self.chilinconfigs['samtools']['samtools_main'],
-                                           self.nameconfigs['bowtieresult']['bamcontrolmerge'],
-                                           '  '.join(self.nameconfigs['bowtieresult']['bam_control'])
-                                           )
-                self.run()
+        # each bam file peak calling
+        for treat_rep in range(self.conf['userinfo']['treatnumber']):
+            self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
+                  '-t {3} {4} -n {5}'
+            self.cmd = self.cmd.format(self.conf['macs']['macs_main'],
+                                       genome_option,
+                                       self.shiftsize,
+                                       self.rule['bowtieresult']['bam_treat'][treat_rep],
+                                       control_option,
+                                       self.rule['macstmp']['macs_initrep_name'][treat_rep])
+            # convert macs default name to NameRule
+            self.run_()
+            self.cmd = 'mv %s %s' % (self.rule['macstmp']['macs_initrep_name'][treat_rep]\
+                   + '_treat_pileup.bdg', self.rule['macstmp']['treatrep_bdg'][treat_rep])
+            self.run_()
+            self.cmd = 'mv %s %s' % (self.rule['macstmp']['macs_initrep_name'][treat_rep]
+                   + '_control_lambda.bdg', self.rule['macstmp']['controlrep_bdg'][treat_rep])
+            self.run_()
+            if self.has_run:
+                self._format(self.rule['macstmp']['treatrep_bdg'][treat_rep], \
+                             self.rule['macstmp']['treatrep_tmp_bdg'][treat_rep], 
+                             self.rule['macsresult']['treatrep_bw'][treat_rep])
+                self._format(self.rule['macstmp']['controlrep_bdg'][treat_rep], \
+                             self.rule['macstmp']['controlrep_tmp_bdg'][treat_rep], 
+                             self.rule['macsresult']['controlrep_bw'][treat_rep])
 
-            # set control option, merge bam control for universal control
-            if self.chilinconfigs['userinfo']['controlnumber'] == 1:
-                control_option = ' -c ' + self.nameconfigs['bowtieresult']['bam_control'][0]
-            elif self.chilinconfigs['userinfo']['controlnumber'] > 1:
-                control_option = ' -c ' + self.nameconfigs['bowtieresult']['bamcontrolmerge']
-            else:
-                control_option = ' '
-
-            # each bam file peak calling
-            for treat_rep in range(self.chilinconfigs['userinfo']['treatnumber']):
-                self.cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                      '-t {3} {4} -n {5}'
-                self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
+        # merge treat bam files for peaks calling
+        if self.has_run:
+            if len(self.rule['bowtieresult']['bam_treat']) > 1:
+                self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
+                       '-t {3} {4} -n {5}'
+                self.cmd = self.cmd.format(self.conf['macs']['macs_main'],
                                            genome_option,
                                            self.shiftsize,
-                                           self.nameconfigs['bowtieresult']['bam_treat'][treat_rep],
+                                           self.rule['bowtieresult']['bamtreatmerge'],
                                            control_option,
-                                           self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep])
+                                           self.rule['macstmp']['macs_init_mergename'])
+                self.run_()
                 # convert macs default name to NameRule
-                self.run()
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]\
-                       + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep])
-                self.run()
-                self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_initrep_name'][treat_rep]
-                       + '_control_lambda.bdg', self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep])
-                self.run()
+                self.cmd = 'mv %s %s' % (self.rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.rule['macstmp']['treat_bdg'])
+                self.run_()
+                self.cmd = 'mv %s %s' % (self.rule['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.rule['macstmp']['control_bdg'])
+                self.run_()
                 if self.has_run:
-                    self._format(self.nameconfigs['macstmp']['treatrep_bdg'][treat_rep], \
-                                 self.nameconfigs['macstmp']['treatrep_tmp_bdg'][treat_rep], 
-                                 self.nameconfigs['macsresult']['treatrep_bw'][treat_rep])
-                    self._format(self.nameconfigs['macstmp']['controlrep_bdg'][treat_rep], \
-                                 self.nameconfigs['macstmp']['controlrep_tmp_bdg'][treat_rep], 
-                                 self.nameconfigs['macsresult']['controlrep_bw'][treat_rep])
-
-            # merge treat bam files for peaks calling
-            if self.has_run:
-                if len(self.nameconfigs['bowtieresult']['bam_treat']) > 1:
-                    self.cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                           '-t {3} {4} -n {5}'
-                    self.cmd = self.cmd.format(self.chilinconfigs['macs']['macs_main'],
-                                               genome_option,
-                                               self.shiftsize,
-                                               self.nameconfigs['bowtieresult']['bamtreatmerge'],
-                                               control_option,
-                                               self.nameconfigs['macstmp']['macs_init_mergename'])
-                    self.run()
-                    # convert macs default name to NameRule
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg', self.nameconfigs['macstmp']['treat_bdg'])
-                    self.run()
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macstmp']['macs_init_mergename'] + '_control_lambda.bdg', self.nameconfigs['macstmp']['control_bdg'])
-                    self.run()
-                    if self.has_run:
-                        self._format(self.nameconfigs['macstmp']['treat_bdg'], 
-                                     self.nameconfigs['macstmp']['treat_bdgtmp'], 
-                                     self.nameconfigs['macsresult']['treat_bw'])
-                        self._format(self.nameconfigs['macstmp']['control_bdg'], 
-                                     self.nameconfigs['macstmp']['control_tmp_bdg'], 
-                                     self.nameconfigs['macsresult']['control_bw'])
-                elif len(self.nameconfigs['bowtieresult']['bam_treat']) == 1:
-                    self.cmd = 'mv %s %s' % (self.nameconfigs['macsresult']['peaksrep_xls'][0],
-                                             self.nameconfigs['macsresult']['peaks_xls'])
-                    self.run()
-                self.extract()
+                    self._format(self.rule['macstmp']['treat_bdg'], 
+                                 self.rule['macstmp']['treat_bdgtmp'], 
+                                 self.rule['macsresult']['treat_bw'])
+                    self._format(self.rule['macstmp']['control_bdg'], 
+                                 self.rule['macstmp']['control_tmp_bdg'], 
+                                 self.rule['macsresult']['control_bw'])
+            elif len(self.rule['bowtieresult']['bam_treat']) == 1:
+                self.cmd = 'mv %s %s' % (self.rule['macsresult']['peaksrep_xls'][0],
+                                         self.rule['macsresult']['peaks_xls'])
+                self.run_()
+            self.extract()
 
 class PipeVennCor(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log,\
+    def __init__(self, conf, rule, log,\
                  datasummary, stepcontrol, ratios, peaksnumber = '', OptionMethod = "Mean"):
         """
         replicates qc measurement 
@@ -632,8 +552,8 @@ class PipeVennCor(PipeController):
         self.peaksnumber = peaksnumber
         self.OptionMethod = OptionMethod
         self.ratio = {}
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = config
+        self.rule = rule
         self.log = log
         self.datasummary = datasummary
         self.stepcontrol = stepcontrol
@@ -647,27 +567,27 @@ class PipeVennCor(PipeController):
         """
         self.cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
         if a_type == 'dhs':
-            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       self.nameconfigs['macsresult']['treat_peaks'],
-                                       self.chilinconfigs['venn']['dhs_bed_path'],
-                                       self.nameconfigs['bedtoolstmp']['dhs_bed'])
+            self.cmd = self.cmd.format(self.conf['bedtools']['intersectbed_main'],
+                                       self.rule['macsresult']['treat_peaks'],
+                                       self.conf['venn']['dhs_bed_path'],
+                                       self.rule['bedtoolstmp']['dhs_bed'])
         if a_type == 'velcro':
-            self.cmd = self.cmd.format(self.chilinconfigs['bedtools']['intersectbed_main'],
-                                       self.nameconfigs['macsresult']['treat_peaks'],
-                                       self.chilinconfigs['venn']['velcro_path'],
-                                       self.nameconfigs['bedtoolstmp']['velcro_bed'])
-        self.run()
+            self.cmd = self.cmd.format(self.conf['bedtools']['intersectbed_main'],
+                                       self.rule['macsresult']['treat_peaks'],
+                                       self.conf['venn']['velcro_path'],
+                                       self.rule['bedtoolstmp']['velcro_bed'])
+        self.run_()
 
     def extract(self, a_type):
         """
         extract dhs overlap and velcro overlap information
         """
         self._format(a_type)
-        lenall = len(open(self.nameconfigs['macsresult']['treat_peaks'], 'rU').readlines())
+        lenall = len(open(self.rule['macsresult']['treat_peaks'], 'rU').readlines())
         if a_type == 'dhs':
-            lena_type = len(open(self.nameconfigs['bedtoolstmp']['dhs_bed'], 'r').readlines())
+            lena_type = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
         elif a_type == 'velcro':
-            lena_type = len(open(self.nameconfigs['bedtoolstmp']['velcro_bed'], 'r').readlines())
+            lena_type = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
         self.ratio[a_type] = lena_type
         if lenall != 0:
             self.ratio[a_type + 'percentage'] = float(lena_type)/lenall
@@ -675,7 +595,7 @@ class PipeVennCor(PipeController):
             self.ratio[a_type + 'percentage'] = 0.0001
 
 
-    def process(self):
+    def run(self):
         """
         filter macs2 exceptional positions
         then replace the raw output of macs2
@@ -693,56 +613,56 @@ class PipeVennCor(PipeController):
             self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
                          (peaks_summits,
                           tmp)
-            self.run()
+            self.run_()
             self.cmd = "{0} {1} {2} {3}"
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
+            self.cmd = self.cmd.format(self.conf['macs']['bedclip'],
                                        tmp,
-                                       self.chilinconfigs['ceas']['chrom_len'],
+                                       self.conf['ceas']['chrom_len'],
                                        peaks_summits)
-            self.run()
+            self.run_()
 
-        for rep in range(self.chilinconfigs['userinfo']['treatnumber']):
+        for rep in range(self.conf['userinfo']['treatnumber']):
             self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                         (self.nameconfigs['macsresult']['treatrep_peaks'][rep],
-                          self.nameconfigs['macstmp']['treatrep_peaks'][rep])
-            self.run()
+                         (self.rule['macsresult']['treatrep_peaks'][rep],
+                          self.rule['macstmp']['treatrep_peaks'][rep])
+            self.run_()
             self.cmd = "{0} {1} {2} {3}"
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
-                                       self.nameconfigs['macstmp']['treatrep_peaks'][rep],
-                                       self.chilinconfigs['ceas']['chrom_len'],
-                                       self.nameconfigs['macsresult']['treatrep_peaks'][rep])
-            self.run()
-        for rep in range(self.chilinconfigs['userinfo']['treatnumber']):
+            self.cmd = self.cmd.format(self.conf['macs']['bedclip'],
+                                       self.rule['macstmp']['treatrep_peaks'][rep],
+                                       self.conf['ceas']['chrom_len'],
+                                       self.rule['macsresult']['treatrep_peaks'][rep])
+            self.run_()
+        for rep in range(self.conf['userinfo']['treatnumber']):
             self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                         (self.nameconfigs['macsresult']['rep_summits'][rep],
-                          self.nameconfigs['macstmp']['rep_summits'][rep])
-            self.run()
+                         (self.rule['macsresult']['rep_summits'][rep],
+                          self.rule['macstmp']['rep_summits'][rep])
+            self.run_()
             self.cmd = "{0} {1} {2} {3}"
-            self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
-                                       self.nameconfigs['macstmp']['rep_summits'][rep],
-                                       self.chilinconfigs['ceas']['chrom_len'],
-                                       self.nameconfigs['macsresult']['rep_summits'][rep])
-            self.run()
+            self.cmd = self.cmd.format(self.conf['macs']['bedclip'],
+                                       self.rule['macstmp']['rep_summits'][rep],
+                                       self.conf['ceas']['chrom_len'],
+                                       self.rule['macsresult']['rep_summits'][rep])
+            self.run_()
         self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                     (self.nameconfigs['macsresult']['treat_peaks'],
-                      self.nameconfigs['macstmp']['treat_peaks'])
-        self.run()
+                     (self.rule['macsresult']['treat_peaks'],
+                      self.rule['macstmp']['treat_peaks'])
+        self.run_()
         self.cmd = "{0} {1} {2} {3}"
-        self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
-                                   self.nameconfigs['macstmp']['treat_peaks'],
-                                   self.chilinconfigs['ceas']['chrom_len'],
-                                   self.nameconfigs['macsresult']['treat_peaks'])
-        self.run()
+        self.cmd = self.cmd.format(self.conf['macs']['bedclip'],
+                                   self.rule['macstmp']['treat_peaks'],
+                                   self.conf['ceas']['chrom_len'],
+                                   self.rule['macsresult']['treat_peaks'])
+        self.run_()
         self.cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                     (self.nameconfigs['macsresult']['summits'],
-                      self.nameconfigs['macstmp']['summits'])
-        self.run()
+                     (self.rule['macsresult']['summits'],
+                      self.rule['macstmp']['summits'])
+        self.run_()
         self.cmd = "{0} {1} {2} {3}"
-        self.cmd = self.cmd.format(self.chilinconfigs['macs']['bedclip'],
-                                   self.nameconfigs['macstmp']['summits'],
-                                   self.chilinconfigs['ceas']['chrom_len'],
-                                   self.nameconfigs['macsresult']['summits'])
-        self.run()
+        self.cmd = self.cmd.format(self.conf['macs']['bedclip'],
+                                   self.rule['macstmp']['summits'],
+                                   self.conf['ceas']['chrom_len'],
+                                   self.rule['macsresult']['summits'])
+        self.run_()
 
         if self.stepcontrol < 3:
             sys.exit(1)
@@ -752,19 +672,19 @@ class PipeVennCor(PipeController):
             self.rendercontent['ratios'][k] = v
         self._render()
 
-        if self.chilinconfigs['userinfo']['treatnumber'] < 2:
+        if self.conf['userinfo']['treatnumber'] < 2:
             self.log('No replicates, pass the venn diagram and correlation steps')
         else:
             # venn diagram
-            if self.chilinconfigs['userinfo']['treatnumber'] > 3:
+            if self.conf['userinfo']['treatnumber'] > 3:
                 warn('venn diagram support 3 replicates not well')
             self.cmd = '{0} -t Overlap_of_Replicates {1} {2}'
-            self.cmd = self.cmd.format(self.chilinconfigs['venn']['venn_diagram_main'],
-                                       ' '.join(self.nameconfigs['macsresult']['treatrep_peaks']),
+            self.cmd = self.cmd.format(self.conf['venn']['venn_diagram_main'],
+                                       ' '.join(self.rule['macsresult']['treatrep_peaks']),
                                        ' '.join(map(lambda x: "-l replicate_" + str(x), 
-                                                    xrange(1, self.chilinconfigs['userinfo']['treatnumber'] + 1)))
+                                                    xrange(1, self.conf['userinfo']['treatnumber'] + 1)))
                                        )
-            self.run()
+            self.run_()
             if not self.has_run:
                 self.log('venn diagram error')
             else:
@@ -772,28 +692,28 @@ class PipeVennCor(PipeController):
                 # correlation plot
                 self.cmd = '{0} -d {1} -s {2} -m {3} --min-score {4} --max-score {5} -r {6} {7} {8}'
 
-                self.cmd = self.cmd.format(self.chilinconfigs['correlation']['wig_correlation_main'],
-                                           self.chilinconfigs['userinfo']['species'],
-                                           self.chilinconfigs['correlation']['wig_correlation_step'],
-                                           self.chilinconfigs['correlation']['wig_correlation_method'],
-                                           self.chilinconfigs['correlation']['wig_correlation_min'],
-                                           self.chilinconfigs['correlation']['wig_correlation_max'],
-                                           self.nameconfigs['represult']['cor_r'],
-                                           ' '.join(self.nameconfigs['macsresult']['treatrep_bw']),
-                                           ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.chilinconfigs['userinfo']['treatnumber'] + 1))),
+                self.cmd = self.cmd.format(self.conf['correlation']['wig_correlation_main'],
+                                           self.conf['userinfo']['species'],
+                                           self.conf['correlation']['wig_correlation_step'],
+                                           self.conf['correlation']['wig_correlation_method'],
+                                           self.conf['correlation']['wig_correlation_min'],
+                                           self.conf['correlation']['wig_correlation_max'],
+                                           self.rule['represult']['cor_r'],
+                                           ' '.join(self.rule['macsresult']['treatrep_bw']),
+                                           ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf['userinfo']['treatnumber'] + 1))),
                                            )
-                self.run()
+                self.run_()
                 if self.has_run:
                     self.log('correlation plot succeed')
                 else:
                     self.log('correlation plot error')
 
 class PipeCEAS(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log, stepcontrol, peaksnumber = 5000):
+    def __init__(self, conf, rule, log, stepcontrol, peaksnumber = 5000):
         """run ceas from top n peaks"""
         super(PipeCEAS, self).__init__()
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = config
+        self.rule = rule
         self.peaks = peaksnumber
         self.log = log
         self.stepcontrol = stepcontrol
@@ -806,8 +726,8 @@ class PipeCEAS(PipeController):
         # default top 5000 peaks for ceas
         TODO: filter peaks.xls
         """
-        xls = self.nameconfigs['macsresult']['peaks_xls']
-        bedge = open(self.nameconfigs['ceastmp']['ceasge10_bed'], 'w')
+        xls = self.rule['macsresult']['peaks_xls']
+        bedge = open(self.rule['ceastmp']['ceasge10_bed'], 'w')
         peaksnum = 0
         # fold change
         for line in open(xls, 'rU'):
@@ -820,10 +740,10 @@ class PipeCEAS(PipeController):
                         "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
                     bedge.write(bed_line)
         bedge.close()
-        self.cmd = 'sort -r -g -k 5 %s > %s' % (self.nameconfigs['macsresult']['treat_peaks'], self.nameconfigs['macstmp']['sortedbed'])
-        self.run()
-        self.cmd = 'head -n %s %s > %s' % (self.peaks, self.nameconfigs['macstmp']['sortedbed'],  self.nameconfigs['ceastmp']['ceasp5000'])
-        self.run()
+        self.cmd = 'sort -r -g -k 5 %s > %s' % (self.rule['macsresult']['treat_peaks'], self.rule['macstmp']['sortedbed'])
+        self.run_()
+        self.cmd = 'head -n %s %s > %s' % (self.peaks, self.rule['macstmp']['sortedbed'],  self.rule['ceastmp']['ceasp5000'])
+        self.run_()
 
     def extract(self):
         '''
@@ -832,13 +752,13 @@ class PipeCEAS(PipeController):
         gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=6602_ceas_combined.pdf -f 6602_ceas.pdf 6602_ceas_CI.pdf
         '''
         self.cmd = 'gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile={0} -f {1} {2}'
-        self.cmd = self.cmd.format(self.nameconfigs['root']['ceas_pdf'],
-                                   self.nameconfigs['ceasresult']['ceaspdf'],
-                                   self.nameconfigs['ceasresult']['ceasci']
+        self.cmd = self.cmd.format(self.rule['root']['ceas_pdf'],
+                                   self.rule['ceasresult']['ceaspdf'],
+                                   self.rule['ceasresult']['ceasci']
                                    )
-        self.run()
+        self.run_()
 
-    def process(self):
+    def run(self):
         """
         ceasBw and ceas-exon to generate pdf
         and merge together
@@ -852,20 +772,20 @@ class PipeCEAS(PipeController):
         self._format()
         if self.has_run:
             self.log('ceas top n peaks extract done')
-        if self.chilinconfigs['ceas']['ceas_promoter_sizes']:
-            sizes_option = ' --sizes %s ' % self.chilinconfigs['ceas']['ceas_promoter_sizes']
+        if self.conf['ceas']['ceas_promoter_sizes']:
+            sizes_option = ' --sizes %s ' % self.conf['ceas']['ceas_promoter_sizes']
         else:
             sizes_option = ' '
-        if self.chilinconfigs['ceas']['ceas_bipromoter_sizes']:
-            bisizes_option = ' --bisizes %s ' % self.chilinconfigs['ceas']['ceas_bipromoter_sizes']
+        if self.conf['ceas']['ceas_bipromoter_sizes']:
+            bisizes_option = ' --bisizes %s ' % self.conf['ceas']['ceas_bipromoter_sizes']
         else:
             bisizes_option = ' '
-        if self.chilinconfigs['ceas']['ceas_rel_dist']:
-            rel_option = ' --rel-dist %s ' % self.chilinconfigs['ceas']['ceas_rel_dist']
+        if self.conf['ceas']['ceas_rel_dist']:
+            rel_option = ' --rel-dist %s ' % self.conf['ceas']['ceas_rel_dist']
         else:
             rel_option = ' '
-        if self.chilinconfigs['ceas']['ceas_genetable_path']:
-            gt_option = ' -g %s ' % (self.chilinconfigs['ceas']['ceas_genetable_path'])
+        if self.conf['ceas']['ceas_genetable_path']:
+            gt_option = ' -g %s ' % (self.conf['ceas']['ceas_genetable_path'])
         else:
             gt_option = ' '
 
@@ -873,16 +793,16 @@ class PipeCEAS(PipeController):
             if main == 'ceas_ex':
                 len_option = ' '
             else:
-                len_option = ' -l %s ' % (self.chilinconfigs['ceas']['chrom_len'])
+                len_option = ' -l %s ' % (self.conf['ceas']['chrom_len'])
             self.cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
-            self.cmd = self.cmd.format(self.chilinconfigs['ceas'][main],
-                                       self.nameconfigs['ceastmp']['ceasname'],
+            self.cmd = self.cmd.format(self.conf['ceas'][main],
+                                       self.rule['ceastmp']['ceasname'],
                                        gt_option + sizes_option + bisizes_option + rel_option,
-                                       self.nameconfigs['ceastmp']['ceasp5000'],
-                                       self.nameconfigs['macsresult']['treat_bw'],
+                                       self.rule['ceastmp']['ceasp5000'],
+                                       self.rule['macsresult']['treat_bw'],
                                        len_option)
 
-            self.run()
+            self.run_()
         self.extract()
         if self.has_run:
             self.log('ceas succeed')
@@ -890,13 +810,13 @@ class PipeCEAS(PipeController):
             self.log('ceas error')
 
 class PipeConserv(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, a_type, log, stepcontrol):
+    def __init__(self, conf, rule, a_type, log, stepcontrol):
         """
         use all the peaks from macs2 to draw conservation plot
         """
         super(PipeConserv, self).__init__()
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = config
+        self.rule = rule
         self.type = a_type
         self.log = log
         self.stepcontrol = stepcontrol
@@ -906,19 +826,19 @@ class PipeConserv(PipeController):
         input: summits bed (filtered by VennCor._format)
         *todo*:get the top n significant peaks for conservation plot
         """
-        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s | mv %s %s ' % (self.nameconfigs['conservresult']['conserv_png'],\
-			'tmp.R', self.nameconfigs['conservresult']['conserv_r'])
-        self.run()
+        self.cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s | mv %s %s ' % (self.rule['conservresult']['conserv_png'],\
+			'tmp.R', self.rule['conservresult']['conserv_r'])
+        self.run_()
 
     def extract(self):
         """
         get top n summits from macs2 summits.bed according to ChiLin config
         default 3000 summits
         """
-        self.cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.nameconfigs['macsresult']['summits'], self.chilinconfigs['conservation']['peaks_num'], self.nameconfigs['conservationtmp']['conserv_topn_summits'])
-        self.run()
+        self.cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.rule['macsresult']['summits'], self.conf['conservation']['peaks_num'], self.rule['conservationtmp']['conserv_topn_summits'])
+        self.run_()
 
-    def process(self):
+    def run(self):
         """
         conservation plot
         to control the region widths for assessing conservation:
@@ -934,15 +854,15 @@ class PipeConserv(PipeController):
         if self.type == 'TF' or self.type == 'Dnase':
             width_option = ' '
         elif self.type == 'Histone':
-            width_option = ' -w ' + self.chilinconfigs['conservation']['width']  # for histone using width 4000
+            width_option = ' -w ' + self.conf['conservation']['width']  # for histone using width 4000
         else:
             self.log("conservation plot may not support, use default")
-        self.cmd = self.cmd.format(self.chilinconfigs['conservation']['conserv_plot_main'],
-                                   self.chilinconfigs['conservation']['conserv_plot_phast_path'],
-                                   self.nameconfigs['conservationtmp']['conserv_topn_summits'],
+        self.cmd = self.cmd.format(self.conf['conservation']['conserv_plot_main'],
+                                   self.conf['conservation']['conserv_plot_phast_path'],
+                                   self.rule['conservationtmp']['conserv_topn_summits'],
                                    width_option)
 
-        self.run()
+        self.run_()
         self._format()
         if self.has_run:
             self.log("conservation plot succeed!")
@@ -950,17 +870,17 @@ class PipeConserv(PipeController):
             self.log("conservation plot error")
 
 class PipeMotif(PipeController):
-    def __init__(self, chilinconfigs, nameconfigs, log, stepcontrol):
+    def __init__(self, conf, rule, log, stepcontrol):
         """pipeline motit part"""
         super(PipeMotif, self).__init__()
-        self.chilinconfigs = chilinconfigs
-        self.nameconfigs = nameconfigs
+        self.conf = config
+        self.rule = rule
         self.log = log
         self.stepcontrol = stepcontrol
 
     def _format(self):
-        self.cmd = 'zip -r %s results/' % self.nameconfigs['motifresult']['seqpos']
-        self.run()
+        self.cmd = 'zip -r %s results/' % self.rule['motifresult']['seqpos']
+        self.run_()
 
     def extract(self):
         """
@@ -970,10 +890,10 @@ class PipeMotif(PipeController):
             remove chrM from top n summits
             default top 1000 summits.bed, may modify seqpos config
         """
-        self.cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.nameconfigs['macsresult']['summits'], self.chilinconfigs['seqpos']['seqpos_top_peaks'], self.nameconfigs['motiftmp']['summits_p1000']) 
-        self.run()
+        self.cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.rule['macsresult']['summits'], self.conf['seqpos']['seqpos_top_peaks'], self.rule['motiftmp']['summits_p1000']) 
+        self.run_()
 
-    def process(self):
+    def run(self):
         """
         get the top 1000 peaks(default)
         shell example:
@@ -982,37 +902,37 @@ class PipeMotif(PipeController):
         if self.stepcontrol < 6:
             sys.exit()
         self.extract()
-        if self.chilinconfigs['seqpos']['seqpos_width']:
-            seqpos_width_option = ' -w  ' +  self.chilinconfigs['seqpos']['seqpos_width']
+        if self.conf['seqpos']['seqpos_width']:
+            seqpos_width_option = ' -w  ' +  self.conf['seqpos']['seqpos_width']
         else:
             seqpos_width_option = ' -w 600 '
-        if self.chilinconfigs['seqpos']['seqpos_pvalue_cutoff']:
-            seqpos_pvalue_option = ' -p  ' +  self.chilinconfigs['seqpos']['seqpos_pvalue_cutoff']
+        if self.conf['seqpos']['seqpos_pvalue_cutoff']:
+            seqpos_pvalue_option = ' -p  ' +  self.conf['seqpos']['seqpos_pvalue_cutoff']
         else:
             seqpos_pvalue_option = ' -p 0.001 '
-        if self.chilinconfigs['seqpos']['seqpos_motif_db_selection']:
-            seqpos_db_option = ' -m ' +  self.chilinconfigs['seqpos']['seqpos_motif_db_selection']
+        if self.conf['seqpos']['seqpos_motif_db_selection']:
+            seqpos_db_option = ' -m ' +  self.conf['seqpos']['seqpos_motif_db_selection']
         else:
             seqpos_db_option = ' -m transfac.xml,pbm.xml,jaspar.xml,cistrome.xls '
-        if self.chilinconfigs['userinfo']['species'] == 'hg19':
+        if self.conf['userinfo']['species'] == 'hg19':
             seqpos_species_option = ' -s hs '
-        elif self.chilinconfigs['userinfo']['species'] == 'mm9':
+        elif self.conf['userinfo']['species'] == 'mm9':
             seqpos_species_option = ' -s mm '
-        elif self.chilinconfigs['userinfo']['species'] == 'dm4':
+        elif self.conf['userinfo']['species'] == 'dm4':
             seqpos_species_option = ' -s dm '
         else:
             self.log("MDseqpos not support the species")
 
         self.cmd = '{0} -d {1} {2}  {3} {4} {5} {6}'
-        self.cmd = self.cmd.format(self.chilinconfigs['seqpos']['seqpos_main'],
+        self.cmd = self.cmd.format(self.conf['seqpos']['seqpos_main'],
                                    seqpos_width_option,
                                    seqpos_pvalue_option,
                                    seqpos_db_option,
                                    seqpos_species_option,
-                                   self.nameconfigs['motiftmp']['summits_p1000'],
-                                   self.chilinconfigs['userinfo']['species']
+                                   self.rule['motiftmp']['summits_p1000'],
+                                   self.conf['userinfo']['species']
                                    )
-        self.run()
+        self.run_()
         if self.has_run:
             self._format()
 
