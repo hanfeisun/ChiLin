@@ -29,6 +29,7 @@ class LogWriter:
     def record(self, logcontent):
         print logcontent
         self.logger.info(logcontent)
+        return logcontent
 
 class PipePreparation:
     def __init__(self, ChiLinconfPath, \
@@ -188,17 +189,33 @@ class PipeController(object):
         self.shellextract = 0
         self.env = Environment(loader=PackageLoader('chilin', 'template'))
 
-    def run_cmd(self, cmd, exit_ = True):
+    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
         """
         univeral call shell and judge
         """
         self.log("Run command:\t"+cmd)
         if call(cmd, shell = True):
-            if exit_: sys.exit(0)
-            else: return False
+            # If running command encounters error,
+            # call() returns a non-zero value
+
+            result = error_handler()
+            if exit_:
+                sys.exit(0)
+            else:
+                return result
         else:
             return True
 
+    def cond_run_cmd(self, skip_cond, cmd):
+        """
+        run a command conditionally
+        """
+        if not skip_cond:
+            return self.run_cmd(cmd)
+        else:
+            return self.log(cmd+" is skipped")
+
+        
     def _render(self):
         """
         write into the DA.txt template
