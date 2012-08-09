@@ -21,7 +21,7 @@ def main():
           author_email='samleomei@gmail.com',
           packages = ["chilin"],
           package_dir={'chilin' : 'chilin/lib'},
-          install_requires=['jinja2', ],
+          install_requires=['jinja2', 'argparse'],
           package_data = {'chilin':['db/*','template/*']},
           scripts=['chilin/scripts/ChiLin.py'],
           classifiers=[

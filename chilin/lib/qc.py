@@ -1,4 +1,5 @@
 import os
+import sys
 import zipfile
 import math
 import re
@@ -8,6 +9,8 @@ from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
 from chilin.motifparser import MotifParser
+
+exists = os.path.exists
 
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
@@ -25,17 +28,49 @@ class QC_Controller(object):
     """
     All the class in the module derives from this class
     """
-    def __init__(self):
+    def __init__(self, conf, rule, log, **args):
         self.env = jinja_env
         self.render = {}
         self.checkr = []
         self.summaryCheck = {}
+        print conf
+        self.conf = conf
+        self.rule = rule
+        self.log = log
+        self.debug = args.get("debug", False)
+        self.threads = args.get("threads", 1)  
         self.template = self.env.get_template('template.tex')
 #        self.record = LogWriter().record()
 
+    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
+        """
+        univeral call shell and judge
+        """
+        self.log("Run command:\t"+cmd)
+        if call(cmd, shell = True):
+            # If running command encounters error,
+            # call() returns a non-zero value
 
-    def run(self):
-        """ Run some QC tools or do some time-costing statistics """
+            result = error_handler()
+            if exit_:
+                sys.exit(0)
+            else:
+                return result
+        else:
+            return True
+
+    def if_runcmd(self, condition, cmd, else_handler = lambda :True):
+        """
+        run a command conditionally
+        """
+        if type(condition) == str:
+            condition = not exists(condition)
+            
+        if condition:
+            return self.run_cmd(cmd)
+        else:
+            else_handler()
+            return self.log(cmd+" is skipped")
         
     
     def _check(self):
@@ -62,11 +97,8 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = [],log = ''):
-        super(RawQC, self).__init__()
-        self.conf = conf
-        self.rule = rule
-        self.log = log
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = [],log = '', **args):
+        super(RawQC, self).__init__(conf, rule, log, **args)
         self.summarycheck = summarycheck
         self.filehandle =  texfile
         
@@ -117,19 +149,31 @@ class RawQC(QC_Controller):
         nseqlen = []
         for i in range(len(rawdata)):
             d = rawdata[i]
-            cmd = '{0} {1} --extract -t 3 -o {2}'
-            cmd = cmd.format(self.conf['qc']['fastqc_main'],d,self.conf['userinfo']['outputdirectory'])
-            self.log(cmd)
-            call(cmd,shell=True)
             temp = os.path.split(d)[1]
             fastqc_out = os.path.splitext(temp)[0]+'_fastqc'
             changed_name = names[i]+'_fastqc'
+            
+            cmd = '{0} {1} --extract -t {3} -o {2}'
+            cmd = cmd.format(self.conf['qc']['fastqc_main'],
+                             d,
+                             self.conf['userinfo']['outputdirectory'],
+                             self.threads)
+
+            
+            if self.debug:
+                self.if_runcmd(not (exists(fastqc_out) or exists(changed_name)), cmd)
+            else:
+                self.run_cmd(cmd)
+
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
             self.log(cmd)
-            call(cmd,shell=True)
+            if self.debug:
+                self.if_runcmd(changed_name, cmd)
+            else:
+                self.run_cmd(cmd)
             self.log(cmd)
-            call('rm %s.zip'% fastqc_out,shell=True)
+            self.run_cmd('rm %s.zip'% fastqc_out, exit_=False)
             dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
             npeakl.append(peak)
@@ -165,7 +209,7 @@ class RawQC(QC_Controller):
         f.write("dev.off()\n")
         f.close()
         inf.close()
-        call('Rscript %s' % rCode, shell = True)
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
 
 
@@ -197,11 +241,8 @@ class RawQC(QC_Controller):
         
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = ''):
-        super(MappingQC, self).__init__()
-        self.conf = conf
-        self.rule = rule
-        self.log = log
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
+        super(MappingQC, self).__init__(conf, rule, log, **args)
         self.filehandle = texfile
         self.summarycheck = summarycheck
         self.bowtiesummary = self.rule['root']['data_summary']
@@ -257,7 +298,7 @@ class MappingQC(QC_Controller):
         f.write("dev.off()\n")
         f.close()
         cmd = 'Rscript %s'%rCode
-        call(cmd,shell=True)
+        self.run_cmd(cmd)
         return pdfName
 
     def _redundant_ratio_info(self,bamList):
@@ -300,8 +341,8 @@ class MappingQC(QC_Controller):
         f.write("dev.off()\n")
         f.close()
         cmd = 'Rscript %s'% rCode
-        call(cmd,shell=True)
-        if os.path.exists(pdfName):
+        self.run_cmd(cmd)
+        if exists(pdfName):
             return pdfName
         else:
             return Fasle
@@ -330,11 +371,8 @@ class MappingQC(QC_Controller):
 
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""
-    def __init__(self,conf = '',rule = '',texfile = '',summarycheck = '',log = ''):
-        super(PeakcallingQC, self).__init__()
-        self.conf = conf
-        self.rule = rule
-        self.log = log
+    def __init__(self,conf = '',rule = '',texfile = '',summarycheck = '',log = '', **args):
+        super(PeakcallingQC, self).__init__(conf, rule, log, **args)
         self.filehandle = texfile
         self.summarycheck = summarycheck
         self.peaksxls = self.rule['macsresult']['peaks_xls']
@@ -394,7 +432,7 @@ class PeakcallingQC(QC_Controller):
         f.write("text(3.5,0,'cutoff=3')\n")
         f.write('dev.off()\n')
         f.close()
-        call('Rscript %s' % rCode, shell = True)
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         self.checkr.append(['Fold change ','%s'%name,'%d'%lg_10,3])
         return pdfName
         
@@ -411,7 +449,7 @@ class PeakcallingQC(QC_Controller):
                 historyFile,
                 overlapped_bed_file
                 )
-        call(cmd,shell = True)
+        self.run_cmd(cmd)
         fhd = open(overlapped_bed_file,"r")
         num_overlapped_peaks = len(fhd.readlines())
         fhd.close()
@@ -432,7 +470,7 @@ class PeakcallingQC(QC_Controller):
         f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21,pt.bg=c('#FFB5C5'))\n" %pointText)
         f.write("dev.off()\n")
         f.close()
-        call('Rscript %s' % rCode, shell = True)
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         if velcro_ratio >= 0.1:
             judge = 'pass'
         else:
@@ -453,7 +491,7 @@ class PeakcallingQC(QC_Controller):
                         historyFile,
                         overlapped_bed_file
                         )
-        call(cmd,shell = True)
+        self.run_cmd(cmd)
         fhd = open(overlapped_bed_file,"r")
         num_overlapped_peaks = len(fhd.readlines())
         dhs_ratio = round(float(num_overlapped_peaks)/self.totalpeaks,3)
@@ -472,7 +510,7 @@ class PeakcallingQC(QC_Controller):
         f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
         f.write("dev.off()\n")
         f.close()
-        call('Rscript %s' % rCode, shell = True)
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         self.checkr.append(['Overlap with DHSs  ','%s'%name,'%f'%dhs_ratio,0.8])
         return pdfName
         
@@ -538,11 +576,8 @@ class PeakcallingQC(QC_Controller):
         
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = ''):
-        super(AnnotationQC, self).__init__()
-        self.conf = conf
-        self.rule = rule
-        self.log = log
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
+        super(AnnotationQC, self).__init__(conf, rule, log, **args)
         self.filehandle = texfile
         self.summarycheck = summarycheck
         self.peaksxls = self.rule['macsresult']['peaks_xls']
@@ -597,7 +632,7 @@ class AnnotationQC(QC_Controller):
         f.write(Metascript)
         f.write('dev.off()\n')
         f.close()
-        call("Rscript %s"% rCode, shell = True)
+        self.run_cmd("Rscript %s"% rCode, exit_ = False)
         return Metagene,Ceasprofile
 
     def _distance(self,x,y):
@@ -736,13 +771,13 @@ class AnnotationQC(QC_Controller):
         """ Run some AnnotationQC function. """
         peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
-        if os.path.exists(ceasCode):
+        if exists(ceasCode):
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-        if os.path.exists(conservationFile) and os.path.exists(conservationR):
+        if exists(conservationFile) and exists(conservationR):
             self.render['conservation_check'] = True
             self.render['conservation_graph'] = self._conservation_info(conservationR)
-        if os.path.exists(Zippath):
+        if exists(Zippath):
             tempfile = self.get_seqpos(Zippath)
             motifTable,logoList = self.motif_info(tempfile,Zippath)
             if len(motifTable)>0:
@@ -757,8 +792,8 @@ class AnnotationQC(QC_Controller):
 
 class SummaryQC(QC_Controller):
     """Generate summary report for each QC item and package function"""
-    def __init__(self,conf = '',rule = '', texfile = ''):
-        super(SummaryQC, self).__init__()
+    def __init__(self,conf = '',rule = '', log = "", texfile = '', **args):
+        super(SummaryQC, self).__init__(conf, rule, log, **args)
         self.filehandle = texfile
         self.conf = conf
         self.rule = rule
