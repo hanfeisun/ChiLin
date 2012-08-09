@@ -1,3 +1,4 @@
+
 About ChiLin
 ============
 
@@ -5,8 +6,8 @@ ChiLin is the Chinese Unicorn. It is sometimes called the dragon horse, a mythic
 
 We use ChiLin for the name of our project as it has similar alphabet combination with **ChI**\ P-seq pipe\ **lin**\ e.
 
-Instruction
-===========
+Usage of ChiLin
+===============
 
 usage: ChiLin.py [-h] {run,gen} ...
 
@@ -23,7 +24,7 @@ optional arguments:
 
 
 ChiLin-run: Run ChiLin pipeline using a config file
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------------------------
 
 usage: ChiLin.py run [-h] -c CONFIG -t {Dnase,Histone,TF} [-m {mean}] [-p TOP_PEAKS] [--threads {1,2,3,4,5,6,7,8}] [-d STEP_END] [--debug]
 
@@ -44,7 +45,7 @@ optional arguments:
 
 
 ChiLin-gen: A config template generator for ChiLin
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 usage: ChiLin.py gen [-h] --species {hg19,mm9}
 
