@@ -31,18 +31,15 @@ usage: ChiLin.py run [-h] -c CONFIG -t {Dnase,Histone,TF} [-m {mean}] [-p TOP_PE
 optional arguments:
   -h, --help            show this help message and exit
   
-  -c CONFIG, --config CONFIG
-                        specify the config file to use
+  -c CONFIG, --config CONFIG   specify the config file to use
 			
-  -t {Dnase,Histone,TF}
-                        the most important option for ChiLin specify the analysis type and the shiftsize {Dnase: 50, Histone and TF:73} of MACS2
+  -t FACTOR_TYPE   the most important option for ChiLin specify the analysis type and the shiftsize {Dnase: 50, Histone and TF:73} of MACS2
 			
-  -m {mean}             specify method for correlation plot
+  -m METHOD             specify method for correlation plot
   
   -p TOP_PEAKS          specify peaks number for CEAS
   
-  --threads {1,2,3,4,5,6,7,8}
-                        How many threads can be used
+  --threads THREADS    How many threads can be used
 			
   -d STEP_END           specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2
   
@@ -59,7 +56,7 @@ usage: ChiLin.py gen [-h] --species {hg19,mm9}
 optional arguments:
   -h, --help            show this help message and exit
   
-  --species {hg19,mm9}  
+  --species SPECIES   select a specie
 
 Quick-install
 =============
