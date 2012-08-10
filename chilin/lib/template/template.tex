@@ -10,8 +10,8 @@
 \usepackage{color}
 \DeclareGraphicsExtensions{.eps,.png,.pdf,.ps}
 \begin{document}
-\title{dataset \VAR{prefix_datasetid} Chip-Seq QC Report Version 1}
-\author {DC group}
+\title{Chip-Seq QC Report For Dataset \VAR{prefix_datasetid} }
+%#\author {DC group}
 \vspace{-1cm}
 \maketitle
 \abstract{Modern High Throughput experiment analysis always output large amount of information, which sometimes may confuse us. An objective system of assessment throughout all Chip-seq pipeline has been established to
@@ -64,6 +64,7 @@ We draw the cumulative percentage plot of the sequence quality scores of all his
 %# --------basic mapping QC statistics--------
 
 %- if MappingQC_check
+%- if Bowtie_check
 \subsection{Basic mapping QC statistics}
 \begin{quotation}
 Bowtie is an ultrafast, memory-efficient alignment program for aligning short DNA sequence reads to large genomes.\footnote{Langmead B, Trapnell C, Pop M, Salzberg SL: Ultrafast and memory-efficient alignment of short DNA sequences to the human genome. Genome Biology 2009, 10(3):R25}
@@ -79,7 +80,7 @@ Unique reads ratio: percentage of unique mappable reads in mappable reads.(Table
 \caption{Basic QC statistics} \label{basicqc}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Sample & Total reads & Mappable reads & Unique Mappable location & Mappable ratio  \\
+Sample & Total reads & Unique Mappable reads & Unique Mappable rate & Unique Mappable location & Redundant rate \\
 \hline
 \BLOCK{ for line in basic_map_table }
 \VAR{line|join(' & ')} \\
@@ -102,7 +103,7 @@ For following figure, this is a cumulative distribution file of the mappable rat
 {\includegraphics[width=0.9\textwidth]{\VAR{mappable_ratio_graph}}}
 \end{figure}
 \newpage
-
+%- endif
 %# -------mappable redundant rate-----------
 \subsection{Mappable Redundant rate}
 \begin{quotation}
@@ -136,7 +137,7 @@ The 'Shift size' shows that the distance between the Watson or Crick tags enrich
 	\caption{Peak summary table} \label{peaksum}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Run name & Cutoff & Peak count & peaks $\geq$ 20FC & Shift size \\
+Run name & Cutoff & Peak count & High confident peaks & Shift size \\
 \hline
 \VAR{peak_summary_table|join(' & ')} \\
 \hline
@@ -226,6 +227,7 @@ If biologist have replicate chipseq experiments,pipline will draw the venn plot.
 %#---------Ceas QC---------
 
 %- if AnnotationQC_check
+%- if ceas_check
 \section{Functional Genomic QC measurement}
 \subsection{Peak Height distribution}
 \begin{quotation}
@@ -252,6 +254,7 @@ Add all the reads density corresponding to its located meta genes(i.e. to the co
         {\includegraphics[width=0.8\textwidth]{\VAR{gene_distribution_graph}}}
 \end{figure}
 \newpage
+%- endif
 
 %# ---------Conservation QC----------- conservation_graph
 %- if conservation_check
@@ -268,6 +271,7 @@ still under development.(Figure ~\ref{fig:conservation}) \newline
 %- endif
 
 %# -----------motif QC---------------
+%- if motif_check
 \subsection{Motif QC measurement analysis}
 \begin{quotation}
 Sequence motifs are short, recurring patterns in DNA that are presumed to have a biological function. Often they indicate sequence-specific binding sites for proteins such as nucleases and transcription factors (TF). \\footnote{D'haeseleer P: What are DNA sequence motifs? nature biotechnology 2006, 24:423-425.}
@@ -298,6 +302,9 @@ factor name & Hits & Z-score & motif logo \tabularnewline
 \end{tabularx}
 \end{table}
 %- endif
+%- endif
+
+
 
 %# Summary QC -----------
 

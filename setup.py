@@ -17,11 +17,11 @@ def main():
     setup(name="chilin",
           version="1.0.0",
           description="QC report pipline",
-          author='Shenglin Mei, Qian Qin',
+          author='Shenglin Mei, Qian Qin, Hanfei Sun',
           author_email='samleomei@gmail.com',
           packages = ["chilin"],
           package_dir={'chilin' : 'chilin/lib'},
-          install_requires=['jinja2', ],
+          install_requires=['jinja2', 'argparse'],
           package_data = {'chilin':['db/*','template/*']},
           scripts=['chilin/scripts/ChiLin.py'],
           classifiers=[

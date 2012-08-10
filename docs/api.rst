@@ -9,20 +9,22 @@ Controllers of QC
 .. automodule:: chilin.qc
 
 .. autoclass:: chilin.qc.QC_Controller
-    :members: run, _check, _render
+    :members: run, _check, QCpreparation, _render
 
 
 .. autoclass:: chilin.qc.RawQC
-	:members:  _infile_parse, _fastqc_info, run, _check
+	:members:  _infile_parse, _fastqc_info, run
 
 .. autoclass:: chilin.qc.MappingQC
-	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run, _check
+	:members: _basic_mapping_statistics_info, _mappable_ratio_info, _redundant_ratio_info, run
 
 .. autoclass:: chilin.qc.PeakcallingQC
-	:members: _peak_summary_info, _high_confidentPeaks_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run, _check
+	:members: _peak_summary_info, _high_confidentPeaks_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run
 
 .. autoclass:: chilin.qc.AnnotationQC
-	:members: _ceas_info, _DictToList, _motif_info, run, _check
+	:members: _ceas_info, _distance, _conservation_info, _DictToList, _motif_info, run
+.. autoclass:: chilin.qc.SummaryQC
+	:members: run, packfile
     
 DC class design instructions
 --------------------------------
