@@ -98,30 +98,31 @@ def main():
             mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
             mappingqc.run()
             
-            macs2 = p(PipeMACS2)()
-            macs2.run()
+#            macs2 = p(PipeMACS2)()
+#            macs2.run()
             
-            pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
-            pipevenncor.run()
+#            pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
+#            pipevenncor.run()
             
             peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
             peakcallingqc.run()
             
-            pipeceas = p(PipeCEAS)()
-            pipeceas.run()
+#            pipeceas = p(PipeCEAS)()
+#            pipeceas.run()
             
-            pipeconserv = p(PipeConserv)()
-            pipeconserv.run()
+#            pipeconserv = p(PipeConserv)()
+#            pipeconserv.run()
             
-            pipemotif = p(PipeMotif)()
-            pipemotif.run()
+#            pipemotif = p(PipeMotif)()
+#            pipemotif.run()
             
             annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck)
             annotationqc.run()
+            summarycheck = annotationqc.summarycheck
             
             summaryqc = p(SummaryQC)()
-            summaryqc.run(sum_check)
-            
+            summaryqc.run(summarycheck)
+
 
 
 if __name__ == "__main__":

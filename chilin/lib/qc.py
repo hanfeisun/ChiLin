@@ -8,7 +8,8 @@ import subprocess
 from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
-from chilin.motifparser import MotifParser
+import MotifParser as MP
+#from chilin.motifparser import MotifParser
 
 exists = os.path.exists
 
@@ -33,7 +34,6 @@ class QC_Controller(object):
         self.render = {}
         self.checkr = []
         self.summaryCheck = {}
-        print conf
         self.conf = conf
         self.rule = rule
         self.log = log
@@ -151,7 +151,7 @@ class RawQC(QC_Controller):
             d = rawdata[i]
             temp = os.path.split(d)[1]
             fastqc_out = os.path.splitext(temp)[0]+'_fastqc'
-            changed_name = names[i]+'_fastqc'
+            changed_name = names[i]
             
             cmd = '{0} {1} --extract -t {3} -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],
@@ -167,12 +167,10 @@ class RawQC(QC_Controller):
 
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
-            self.log(cmd)
             if self.debug:
                 self.if_runcmd(changed_name, cmd)
             else:
                 self.run_cmd(cmd)
-            self.log(cmd)
             self.run_cmd('rm %s.zip'% fastqc_out, exit_=False)
             dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
@@ -305,13 +303,16 @@ class MappingQC(QC_Controller):
         """ Show redundant  ratio of the dataset in all historic data"""
         self.log('Processing redundant reads')
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
+        print names
         ratioList = []
-        for bamfile in bamList:
-            temp = 'temp.bed'
-            if self.conf['userinfo']['species']=='hg19':
+        if not exists(self.rule['qcresult']['filterdup']):    
+            fph = open(self.rule['qcresult']['filterdup'],'w')
+            for i in range(len(bamList)):
+                bamfile = bamList[i]
+                temp = 'temp.bed'
                 cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
                 cmd = cmd.format(bamfile,self.conf['qc']['filterdup_species'],temp)
-                self.log(cmd)
+                self.log("Run command:\t"+cmd)
                 a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True) 
                 content = a.communicate()
                 content = list(content)[1].split('\n')
@@ -321,8 +322,13 @@ class MappingQC(QC_Controller):
                     if judge:
                         score = line.split(':')[-1].strip()
                         score = round(1-float(score),3)
-                        ratioList.append(score)
-        self.ratioListr = [str(score*100)+'%' for i in ratioList]
+                        fph.write('%s=%f\n'%(names[i],score))
+#                        ratioList.append(score)
+            fph.close()
+        fph = open(self.rule['qcresult']['filterdup'])
+        for line in fph:
+            score = line.strip().split('=')[1]
+            ratioList.append(float(score))
         pdfName = self.rule['qcresult']['redundant_ratio']
         rCode = self.rule['qcresult']['redundant_ratio_r']
         historyData = self.historyData[2]
@@ -362,7 +368,7 @@ class MappingQC(QC_Controller):
         bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
         self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
         self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
-        self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
+#        self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
         self._render()
         self._check()
@@ -553,20 +559,23 @@ class PeakcallingQC(QC_Controller):
         """ Run some PeakcallingQC function to get final result. 
             input: peaks bed and excel file.
         """
+        self.log('Processing PeakcallingQC')
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
         self.render['PeakcallingQC_check'] = True
         historyDataName = resource_filename('chilin', 'db/all_data.txt')
         fph = open(historyDataName)
         self.historyData = fph.readlines()
         fph.close()
-        self.render['peak_summary_table'] = self._peak_summary_info(peaksxls)
-        self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
-        self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
+        if exists(peaksxls):
+            self.render['peak_summary_table'] = self._peak_summary_info(peaksxls)
+            self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
+        if exists(peaksbed):
+            self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
         if self.conf['userinfo']['species']=='hg19':
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
         if len(self.conf['userinfo']['treatpath']) >= 2:
-            vennGraph = os.path.abspath('macs2/'+self.path['represult']['ven_png'])
+            vennGraph = os.path.abspath('macs2/'+self.rule['represult']['ven_png'])
             correlationPlot = os.path.abspath('macs2/'+self.rule['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
         self._render()
@@ -724,7 +733,7 @@ class AnnotationQC(QC_Controller):
 
     def motif_info(self,sqposeTable,Zippath):
         outdir = self.conf['userinfo']['outputdirectory']
-        p = MotifParser()
+        p=MP.MotifParser()
         p.ParserTable(sqposeTable)
         s2 = p.motifs.values()
         logoList = []
@@ -754,11 +763,11 @@ class AnnotationQC(QC_Controller):
             os.system(cmd)
             output.append(tempt)
         print output
-
+        print logoList
         return output,logoList
 
-    def motif_check(self,logoList):
-        factor = 'RORB'
+    def motif_check(self,logoList,factor):
+        factor = factor.upper()
         if factor in logoList:
             judge = 'pass'
         else:
@@ -769,6 +778,7 @@ class AnnotationQC(QC_Controller):
 
     def run(self):
         """ Run some AnnotationQC function. """
+        self.log('#Processing AnnotationQC' )
         peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
         if exists(ceasCode):
@@ -783,7 +793,7 @@ class AnnotationQC(QC_Controller):
             if len(motifTable)>0:
                 self.render['motif_check'] = True
                 self.render['motif_table'] = motifTable
-#                self.motif_check(logoList)
+                self.motif_check(logoList,self.conf['userinfo']['factor'])
 
 
         self._render()

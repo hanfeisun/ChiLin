@@ -2,8 +2,9 @@
 from xml.etree.ElementTree import *
 import xml.dom.minidom as minidom
 import os, sys
-import mdseqpos.motif as motif
-import chilin.bayesian_motif_comp
+import mdseqpos.bayesian_motif_comp as bayesian_motif_comp
+#import mdseqpos.motif as motif
+
 SEP = "|"
 def Info(string):
     print string
@@ -53,13 +54,13 @@ class MotifParser:
     If you want to parser a file whose tags are not in pre-decided list, type: p=MotifParser();p.attr_list.append(<sth>);
     
     methods:
-    __init__(self, xmlfile = '')        #Setup a MP Object, and parser the xmlfile.
-    __add__(self, mp2)                          #Add two MP into one, delete duplicates with same motif id. Return a MP object.
-    __sub__(self, mp2)                          #Subtract motifs of mp2 from the MP object. Return a MP object.
-    Parser(self, xmlfile)                       #Parser the xmlfile.
-    ParserTable(self, tablefile)        #Parser from a "\t" splitted table txt file. Get a MP Object.
-    ToXml(self, xmlfile, xsl=False)     #Output the MP Object to xmlfile. if xsl=True, also output the xsl file.
-    ToTable(self, tabfile)                      #Output the MP Object to table txt file.
+    __init__(self, xmlfile = '')	#Setup a MP Object, and parser the xmlfile.
+    __add__(self, mp2)				#Add two MP into one, delete duplicates with same motif id. Return a MP object.
+    __sub__(self, mp2)				#Subtract motifs of mp2 from the MP object. Return a MP object.
+    Parser(self, xmlfile)			#Parser the xmlfile.
+    ParserTable(self, tablefile)	#Parser from a "\t" splitted table txt file. Get a MP Object.
+    ToXml(self, xmlfile, xsl=False)	#Output the MP Object to xmlfile. if xsl=True, also output the xsl file.
+    ToTable(self, tabfile)			#Output the MP Object to table txt file.
     GetAttr(self, attr)             #Get all data of the attribute. Return a list.
     SearchMotif(self, **attrs)      #search a set of specific motifs in the MP Object. Return a MP Object.
     String(self, mid)               #Return a specific motif in a formatted string and readable type.
@@ -97,7 +98,8 @@ class MotifParser:
         self.attr_list = [self.keyName,'edition']
         self.tag_list = ['source', 'sourcefile', 'status', 'numseqs', 'pmid', 'dbd', \
         'description', 'species', 'cellline', 'entrez', 'symbol', 'synonym', 'refseq', 'comment1', \
-        'comment2', 'comment3', 'comment4', 'comment5']
+        'comment2', 'comment3', 'comment4', 'comment5', 'datasetid', 'zscore', 'seqfactors', \
+        'seqdbds', 'nmotifs','logoImg','hits']
         self.special_list = ['pssm'] # if you add a element here, need to edit code below -,-
         self.all_list = self.attr_list + self.tag_list + self.special_list
         
@@ -271,8 +273,8 @@ class MotifParser:
             if i not in self.all_list:
                 Info("Wrong input attr:%s, select attr from:\n: %s" %(i, List2Str(self.attr_list+self.tag_list, ",")))
                 return None
-        sub_motifs = self #MotifParser()
-        #sub_motifs.motifs = self.motifs
+        sub_motifs = MotifParser() #self
+        sub_motifs.motifs = self.motifs
 
         for attr in attrs.items():
             temp_dict = {}
@@ -354,6 +356,31 @@ class MotifParser:
                 del(res_motifs.motifs[i])
         return res_motifs
 
+    def SeqLogo2File(self, folder, rfile = 'draw_seqLogo.r'):
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+        rscript = open(os.path.join(folder, rfile),"w")
+        rscript.write('setwd("%s")\n' %folder)
+        rscript.write('library("seqLogo")\n')
+        for each in self.motifs.keys():
+            pssm = self.motifs[each]['pssm']
+            if not pssm:
+                continue
+            if len(pssm)>1:
+                print 'ERROR: it has more than 1 pssm'
+            else:
+                pssm = pssm[0]
+            t1 = ['c(%s)' %(','.join([str(m) for m in t]),) for t in pssm]
+            t2 = 'data<-cbind(%s)\n' %(','.join(t1),)
+            rscript.write('png("%s.png", width=660, height=300)\n' %each)
+            rscript.write(t2)
+            rscript.write('seqLogo(as.matrix(data))\n')
+            rscript.write('dev.off()\n\n')
+
+        rscript.close()
+        cmd = 'Rscript %s' %os.path.join(folder, rfile)
+        os.system(cmd)
+        
     def ToXml(self, xmlfile, xsl=False, sortkey=''):
         """MP.ToXML(xmlfile, xsl=False, sortkey='')
         Output the MP Object to xmlfile.
@@ -368,7 +395,10 @@ class MotifParser:
             t_motifs.sort(key=sortkey)
         else:
             #t_motifs.sort(key=lambda x:x[self.keyName]) #sort value as keyName before output
-            t_motifs.sort(key=lambda x:x['symbol'])
+            try:
+                t_motifs.sort(key=lambda x:x['symbol'][0].upper()+' '+x['species'][0])
+            except:
+                t_motifs.sort(key=lambda x:x['symbol'])
             #t_motifs.sort(key=lambda x:x['symbol'][0].upper()+' '+x['species'][0]+' '+'0'*(5-len(x['id'][0][9:]))+x['id'][0][9:]) #sort as symbol, then id, shirley asked
         #t_motifs.sort(key=lambda x:'|'.join(x['dbd'])+' '+x['symbol'][0].upper()) #sort as dbd, then symbol
         for mo in t_motifs:
@@ -427,50 +457,50 @@ class MotifParser:
 
 <html>
 <head>
-        <title>%s</title>
+	<title>%s</title>
 </head>
 <body>
 <table cellspacing="1" border="1" bordercolor="#FF9900">
-        <THEAD>
-                <TR>
-                        <TD bgcolor="#FFFF99"><B>ID</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SOURCE</B></TD>
-                        <TD bgcolor="#FFFF99"><B>STATUS</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SPECIES</B></TD>
-                        <TD bgcolor="#FFFF99"><B>CELLLINE</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SYMBOL</B></TD>
-                        <TD bgcolor="#FFFF99"><B>ENTREZ</B></TD>
-                        <TD bgcolor="#FFFF99"><B>REFSEQ</B></TD>
-                        <TD bgcolor="#FFFF99"><B>DESCRIPTION</B></TD>
-                        <TD bgcolor="#FFFF99"><B>DBD</B></TD>
-                        <TD bgcolor="#FFFF99"><B>PMID</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SEQLOGO</B></TD>
-                </TR>
-        </THEAD>
-        <TBODY>
-                <xsl:for-each select="motifs/motif">
-                <TR>
-                        <TD><a href="pwm/{@id}.pwm" target="_blank"><xsl:value-of select="@id" /></a></TD>
-                        <TD><xsl:if test="not(source)">-</xsl:if>       <xsl:value-of select="source" /></TD>
-                        <TD><xsl:if test="not(status)">-</xsl:if>       <xsl:value-of select="status" /></TD>
-                        <TD><xsl:for-each select="species"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:for-each select="cellline"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:for-each select="symbol"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:for-each select="entrez">
-                            <a target="_blank"><xsl:attribute name="href">http://www.ncbi.nlm.nih.gov/gene/?term=<xsl:value-of select="normalize-space(.)" />
-                            </xsl:attribute><xsl:value-of select="." /></a>
-                          </xsl:for-each></TD>
-                        <TD><xsl:for-each select="refseq"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(description)">-</xsl:if>  <xsl:value-of select="description" /></TD>
-                        <TD><xsl:if test="not(dbd)">-</xsl:if>          <xsl:value-of select="dbd" /></TD>
-                        <TD><xsl:for-each select="pmid">
-                                <a target="_blank"><xsl:attribute name="href">http://www.ncbi.nlm.nih.gov/pubmed/?term=<xsl:value-of select="normalize-space(.)" />
-                                </xsl:attribute><xsl:value-of select="." /></a>
-                          </xsl:for-each></TD>
-                        <TD><xsl:if test="not(pssm)">-</xsl:if>         <a href="seqLogo/{@id}.png" target="_blank"><img width="180" height="90" src="seqLogo/{@id}.png"></img></a></TD>
-                </TR>
-                </xsl:for-each>
-        </TBODY>
+	<THEAD>
+		<TR>
+			<TD bgcolor="#FFFF99"><B>ID</B></TD>
+			<TD bgcolor="#FFFF99"><B>SOURCE</B></TD>
+			<TD bgcolor="#FFFF99"><B>STATUS</B></TD>
+			<TD bgcolor="#FFFF99"><B>SPECIES</B></TD>
+			<TD bgcolor="#FFFF99"><B>CELLLINE</B></TD>
+			<TD bgcolor="#FFFF99"><B>SYMBOL</B></TD>
+			<TD bgcolor="#FFFF99"><B>ENTREZ</B></TD>
+			<TD bgcolor="#FFFF99"><B>REFSEQ</B></TD>
+			<TD bgcolor="#FFFF99"><B>DESCRIPTION</B></TD>
+			<TD bgcolor="#FFFF99"><B>DBD</B></TD>
+			<TD bgcolor="#FFFF99"><B>PMID</B></TD>
+			<TD bgcolor="#FFFF99"><B>SEQLOGO</B></TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<xsl:for-each select="motifs/motif">
+		<TR>
+			<TD><a href="pwm/{@id}.pwm" target="_blank"><xsl:value-of select="@id" /></a></TD>
+			<TD><xsl:if test="not(source)">-</xsl:if>	<xsl:value-of select="source" /></TD>
+			<TD><xsl:if test="not(status)">-</xsl:if>	<xsl:value-of select="status" /></TD>
+			<TD><xsl:for-each select="species"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:for-each select="cellline"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:for-each select="symbol"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:for-each select="entrez">
+			    <a target="_blank"><xsl:attribute name="href">http://www.ncbi.nlm.nih.gov/gene/?term=<xsl:value-of select="normalize-space(.)" />
+			    </xsl:attribute><xsl:value-of select="." /></a>
+			  </xsl:for-each></TD>
+			<TD><xsl:for-each select="refseq"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(description)">-</xsl:if>	<xsl:value-of select="description" /></TD>
+			<TD><xsl:if test="not(dbd)">-</xsl:if>		<xsl:value-of select="dbd" /></TD>
+			<TD><xsl:for-each select="pmid">
+				<a target="_blank"><xsl:attribute name="href">http://www.ncbi.nlm.nih.gov/pubmed/?term=<xsl:value-of select="normalize-space(.)" />
+				</xsl:attribute><xsl:value-of select="." /></a>
+			  </xsl:for-each></TD>
+			<TD><xsl:if test="not(pssm)">-</xsl:if>		<a href="seqLogo/{@id}.png" target="_blank"><img width="180" height="90" src="seqLogo/{@id}.png"></img></a></TD>
+		</TR>
+		</xsl:for-each>
+	</TBODY>
 </table>
 </body>
 </html>
@@ -484,51 +514,51 @@ class MotifParser:
 
 <html>
 <head>
-        <title>%s</title>
+	<title>%s</title>
 </head>
 <body>
 <table cellspacing="1" border="1" bordercolor="#FF9900">
-        <THEAD>
-                <TR>
-                        <TD bgcolor="#FFFF99"><B>ID</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SOURCE</B></TD>
-                        <TD bgcolor="#FFFF99"><B>STATUS</B></TD>
-                        <TD bgcolor="#FFFF99"><B>NUMSEQS</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SPECIES</B></TD>
-                        <TD bgcolor="#FFFF99"><B>CELLLINE</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SYMBOL</B></TD>
-                        <TD bgcolor="#FFFF99"><B>ENTREZ</B></TD>
-                        <TD bgcolor="#FFFF99"><B>REFSEQ</B></TD>
-                        <TD bgcolor="#FFFF99"><B>DESCRIPTION</B></TD>
-                        <TD bgcolor="#FFFF99"><B>PMID</B></TD>
-                        <TD bgcolor="#FFFF99"><B>RAW_ID</B></TD>
-                        <TD bgcolor="#FFFF99"><B>SEQLOGO</B></TD>
-                        <TD bgcolor="#FFFF99"><B>DBD</B></TD>
-                        <TD bgcolor="#FFFF99"><B>Delete</B></TD>
-                </TR>
-        </THEAD>
-        <TBODY>
-                <xsl:for-each select="motifs/motif">
-                <TR>
-                        <TD><xsl:value-of select="@id" /></TD>
-                        <TD><xsl:if test="not(col2)">-</xsl:if> <xsl:value-of select="col2" /></TD>
-                        <TD><xsl:if test="not(status)">-</xsl:if>       <xsl:value-of select="status" /></TD>
-                        <TD><xsl:if test="not(numseqs)">-</xsl:if>      <xsl:value-of select="numseqs" /></TD>
-                        <TD><xsl:if test="not(species)">-</xsl:if>      <xsl:for-each select="species"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(cellline)">-</xsl:if>     <xsl:for-each select="cellline"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(symbol)">-</xsl:if>       <xsl:value-of select="symbol" /></TD>
-                        <TD><xsl:if test="not(entrez)">-</xsl:if>       
-                          <xsl:for-each select="entrez"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(refseq)">-</xsl:if>       <xsl:for-each select="refseq"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(description)">-</xsl:if>  <xsl:value-of select="description" /></TD>
-                        <TD><xsl:if test="not(pmid)">-</xsl:if><xsl:for-each select="pmid"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(col1)">-</xsl:if> <xsl:value-of select="col1" /></TD>
-                        <TD><xsl:if test="not(pssm)">-</xsl:if>         <a target="_blank"><xsl:attribute name="href">seqLogo/<xsl:value-of select="normalize-space(col1)" />.png</xsl:attribute><img width="180" height="90"><xsl:attribute name="src">seqLogo/<xsl:value-of select="normalize-space(col1)" />.png</xsl:attribute></img></a></TD>
-                        <TD><xsl:if test="not(dbd)">-</xsl:if>  <xsl:for-each select="dbd"><xsl:value-of select="." /></xsl:for-each></TD>
-                        <TD><xsl:if test="not(col4)">-</xsl:if> <xsl:value-of select="col4" /></TD>
-                </TR>
-                </xsl:for-each>
-        </TBODY>
+	<THEAD>
+		<TR>
+			<TD bgcolor="#FFFF99"><B>ID</B></TD>
+			<TD bgcolor="#FFFF99"><B>SOURCE</B></TD>
+			<TD bgcolor="#FFFF99"><B>STATUS</B></TD>
+			<TD bgcolor="#FFFF99"><B>NUMSEQS</B></TD>
+			<TD bgcolor="#FFFF99"><B>SPECIES</B></TD>
+			<TD bgcolor="#FFFF99"><B>CELLLINE</B></TD>
+			<TD bgcolor="#FFFF99"><B>SYMBOL</B></TD>
+			<TD bgcolor="#FFFF99"><B>ENTREZ</B></TD>
+			<TD bgcolor="#FFFF99"><B>REFSEQ</B></TD>
+			<TD bgcolor="#FFFF99"><B>DESCRIPTION</B></TD>
+			<TD bgcolor="#FFFF99"><B>PMID</B></TD>
+			<TD bgcolor="#FFFF99"><B>RAW_ID</B></TD>
+			<TD bgcolor="#FFFF99"><B>SEQLOGO</B></TD>
+			<TD bgcolor="#FFFF99"><B>DBD</B></TD>
+			<TD bgcolor="#FFFF99"><B>Delete</B></TD>
+		</TR>
+	</THEAD>
+	<TBODY>
+		<xsl:for-each select="motifs/motif">
+		<TR>
+			<TD><xsl:value-of select="@id" /></TD>
+			<TD><xsl:if test="not(col2)">-</xsl:if>	<xsl:value-of select="col2" /></TD>
+			<TD><xsl:if test="not(status)">-</xsl:if>	<xsl:value-of select="status" /></TD>
+			<TD><xsl:if test="not(numseqs)">-</xsl:if>	<xsl:value-of select="numseqs" /></TD>
+			<TD><xsl:if test="not(species)">-</xsl:if>	<xsl:for-each select="species"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(cellline)">-</xsl:if>	<xsl:for-each select="cellline"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(symbol)">-</xsl:if>	<xsl:value-of select="symbol" /></TD>
+			<TD><xsl:if test="not(entrez)">-</xsl:if>	
+			  <xsl:for-each select="entrez"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(refseq)">-</xsl:if>	<xsl:for-each select="refseq"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(description)">-</xsl:if>	<xsl:value-of select="description" /></TD>
+			<TD><xsl:if test="not(pmid)">-</xsl:if><xsl:for-each select="pmid"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(col1)">-</xsl:if>	<xsl:value-of select="col1" /></TD>
+			<TD><xsl:if test="not(pssm)">-</xsl:if>		<a target="_blank"><xsl:attribute name="href">seqLogo/<xsl:value-of select="normalize-space(col1)" />.png</xsl:attribute><img width="180" height="90"><xsl:attribute name="src">seqLogo/<xsl:value-of select="normalize-space(col1)" />.png</xsl:attribute></img></a></TD>
+			<TD><xsl:if test="not(dbd)">-</xsl:if>	<xsl:for-each select="dbd"><xsl:value-of select="." /></xsl:for-each></TD>
+			<TD><xsl:if test="not(col4)">-</xsl:if>	<xsl:value-of select="col4" /></TD>
+		</TR>
+		</xsl:for-each>
+	</TBODY>
 </table>
 </body>
 </html>
@@ -679,6 +709,22 @@ class MotifParser:
         p = motif.Motif()
         p = p.from_dict(self.motifs[motifid])
         return p
+    
+    def _Similarity(self, motifid1, motifid2, metric='Bayesian'):
+        """_Similarity(self, motifid1, motifid2, metric='Bayesian')
+        Return a score for the similarity between two motifs.
+        offset -- number of basepairs to shift the first motif
+        antisense -- whether to take the reverse complement of the first motif
+        """
+        if len(self.motifs[motifid1]['pssm']) == 1 and len(self.motifs[motifid2]['pssm']) == 1:
+            m1 = self._ConvertToOldMotif(motifid1)
+            m2 = self._ConvertToOldMotif(motifid2)
+            similarity_score, offset, antisense = bayesian_motif_comp.BLiC_score(m1.pssm, m2.pssm)
+            antisense = bool(antisense)
+            return similarity_score, offset, antisense
+        else:
+            Info('ERROR: It has no matrix or more than 1 matrix: %s, %s'%(motifid1, motifid2))
+
     def _ParserTable(self, tfile):
         """Parser from a "\t" splitted table txt file. 
         The first col should be col name and in lowercase letter.
@@ -733,3 +779,7 @@ class MotifParser:
                     self.motifs[id][tag] = pssm
 
         print "Success parser from table. %s"%tfile
+
+                
+        
+
