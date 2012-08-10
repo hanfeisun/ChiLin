@@ -31,6 +31,14 @@ class LogWriter:
         self.logger.info(logcontent)
         return logcontent
 
+def gen_conf( species ):
+    env = Environment(loader = PackageLoader('chilin', 'db'))
+    temp = env.get_template('ChiLinjinja.conf')
+    conf = temp.render(species = species)
+    conf_f = open('ChiLin.conf', 'w')
+    conf_f.write(conf)
+    conf_f.close()
+
 class PipePreparation:
     def __init__(self, ChiLinconfPath, \
                  NameConfPath = resource_filename("chilin", os.path.join("db", "NameRule.conf"))

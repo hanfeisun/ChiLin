@@ -7,14 +7,16 @@ import os
 from pkg_resources import resource_filename
 import argparse
 from functools import partial
-from chilin.dc import (PipePreparation,
+from chilin.dc import (gen_conf,
+		       PipePreparation,
                        PipeBowtie,
                        PipeMACS2,
                        PipeVennCor,
                        PipeCEAS,
                        PipeConserv,
                        PipeMotif,
-                       package)
+                       package
+		       )
 
 from chilin.qc import (RawQC,
                        MappingQC,
@@ -33,11 +35,11 @@ def parse_args():
     description = "ChiLin : A clear ChIP-seq pipeline"
     parser = ChiLinParser(description = description)
     sub_parsers = parser.add_subparsers(help = "sub-command help", dest = "sub_command")
-    
+
     template_parser = sub_parsers.add_parser("gen",  help = "generate a template of config file",
                                              description = "ChiLin-gen: A config template generator for ChiLin")
     template_parser.add_argument("--species", choices = ("hg19", "mm9"), required = True)
-    
+
     pipe_parser = sub_parsers.add_parser("run", help = "run pipeline using a config file",
                                          description = "ChiLin-run: Run ChiLin pipeline using a config file")
     pipe_parser.add_argument("-c","--config", required = True,
@@ -60,9 +62,7 @@ def parse_args():
 
 
     if args.sub_command == "gen":
-        db = {"hg19": "ChiLin_human.conf", "mm9": "ChiLin_mouse.conf"}
-        with open(resource_filename("chilin", os.path.join("db", db[args.species]))) as f:
-            print f.read()
+        gen_conf(args.species)
         sys.exit(0)
 
     if args.sub_command == "run":
@@ -130,5 +130,3 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         sys.stderr.write("User interupt~Bye")
         sys.exit(0)
-
-
