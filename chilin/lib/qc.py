@@ -8,7 +8,7 @@ import subprocess
 from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
-from chilin.motifparser import MotifParser
+from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
 
