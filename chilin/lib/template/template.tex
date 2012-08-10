@@ -10,7 +10,7 @@
 \usepackage{color}
 \DeclareGraphicsExtensions{.eps,.png,.pdf,.ps}
 \begin{document}
-\title{Chip-Seq QC Report For Dataset \VAR{prefix_datasetid} }
+\title{Chip-Seq QC Report For Dataset\VAR{prefix_datasetid} }
 %#\author {DC group}
 \vspace{-1cm}
 \maketitle
@@ -129,7 +129,7 @@ This is a cumulative distribution file of the unique reads ratio of all the ChIP
 This report aims to show the quality of the peaks called by MACS. 
 The column of 'Cut off' shows what the Q-value (default is 0.01) is used when processing MACS. And the lower Q-value is used, MACS will call the more confident peaks. 
 The 'Peak count' shows the total number of peaks calculated under the condition of a Q-value. 
-For the column of 'peaks $\geq$ 20FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 20. The log value can give us more confidence in our data.
+For the column of 'peaks $\geq$ 10FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 20. The log value can give us more confidence in our data.
 The 'Shift size' shows that the distance between the Watson or Crick tags enrichment location and the binding site's location.(Table ~\ref{peaksum})
 \end{quotation}
 
@@ -291,7 +291,7 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}%
-\begin{tabularx}{1.2\textwidth}{ |X|R|X|X|X| }
+\begin{tabularx}{1.2\textwidth}{ |X|C|C|C|X| }
 \hline
 factor name & Hits & Z-score & motif logo \tabularnewline
 \hline
