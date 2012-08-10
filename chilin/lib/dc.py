@@ -40,9 +40,8 @@ def gen_conf( species ):
     conf_f.close()
 
 class PipePreparation:
-    def __init__(self, ChiLinconfPath, \
-                 NameConfPath = resource_filename("chilin", os.path.join("db", "NameRule.conf"))
-                 ):
+    def __init__(self, ChiLinconfPath,
+                 NameConfPath = resource_filename("chilin", os.path.join("db", "NameRule.conf"))):
         """
         Parse the Name Rule and 
         Customer filled Chilinconf

@@ -188,27 +188,27 @@ class RawQC(QC_Controller):
             tempcheck = ['FastqQC','%s' % names[j],'%s' % str(npeakl[j]),25]
             self.checkr.append(tempcheck)
         historyData = resource_filename('chilin', 'db/fastqc_value_list.txt')
-        inf=open(historyData,'rU')
-        peaklist1=inf.readline()
-        f=open(rCode,'w')
-        f.write("setwd('%s')\n" %self.conf['userinfo']['outputdirectory'])
-        f.write("sequence_quality_score<-c(%s)\n" % str(peaklist1)[1:-1])
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("ecdf(sequence_quality_score)->fn\n")
-        f.write("fn(sequence_quality_score)->density\n")
-        f.write("cbind(sequence_quality_score,density)->fndd\n")
-        f.write("fndd2<-fndd[order(fndd[,1]),]\n")
-        f.write("pdf('%s')\n" % pdfName)
-        f.write("plot(fndd2,type='b',pch=18,col=2,main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
-        j=0
-        for p in npeakl:
-            f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write("dev.off()\n")
-        f.close()
-        inf.close()
+        with open(historyData,'rU') as f:
+            peaklist1=f.readline()
+            
+        with open(rCode,'w') as f:
+            f.write("setwd('%s')\n" %self.conf['userinfo']['outputdirectory'])
+            f.write("sequence_quality_score<-c(%s)\n" % str(peaklist1)[1:-1])
+            col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+            pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+            f.write("ecdf(sequence_quality_score)->fn\n")
+            f.write("fn(sequence_quality_score)->density\n")
+            f.write("cbind(sequence_quality_score,density)->fndd\n")
+            f.write("fndd2<-fndd[order(fndd[,1]),]\n")
+            f.write("pdf('%s')\n" % pdfName)
+            f.write("plot(fndd2,type='b',pch=18,col=2,main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
+            j=0
+            for p in npeakl:
+                f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+                j=j+1
+                f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+            f.write("dev.off()\n")
+
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
 
@@ -217,12 +217,13 @@ class RawQC(QC_Controller):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
         self.render['prefix_datasetid'] = self.conf['userinfo']['datasetid']
-        if len(self.conf['userinfo']['controlpath']) ==0:
-            rawdata = self.conf['userinfo']['treatpath']
-            names = self.rule['qcresult']['treat_data']
-        else:
+        if self.conf['userinfo']['controlpath']:
             rawdata = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
             names = self.rule['qcresult']['treat_data']+self.rule['qcresult']['control_data']
+        else:
+            rawdata = self.conf['userinfo']['treatpath']
+            names = self.rule['qcresult']['treat_data']
+
         for i in range(len(rawdata)-1,-1,-1):
             if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.fq' in rawdata[i]:
                 pass

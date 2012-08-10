@@ -95,8 +95,14 @@ def main():
 
             rawqc = p(RawQC)()
             rawqc.run()
+
+            pipebowtie = p(PipeBowtie)()
+            pipebowtie.run()
+            
             mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
             mappingqc.run()
+
+
             
             macs2 = p(PipeMACS2)()
             macs2.run()
