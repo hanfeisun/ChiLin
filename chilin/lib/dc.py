@@ -273,49 +273,34 @@ class PipeBowtie(PipeController):
         sams = self.rendercontent
         sams = {'sams': [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...]} *arg
         """
+        print "working on extracting"
         for sam_rep in range(cnt):
-            samfile = file(files[sam_rep], 'r')
             reads_dict = {}
             location_dict = {}
             total_reads = 0
             mapped_reads = 0
-
-            for line in samfile:
-                sam_line = line.split("\t")
-                if sam_line[0] in ['@HD','@SQ','@PG','@RG']: # eliminate the table's head
-                    continue
-                else:
-                    total_reads += 1
-                    if sam_line[1] == "4": # "4" means not mapped
+            with open(files[sam_rep]) as samfile:
+                for line in samfile:
+                    if line.startswith("@"): # eliminate the table's head
                         continue
-                    else:
-                        mapped_reads += 1 
-                        #location = sam_line[1]+sam_line[2]+sam_line[3]
-                location = sam_line[1]+":"+sam_line[2]+":"+sam_line[3] 
-                read_name = sam_line[0]
+                    li = line.split("\t")
+                    
+                    total_reads += 1
+                    if total_reads % 1000000 == 0: print total_reads
+                    if len(li) < 3:
+                        print line + "looks strange, skipped"
+                        continue
+                    if li[1] == "4": # "4" means not mapped
+                        continue
 
-                if reads_dict.has_key(read_name):
-                    reads_dict[read_name] += 1
-                elif not reads_dict.has_key(read_name):
-                    reads_dict[read_name] = 1
-                else:
-                    self.log("! STRANGE in reads_dict")
-
-                if location_dict.has_key(location):
-                    location_dict[location] += 1
-                elif not location_dict.has_key(location):
-                    location_dict[location] = 1
-                else:
-                    self.log("! STRANGE in location_dict")
-
-            uniq_read = 0
-            uniq_location = 0
-            for read_name in reads_dict.keys():
-                if reads_dict[read_name] >= 1: # the read was only mapped once
-                    uniq_read += 1
-            for location in location_dict.keys():
-                if location_dict[location] >= 1: # the location was only covered once
-                    uniq_location += 1
+                    
+                    mapped_reads += 1
+                    location = ":".join(li[1:4])
+                    reads_dict[li[0]] = reads_dict.get(li[0], 0) + 1
+                    location_dict[location] = location_dict.get(location, 0) + 1
+                    
+            uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
+            uniq_location = len(location_dict)
             usable_percentage = float(uniq_read)/float(total_reads)*100
 
             info = { 'name':self.rule['bowtietmp']['treat_sam'][sam_rep],
@@ -569,6 +554,22 @@ class PipeMACS2(PipeController):
                 cmd = 'cp %s %s' % (self.rule['macsresult']['rep_summits'][0],
                                     self.rule['macsresult']['summits'])
                 self.run_cmd(cmd)
+                cmd = 'cp %s %s' % (self.rule['macsresult']['rep_summits'][0],
+                                    self.rule['macsresult']['summits'])
+
+                cmd = 'cp %s %s' % (self.rule['macsresult']['treatrep_bw'][0],
+                                    self.rule['macsresult']['treat_bw'])
+                if self.debug:
+                    self.if_runcmd(self.rule['macsresult']['treat_bw'], cmd)
+                else:
+                    self.run_cmd(cmd)
+                    
+                cmd = 'cp %s %s' % (self.rule['macsresult']['controlrep_bw'][0],
+                                    self.rule['macsresult']['control_bw'])
+                if self.debug:
+                    self.if_runcmd(self.rule['macsresult']['control_bw'], cmd)
+                else:
+                    self.run_cmd(cmd)
                 
         self.extract()
 
@@ -820,21 +821,20 @@ class PipeCEAS(PipeController):
             gt_option = ' -g %s ' % (self.conf['ceas']['ceas_genetable_path'])
         else:
             gt_option = ' '
-
-        for main in ['ceas_main', 'ceas_ex']:
-            if main == 'ceas_ex':
-                len_option = ' '
-            else:
-                len_option = ' -l %s ' % (self.conf['ceas']['chrom_len'])
+            
+            len_option = ' -l %s ' % (self.conf['ceas']['chrom_len'])
             cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
-            cmd = cmd.format(self.conf['ceas'][main],
-                                       self.rule['ceastmp']['ceasname'],
-                                       gt_option + sizes_option + bisizes_option + rel_option,
-                                       self.rule['ceastmp']['ceasp5000'],
-                                       self.rule['macsresult']['treat_bw'],
-                                       len_option)
-
-            self.run_cmd(cmd)
+            cmd = cmd.format(self.conf['ceas']["ceas_main"],
+                             self.rule['ceastmp']['ceasname'],
+                             gt_option + sizes_option + bisizes_option + rel_option,
+                             self.rule['ceastmp']['ceasp5000'],
+                             self.rule['macsresult']['treat_bw'],
+                             len_option)
+            if self.debug:
+                self.if_runcmd(self.rule['ceastmp']['ceasname']+".pdf",
+                               cmd)
+            else:
+                self.run_cmd(cmd)
         self.extract()
         self.log('ceas succeed')
 
@@ -853,9 +853,14 @@ class PipeConserv(PipeController):
         input: summits bed (filtered by VennCor._format)
         *todo*:get the top n significant peaks for conservation plot
         """
-        cmd = 'convert -resize 500x500 -density 50  tmp.pdf %s | mv %s %s ' % (self.rule['conservresult']['conserv_png'],\
-			'tmp.R', self.rule['conservresult']['conserv_r'])
-        self.run_cmd(cmd)
+        cmd = 'convert -resize 500x500 -density 50  tmp.pdf {0} | mv {1} {2} '
+        cmd = cmd.format(self.rule['conservresult']['conserv_png'],
+                         'tmp.R',
+                         self.rule['conservresult']['conserv_r'])
+        if self.debug:
+            self.if_runcmd(self.rule['conservresult']['conserv_r'], cmd)                           
+        else:
+            self.run_cmd(cmd)
 
     def extract(self):
         """
@@ -888,8 +893,10 @@ class PipeConserv(PipeController):
                                    self.conf['conservation']['conserv_plot_phast_path'],
                                    self.rule['conservationtmp']['conserv_topn_summits'],
                                    width_option)
-
-        self.run_cmd(cmd)
+        if self.debug:
+            self.if_runcmd(self.rule['conservresult']['conserv_png'], cmd)
+        else:
+            self.run_cmd(cmd)
         self._format()
         self.log("conservation plot succeed!")
 
@@ -901,7 +908,7 @@ class PipeMotif(PipeController):
         self.stepcontrol = stepcontrol
 
     def _format(self):
-        cmd = 'zip -r %s results/' % self.rule['motifresult']['seqpos']
+        cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
         self.run_cmd(cmd)
 
     def extract(self):
@@ -952,9 +959,11 @@ class PipeMotif(PipeController):
                                    seqpos_db_option,
                                    seqpos_species_option,
                                    self.rule['motiftmp']['summits_p1000'],
-                                   self.conf['userinfo']['species']
-                                   )
-        self.run_cmd(cmd)
+                                   self.conf['userinfo']['species'] )
+        if self.debug:
+            self.if_runcmd("./results/table_frame.html", cmd)
+        else:
+            self.run_cmd(cmd)
         self._format()
 
 def package(conf, names, log):
