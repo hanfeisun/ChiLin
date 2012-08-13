@@ -82,8 +82,10 @@ def main():
     rule = pp.get_rule()
 
     print conf
+
+
     with open(pp.get_tex(),"w") as f_tex:
-        with open(pp.get_summary(),"w") as f_sum:
+        with open(pp.get_summary(),"a+") as f_sum:
             p = lambda func:partial(func, conf=conf, rule=rule, log=log_func,
                                     debug=args.debug, texfile=f_tex,
                                     datasummary = f_sum,
@@ -96,13 +98,11 @@ def main():
             rawqc = p(RawQC)()
             rawqc.run()
 
-            pipebowtie = p(PipeBowtie)()
-            pipebowtie.run()
+            # pipebowtie = p(PipeBowtie)()
+            # pipebowtie.run()
             
             mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
             mappingqc.run()
-
-
             
             macs2 = p(PipeMACS2)()
             macs2.run()
@@ -126,7 +126,7 @@ def main():
             annotationqc.run()
             
             summaryqc = p(SummaryQC)()
-            summaryqc.run(sum_check)
+            summaryqc.run(annotationqc.summarycheck)
             
 
 

@@ -12,6 +12,7 @@ from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
 
+
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
                         block_end_string = '}',
@@ -33,7 +34,6 @@ class QC_Controller(object):
         self.render = {}
         self.checkr = []
         self.summaryCheck = {}
-        print conf
         self.conf = conf
         self.rule = rule
         self.log = log
@@ -59,13 +59,21 @@ class QC_Controller(object):
         else:
             return True
 
-    def if_runcmd(self, condition, cmd, else_handler = lambda :True):
+    def if_runcmd(self, condition, cmd, else_handler = lambda :True, size_check = True):
         """
         run a command conditionally
         """
+        
         if type(condition) == str:
-            condition = not exists(condition)
-            
+            self.log("checking file "+condition)
+            if not exists(condition):
+                condition = True
+            else:
+                if os.path.isfile(condition) and os.path.getsize(condition) <=0 and size_check:
+                    condition = True
+                else:
+                    condition = False
+                    
         if condition:
             return self.run_cmd(cmd)
         else:
@@ -161,13 +169,12 @@ class RawQC(QC_Controller):
 
             
             if self.debug:
-                self.if_runcmd(not (exists(fastqc_out) or exists(changed_name)), cmd)
+                self.if_runcmd(changed_name, cmd)
             else:
                 self.run_cmd(cmd)
 
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
-            self.log(cmd)
             if self.debug:
                 self.if_runcmd(changed_name, cmd)
             else:
@@ -247,6 +254,8 @@ class MappingQC(QC_Controller):
         self.filehandle = texfile
         self.summarycheck = summarycheck
         self.bowtiesummary = self.rule['root']['data_summary']
+        self.log("Preparing mapping QC")
+
 
     def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
@@ -269,6 +278,7 @@ class MappingQC(QC_Controller):
                 ratio = round(float(mapped)/float(totle),3)
                 mapRatior.append(str(ratio*100)+'%')
                 mapRatio.append(ratio)
+
         namesr = map(lambda x: x.replace('_', ' '), names)
         for i in range(len(namesr)):
             temp = [namesr[i],totleReads[i],mappedReads[i],mapRatior[i],uniqueLocation[i]]
@@ -276,7 +286,7 @@ class MappingQC(QC_Controller):
             self.checkr.append(tempcheck)
             summary.append(temp)
         print summary
-        return summary,names,mapRatio
+        return summary,namesr,mapRatio
 
         
     def _mappable_ratio_info(self,ratioList,names):
@@ -284,20 +294,19 @@ class MappingQC(QC_Controller):
         historyData = self.historyData[0]
         rCode = self.rule['qcresult']['mappable_ratio_r']
         pdfName = self.rule['qcresult']['mappable_ratio']
-        f=open("%s"% rCode,"w")
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
-        f.write("map_ratio_data<-c(%s)\n" %str(historyData)[0:-1])
-        f.write("fn<-ecdf(map_ratio_data)\n")
-        f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue', col.vert='black',main='Unique mapped rates',xlab='Unique mapped rates',ylab='Fn(Unique mapped rates)')"+"\n")
-        j=0
-        for p in ratioList:
-            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write("dev.off()\n")
-        f.close()
+        with open(rCode,"w") as f:
+            col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+            pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+            f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
+            f.write("map_ratio_data<-c(%s)\n" %str(historyData)[0:-1])
+            f.write("fn<-ecdf(map_ratio_data)\n")
+            f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue', col.vert='black',main='Unique mapped rates',xlab='Unique mapped rates',ylab='Fn(Unique mapped rates)')"+"\n")
+            j=0
+            for p in ratioList:
+                f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
+                j=j+1
+            f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+            f.write("dev.off()\n")
         cmd = 'Rscript %s'%rCode
         self.run_cmd(cmd)
         return pdfName
@@ -309,14 +318,18 @@ class MappingQC(QC_Controller):
         ratioList = []
         for bamfile in bamList:
             temp = 'temp.bed'
+            temp_stdout = bamfile+"redundant_macs2.log"
             if self.conf['userinfo']['species']=='hg19':
-                cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
-                cmd = cmd.format(bamfile,self.conf['qc']['filterdup_species'],temp)
-                self.log(cmd)
-                a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True) 
-                content = a.communicate()
-                content = list(content)[1].split('\n')
-                os.system('rm temp.bed')
+                cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2} 2> {3}'
+                cmd = cmd.format(bamfile,self.conf['qc']['filterdup_species'],
+                                 temp,
+                                 temp_stdout)
+                if self.debug:
+                    self.if_runcmd(temp_stdout, cmd)
+                else:
+                    self.run_cmd(cmd)
+                with open(temp_stdout) as tf:
+                    content = tf.readlines()
                 for line in content:
                     judge = re.findall(r'Redundant rate of alignment file',line)
                     if judge:
@@ -327,20 +340,20 @@ class MappingQC(QC_Controller):
         pdfName = self.rule['qcresult']['redundant_ratio']
         rCode = self.rule['qcresult']['redundant_ratio_r']
         historyData = self.historyData[2]
-        f=open("%s"%rCode,"w")
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
-        f.write("redun_data<-c(%s)\n" % str(historyData)[0:-1])
-        f.write("fn<-ecdf(redun_data)\n")
-        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Redundant rate ',xlab='Redundant ratio',ylab='Fn(Redundant rate)')"+"\n")
-        j=0
-        for p in ratioList:
-            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write("dev.off()\n")
-        f.close()
+        with open(rCode,"w") as f:
+            col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
+            pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
+            f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
+            f.write("redun_data<-c(%s)\n" % str(historyData)[0:-1])
+            f.write("fn<-ecdf(redun_data)\n")
+            f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Redundant rate ',xlab='Redundant ratio',ylab='Fn(Redundant rate)')"+"\n")
+            j=0
+            for p in ratioList:
+                f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
+                j=j+1
+            print "legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1])
+            f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+            f.write("dev.off()\n")
         cmd = 'Rscript %s'% rCode
         self.run_cmd(cmd)
         if exists(pdfName):
@@ -637,8 +650,10 @@ class AnnotationQC(QC_Controller):
         return Metagene,Ceasprofile
 
     def _distance(self,x,y):
-        if len(x)!=len(y):
-            print 'error'
+        if len(x) != len(y):
+            x = x[::10][:-1]
+            # dirty code! Change it ASAP!
+            # x has 999 element and y has 99 elements
         lenght = len(x)
         s=[]
         for i in range(lenght):
@@ -650,18 +665,17 @@ class AnnotationQC(QC_Controller):
     def _conservation_info(self,conservationR):
         """ For history data 1,2,3 pass, 4,5 fail"""
         print conservationR
-        fph = open(conservationR)
-        for line in fph:
-            if re.findall(r'y0<-\S*\)',line):
-                value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
-                value = value.split(',')
-        fph.close()
+        with open (conservationR) as fph:
+            for line in fph:
+                if re.findall(r'y0<-\S*\)',line):
+                    value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
+                    value = value.split(',')
         value = [float(i) for i in value]
         sumvalue = sum(value)
         value = [i/sumvalue for i in value]
         histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
-        fph = open(histotyDataName)
-        historyData = fph.readlines()
+        with open(histotyDataName) as fph:
+            historyData = fph.readlines()
         scoreList = []
         for i in range(len(historyData)):
             temp = historyData[i].strip()
@@ -674,7 +688,6 @@ class AnnotationQC(QC_Controller):
             judge = 'pass'
         else:
             judge = 'fail'
-        fph.close()
         temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
         self.summarycheck.append(temp)
 
