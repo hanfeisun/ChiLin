@@ -174,7 +174,7 @@ class RawQC(QC_Controller):
                 self.if_runcmd(changed_name, cmd)
             else:
                self.run_cmd(cmd)
-            cmd = 'mv -rf {0} {1}'
+            cmd = 'cp -rf {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
             if self.debug:
                 self.if_runcmd(changed_name, cmd)
