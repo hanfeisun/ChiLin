@@ -340,7 +340,8 @@ class MappingQC(QC_Controller):
                     bamfile = bamList[i]
                     temp = bamfile+".filterdup.temp"
                     temp_out = bamfile +".filterout.temp"
-                    cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2} 2> {3}'
+                    cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2} 2>&1 >/dev/null |tee -a {3}'
+                    # print stderr both to screen and file, abandon stdout
                     cmd = cmd.format(bamfile,
                                      self.conf['qc']['filterdup_species'],
                                      temp_out,
