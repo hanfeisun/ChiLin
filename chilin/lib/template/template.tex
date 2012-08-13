@@ -10,12 +10,10 @@
 \usepackage{color}
 \DeclareGraphicsExtensions{.eps,.png,.pdf,.ps}
 \begin{document}
-\title{Chip-Seq QC Report For Dataset \VAR{prefix_datasetid} }
+\title{Chip-Seq QC Report For Dataset\VAR{prefix_datasetid} }
 %#\author {DC group}
 \vspace{-1cm}
 \maketitle
-\abstract{Modern High Throughput experiment analysis always output large amount of information, which sometimes may confuse us. An objective system of assessment throughout all Chip-seq pipeline has been established to
-avoid such confusion, Here is a comprehensive report on it.If any question, please contact us.}
 \tableofcontents
 \setcounter{tocdepth}{2}
 \newpage
@@ -78,7 +76,7 @@ Unique reads ratio: percentage of unique mappable reads in mappable reads.(Table
 \end{quotation}
 \begin{table}[h]
 \caption{Basic QC statistics} \label{basicqc}
-\begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
+\begin{tabularx}{\textwidth}{ |X|X|X|X|X|X|X|X| } 
 \hline
 Sample & Total reads & Unique Mappable reads & Unique Mappable rate & Unique Mappable location & Redundant rate \\
 \hline
@@ -129,7 +127,7 @@ This is a cumulative distribution file of the unique reads ratio of all the ChIP
 This report aims to show the quality of the peaks called by MACS. 
 The column of 'Cut off' shows what the Q-value (default is 0.01) is used when processing MACS. And the lower Q-value is used, MACS will call the more confident peaks. 
 The 'Peak count' shows the total number of peaks calculated under the condition of a Q-value. 
-For the column of 'peaks $\geq$ 20FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 20. The log value can give us more confidence in our data.
+For the column of 'peaks $\geq$ 10FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 20. The log value can give us more confidence in our data.
 The 'Shift size' shows that the distance between the Watson or Crick tags enrichment location and the binding site's location.(Table ~\ref{peaksum})
 \end{quotation}
 
@@ -155,9 +153,10 @@ The figure shows the distribution for the number's logarithm of peaks that requi
 \setlength{\abovecaptionskip}{0pt} 
 \setlength{\belowcaptionskip}{10pt}
 \centering
-{\includegraphics[width=0.8\textwidth]{\VAR{high_confident_peak_graph}}}
+{\includegraphics[width=0.9\textwidth]{\VAR{high_confident_peak_graph}}}
 \end{figure}
 \newpage
+
 
 %#-------Peaks overlapped with DHS----------
 \subsection{Peaks overlapped with DHS(Dnase Hypersensitivity sites)}
@@ -187,7 +186,7 @@ We draw a CDF curve of the overlap with verlcro region of all DC data, then we c
 \setlength{\abovecaptionskip}{0pt} 
 \setlength{\belowcaptionskip}{10pt}
 \centering
-{\includegraphics[width=0.9\textwidth]{\VAR{velcro_ratio_graph}}}
+{\includegraphics[width=0.8\textwidth]{\VAR{velcro_ratio_graph}}}
 \end{figure}
 \newpage
 %- endif
@@ -204,7 +203,7 @@ If biologist have replicate chipseq experiments,pipline will draw the correlatio
         \setlength{\abovecaptionskip}{0pt}
         \setlength{\belowcaptionskip}{10pt}
         \centering
-        {\includegraphics[width=0.9\textwidth]{\VAR{venn_graph}}}
+        {\includegraphics[width=0.8\textwidth]{\VAR{venn_graph}}}
 \end{figure}
 \newpage
 
@@ -217,7 +216,7 @@ If biologist have replicate chipseq experiments,pipline will draw the venn plot.
         \setlength{\abovecaptionskip}{0pt}
         \setlength{\belowcaptionskip}{10pt}
         \centering
-        {\includegraphics[width=0.9\textwidth]{\VAR{correlation_graph}}}
+        {\includegraphics[width=0.8\textwidth]{\VAR{correlation_graph}}}
 \end{figure}
 \newpage
 %- endif
@@ -265,7 +264,7 @@ still under development.(Figure ~\ref{fig:conservation}) \newline
         \setlength{\abovecaptionskip}{0pt} 
         \setlength{\belowcaptionskip}{10pt}
         \centering
-        {\includegraphics[width=0.9\textwidth]{\VAR{conservation_graph}}}
+        {\includegraphics[width=0.8\textwidth]{\VAR{conservation_graph}}}
 \end{figure}
 \newpage
 %- endif
@@ -291,7 +290,7 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}%
-\begin{tabularx}{1.2\textwidth}{ |X|R|X|X|X| }
+\begin{tabularx}{1.2\textwidth}{ |X|c|c|c|X| }
 \hline
 factor name & Hits & Z-score & motif logo \tabularnewline
 \hline
@@ -301,6 +300,7 @@ factor name & Hits & Z-score & motif logo \tabularnewline
 \BLOCK{ endfor }
 \end{tabularx}
 \end{table}
+\newpage
 %- endif
 %- endif
 
@@ -311,16 +311,16 @@ factor name & Hits & Z-score & motif logo \tabularnewline
 %- if SummaryQC_check
 \section{ChIP-Seq QC Summary Table}
 \begin{quotation}
-\begin(itemize}
 In order to evaluate each QC item, we defined a set of man-made standard,  which include fastqc, mapped reads, overlap  with DHS site and so on. If the one QC item pass the defined standard, we call mark it with pass. The detail judement as followings:(Table: ~\ref{summarytable})
-FastQC: For each sample, pass if the median sequence score upper than 25.
-Reads QC: Pass if more than 5 million unique mapped reads.
-FDR QC: If more than 500 peaks with q equal 0.01 cutoff, it pass.
-Fold QC: Pass if more than 1000 peaks with fold change greater than 10.
-Replicate QC: If wig correlation  0.6, pass.
-Dnase QC: If overlap more than 0.8, pass.
-Velcro QC: Peaks overlap velcro region of all peaks. If less than 0.1, pass.
-/end{itemize}
+\begin{itemize}
+\item FastQC: For each sample, pass if the median sequence score upper than 25.
+\item Reads QC: Pass if more than 5 million unique mapped reads.
+\item FDR QC: If more than 500 peaks with q equal 0.01 cutoff, it pass.
+\item Fold QC: Pass if more than 1000 peaks with fold change greater than 10.
+\item Replicate QC: If wig correlation  0.6, pass.
+\item Dnase QC: If overlap more than 0.8, pass.
+\item Velcro QC: Peaks overlap velcro region of all peaks. If less than 0.1, pass.
+\end{itemize}
 \end{quotation}
 \begin{table}[h]
 \caption{QC Summary Table}\label{summarytable}
