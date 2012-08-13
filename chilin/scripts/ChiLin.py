@@ -8,7 +8,7 @@ from pkg_resources import resource_filename
 import argparse
 from functools import partial
 from chilin.dc import (gen_conf,
-		       PipePreparation,
+                       PipePreparation,
                        PipeBowtie,
                        PipeMACS2,
                        PipeVennCor,
@@ -98,9 +98,10 @@ def main():
             rawqc = p(RawQC)()
             rawqc.run()
 
-            # pipebowtie = p(PipeBowtie)()
-            # pipebowtie.run()
-            
+            bowtie = p(PipeBowtie)()
+            bowtie.run()
+
+
             mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
             mappingqc.run()
             
@@ -123,7 +124,8 @@ def main():
             pipemotif.run()
             
             annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck)
-            annotationqc.run()
+            annotationqc.run(args.atype)
+            summarycheck = annotationqc.summarycheck
             
             summaryqc = p(SummaryQC)()
             summaryqc.run(annotationqc.summarycheck)
