@@ -239,7 +239,7 @@ class PipeController(object):
         """
         DA = self.env.get_template('DA.txt')
         ds_rendered = DA.render(self.rendercontent)
-        with open(datasummary,"wa") as df:
+        with open(self.datasummary,"wa") as df:
             df.write(ds_rendered)
 
 
