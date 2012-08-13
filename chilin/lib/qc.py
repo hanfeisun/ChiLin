@@ -3,7 +3,6 @@ import sys
 import zipfile
 import math
 import re
-import sqlite3
 
 import subprocess
 from subprocess import call
@@ -41,7 +40,6 @@ class QC_Controller(object):
         self.debug = args.get("debug", False)
         self.threads = args.get("threads", 1)  
         self.template = self.env.get_template('template.tex')
-        self.db = sqlite3.connect(resource_filename('chilin', 'db/QC_based_infomation.db')).cursor()
 #        self.record = LogWriter().record()
 
     def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
@@ -164,21 +162,16 @@ class RawQC(QC_Controller):
 
             
             if self.debug:
-                self.if_runcmd(not exists(changed_name), cmd)
+                self.if_runcmd(changed_name, cmd)
             else:
                self.run_cmd(cmd)
             cmd = 'mv {0} {1}'
             cmd = cmd.format(fastqc_out,changed_name)
-            call(cmd, shell = True)
-            call('rm %s.zip'% fastqc_out,shell = True)
-
-#            cmd = 'mv {0} {1}'
-#            cmd = cmd.format(fastqc_out,changed_name)
-#            if self.debug:
-#                self.if_runcmd(not exists(changed_name), cmd)
-#            else:
-#                self.run_cmd(cmd)
-#            self.run_cmd('rm %s.zip'% fastqc_out, exit_=False)
+            if self.debug:
+                self.if_runcmd(changed_name, cmd)
+            else:
+                self.run_cmd(cmd)
+            self.run_cmd('rm %s.zip'% fastqc_out, exit_=False)
             dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
             npeakl.append(peak)
@@ -217,6 +210,7 @@ class RawQC(QC_Controller):
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
         f.close()
+        inf.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
 

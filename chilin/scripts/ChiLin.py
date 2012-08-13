@@ -8,7 +8,7 @@ from pkg_resources import resource_filename
 import argparse
 from functools import partial
 from chilin.dc import (gen_conf,
-		              PipePreparation,
+                       PipePreparation,
                        PipeBowtie,
                        PipeMACS2,
                        PipeVennCor,
