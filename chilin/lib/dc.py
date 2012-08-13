@@ -50,7 +50,6 @@ class PipePreparation:
         self.NameConfPath = NameConfPath
         self._rule = {}
         self._conf = {}
-        self.DataSummary = ' '
         self.checked = False
         self._read_conf(self.ChiLinconfPath)
         parseinput = lambda x: x.split(',')
@@ -197,7 +196,8 @@ class PipeController(object):
         self.rule = rule
         self.log = log
         self.debug = args.get("debug", False)
-        self.threads = args.get("threads", 1)  
+        self.threads = args.get("threads", 1)
+        self.datasummary = args.get("datasummary", 1)
 
     def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
         """
@@ -233,16 +233,16 @@ class PipeController(object):
         write into the DA.txt template
         """
         DA = self.env.get_template('DA.txt')
-        datasummary = DA.render(self.rendercontent)
-        self.datasummary.write(datasummary)
-        self.datasummary.flush()
+        ds_rendered = DA.render(self.rendercontent)
+        with open(datasummary,"wa") as df:
+            df.write(ds_rendered)
+
 
 class PipeBowtie(PipeController):
-    def __init__(self, conf, rule, log, datasummary, stepcontrol, **args):
+    def __init__(self, conf, rule, log, stepcontrol, **args):
         """
         pipeline bowtie part"""
         super(PipeBowtie, self).__init__(conf, rule, log, **args)
-        self.datasummary = datasummary
         self.rendercontent = {}
         self.stepcontrol = stepcontrol
 
@@ -328,7 +328,7 @@ class PipeBowtie(PipeController):
             else:
                 self.run_cmd(cmd)
             self._sam2bam(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
-        self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'])
+
 
         for control_rep in range(self.conf['userinfo']['controlnumber']):
             cmd  = '{0} -S -m {1} {2} {3} {4} '
@@ -343,12 +343,16 @@ class PipeBowtie(PipeController):
             else:
                 self.run_cmd(cmd)
             self._sam2bam(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
-        self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'])
-        self._render()
+        if exists(self.datasummary) and self.debug:
+            pass
+        else:
+            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'])
+            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'])
+            self._render()
         self.log("bowtie run successfully")
 
 class PipeMACS2(PipeController):
-    def __init__(self, conf, rule, log, datasummary, stepcontrol, shiftsize, **args):
+    def __init__(self, conf, rule, log, stepcontrol, shiftsize, **args):
         """
         MACS step, separately and merge for sorted bam
         shell example:
@@ -357,7 +361,7 @@ class PipeMACS2(PipeController):
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
         self.macsinfo = {}
-        self.datasummary = datasummary
+
         self.stepcontrol = stepcontrol
         self.shiftsize = shiftsize
         self.rendercontent = {}
@@ -575,7 +579,7 @@ class PipeMACS2(PipeController):
 
 class PipeVennCor(PipeController):
     def __init__(self, conf, rule, log,
-                 datasummary, stepcontrol, ratios, peaksnumber = '', OptionMethod = "Mean", **args):
+                 stepcontrol, ratios, peaksnumber = '', OptionMethod = "Mean", **args):
         """
         replicates qc measurement 
         using venn diagram and correlation 
@@ -584,7 +588,6 @@ class PipeVennCor(PipeController):
         self.peaksnumber = peaksnumber
         self.OptionMethod = OptionMethod
         self.ratio = {}
-        self.datasummary = datasummary
         self.stepcontrol = stepcontrol
         self.rendercontent = ratios
 

@@ -3,7 +3,7 @@ import sys
 import zipfile
 import math
 import re
-
+import sqlite3
 import subprocess
 from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
@@ -11,7 +11,7 @@ from pkg_resources import resource_filename
 from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
-
+notzero = lambda x:os.path.exists(x) and os.path.getsize(x) > 0
 
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
@@ -40,6 +40,7 @@ class QC_Controller(object):
         self.debug = args.get("debug", False)
         self.threads = args.get("threads", 1)  
         self.template = self.env.get_template('template.tex')
+        self.db = sqlite3.connect(resource_filename('chilin', 'db/QC_based_infomation.db')).cursor()
 #        self.record = LogWriter().record()
 
     def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
@@ -160,7 +161,7 @@ class RawQC(QC_Controller):
             d = rawdata[i]
             temp = os.path.split(d)[1]
             fastqc_out = os.path.splitext(temp)[0]+'_fastqc'
-            changed_name = names[i]+'_fastqc'
+            changed_name = names[i]
             
             cmd = '{0} {1} --extract -t {3} -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],
@@ -218,7 +219,7 @@ class RawQC(QC_Controller):
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
         f.close()
-        inf.close()
+        
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
 
@@ -331,30 +332,39 @@ class MappingQC(QC_Controller):
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
         print names
         ratioList = []
-        if not exists(self.rule['qcresult']['filterdup']):    
-            fph = open(self.rule['qcresult']['filterdup'],'w')
-            for i in range(len(bamList)):
-                bamfile = bamList[i]
-                temp = 'temp.bed'
-                cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2}'
-                cmd = cmd.format(bamfile,self.conf['qc']['filterdup_species'],temp)
-                self.log("Run command:\t"+cmd)
-                a = subprocess.Popen(cmd,stderr = subprocess.PIPE, shell=True) 
-                content = a.communicate()
-                content = list(content)[1].split('\n')
-                os.system('rm temp.bed')
-                for line in content:
-                    judge = re.findall(r'Redundant rate of alignment file',line)
-                    if judge:
-                        score = line.split(':')[-1].strip()
-                        score = round(float(score),3)
-                        fph.write('%s=%f\n'%(names[i],score))
-            fph.close()
-        fph = open(self.rule['qcresult']['filterdup'])
-        for line in fph:
-            score = round(float(line.strip().split('=')[1]),3)
-            ratioList.append(score)
-        fph.close()
+        if notzero(self.rule['qcresult']['filterdup']) and self.debug:    
+            self.log("filterdup is skipped because %s exists" % self.rule['qcresult']['filterdup'])
+        else:
+            with open(self.rule['qcresult']['filterdup'],'w') as fph:
+                for i in range(len(bamList)):
+                    bamfile = bamList[i]
+                    temp = bamfile+".filterdup.temp"
+                    temp_out = bamfile +".filterout.temp"
+                    cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2} 2> {3}'
+                    cmd = cmd.format(bamfile,
+                                     self.conf['qc']['filterdup_species'],
+                                     temp_out,
+                                     temp)
+                    if self.debug:
+                        self.if_runcmd(temp, cmd)
+                    else:
+                        self.run_cmd(cmd)
+                    with open(temp) as tf:
+                        content = tf.readlines()
+                    for line in content:
+                        judge = re.findall(r'Redundant rate of alignment file',line)
+                        if judge:
+                            score = line.split(':')[-1].strip()
+                            score = round(float(score),3)
+                            fph.write('%s=%f\n'%(names[i],score))
+
+
+                            
+        with open(self.rule['qcresult']['filterdup']) as fph:
+            for line in fph:
+                score = round(float(line.strip().split('=')[1]),3)
+                ratioList.append(score)
+
         pdfName = self.rule['qcresult']['redundant_ratio']
         rCode = self.rule['qcresult']['redundant_ratio_r']
 
