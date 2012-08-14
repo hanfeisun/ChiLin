@@ -219,18 +219,26 @@ class PipeController(object):
         else:
             return True
 
-    def if_runcmd(self, condition, cmd, else_handler = lambda :True):
+    def if_runcmd(self, condition, cmd, else_handler = lambda :True, size_check=True):
         """
         run a command conditionally
         """
         if type(condition) == str:
-            condition = not exists(condition)
-            
+            self.log("checking file "+condition)
+            if not exists(condition):
+                condition = True
+            else:
+                if os.path.isfile(condition) and os.path.getsize(condition) <=0 and size_check:
+                    condition = True
+                else:
+                    condition = False
+                    
         if condition:
             return self.run_cmd(cmd)
         else:
             else_handler()
-            return self.log("Skip:\t"+cmd+" is skipped")
+            return self.log(cmd+" is skipped")
+
 
         
     def _render(self):
@@ -239,7 +247,7 @@ class PipeController(object):
         """
         DA = self.env.get_template('DA.txt')
         ds_rendered = DA.render(self.rendercontent)
-        with open(self.datasummary,"wa") as df:
+        with open(self.datasummary,"a") as df:
             df.write(ds_rendered)
 
 
@@ -336,12 +344,13 @@ class PipeBowtie(PipeController):
 
 
         for control_rep in range(self.conf['userinfo']['controlnumber']):
-            cmd  = '{0} -S -m {1} {2} {3} {4} '
+            cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                                       self.conf['bowtie']['nbowtie_max_alignment'],
-                                       self.conf['bowtie']['bowtie_genome_index_path'],
-                                       self.conf['userinfo']['controlpath'][control_rep],
-                                       self.rule['bowtietmp']['control_sam'][control_rep])
+                             self.conf['bowtie']['nbowtie_max_alignment'],
+                             self.conf['bowtie']['bowtie_genome_index_path'],
+                             self.conf['userinfo']['controlpath'][control_rep],
+                             self.rule['bowtietmp']['control_sam'][control_rep],
+                             self.threads)
             self.log("bowtie is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
             if self.debug:
                 self.if_runcmd(self.rule['bowtietmp']['control_sam'][control_rep], cmd)
@@ -349,6 +358,7 @@ class PipeBowtie(PipeController):
                 self.run_cmd(cmd)
             self._sam2bam(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
         if exists(self.datasummary) and self.debug:
+            print "skip rendering"
             pass
         else:
             self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'])
@@ -793,11 +803,15 @@ class PipeCEAS(PipeController):
         need to install ghostscript
         gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile=6602_ceas_combined.pdf -f 6602_ceas.pdf 6602_ceas_CI.pdf
         '''
-        cmd = 'gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile={0} -f {1} {2}'
-        cmd = cmd.format(self.rule['root']['ceas_pdf'],
-                                   self.rule['ceasresult']['ceaspdf'],
-                                   self.rule['ceasresult']['ceasci']
-                                   )
+        # cmd = 'gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -sOutputFile={0} -f {1} {2}'
+        # cmd = cmd.format(self.rule['root']['ceas_pdf'],
+        #                            self.rule['ceasresult']['ceaspdf'],
+        #                            self.rule['ceasresult']['ceasci']
+        #                            )
+        # abandon ceas-ex in the future
+        
+        cmd = "cp {0} {1}"
+        cmd = cmd.format(self.rule['root']['ceas_pdf'], self.rule['ceasresult']['ceaspdf'])
         self.run_cmd(cmd)
 
     def run(self):
@@ -813,36 +827,30 @@ class PipeCEAS(PipeController):
             sys.exit()
         self._format()
         self.log('ceas top n peaks extract done')
-        if self.conf['ceas']['ceas_promoter_sizes']:
-            sizes_option = ' --sizes %s ' % self.conf['ceas']['ceas_promoter_sizes']
+        null_unless = lambda trigger, alter :" " if not trigger else alter
+        
+        sizes_option = null_unless(self.conf['ceas']['ceas_promoter_sizes'],
+                                   ' --sizes %s ' % self.conf['ceas']['ceas_promoter_sizes'])
+        bisizes_option = null_unless(self.conf['ceas']['ceas_bipromoter_sizes'],
+                                     ' --bisizes %s ' % self.conf['ceas']['ceas_bipromoter_sizes'])
+        rel_option = null_unless(self.conf['ceas']['ceas_rel_dist'],
+                                 ' --rel-dist %s ' % self.conf['ceas']['ceas_rel_dist'])
+        gt_option = null_unless(self.conf['ceas']['ceas_genetable_path'],
+                                ' -g %s ' % (self.conf['ceas']['ceas_genetable_path']))
+        len_option = null_unless(self.conf["ceas"]['chrom_len'],
+                                 ' -l %s ' % (self.conf['ceas']['chrom_len']))
+        
+        cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
+        cmd = cmd.format(self.conf['ceas']["ceas_main"],
+                         self.rule['ceastmp']['ceasname'],
+                         gt_option + sizes_option + bisizes_option + rel_option,
+                         self.rule['ceastmp']['ceasp5000'],
+                         self.rule['macsresult']['treat_bw'],
+                         len_option)
+        if self.debug:
+            self.if_runcmd(self.rule['ceastmp']['ceasname']+".pdf", cmd)
         else:
-            sizes_option = ' '
-        if self.conf['ceas']['ceas_bipromoter_sizes']:
-            bisizes_option = ' --bisizes %s ' % self.conf['ceas']['ceas_bipromoter_sizes']
-        else:
-            bisizes_option = ' '
-        if self.conf['ceas']['ceas_rel_dist']:
-            rel_option = ' --rel-dist %s ' % self.conf['ceas']['ceas_rel_dist']
-        else:
-            rel_option = ' '
-        if self.conf['ceas']['ceas_genetable_path']:
-            gt_option = ' -g %s ' % (self.conf['ceas']['ceas_genetable_path'])
-        else:
-            gt_option = ' '
-            
-            len_option = ' -l %s ' % (self.conf['ceas']['chrom_len'])
-            cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
-            cmd = cmd.format(self.conf['ceas']["ceas_main"],
-                             self.rule['ceastmp']['ceasname'],
-                             gt_option + sizes_option + bisizes_option + rel_option,
-                             self.rule['ceastmp']['ceasp5000'],
-                             self.rule['macsresult']['treat_bw'],
-                             len_option)
-            if self.debug:
-                self.if_runcmd(self.rule['ceastmp']['ceasname']+".pdf",
-                               cmd)
-            else:
-                self.run_cmd(cmd)
+            self.run_cmd(cmd)
         self.extract()
         self.log('ceas succeed')
 
