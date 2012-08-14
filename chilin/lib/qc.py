@@ -12,6 +12,11 @@ from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
 notzero = lambda x:os.path.exists(x) and os.path.getsize(x) > 0
+def _tospace(x):
+    if type(x) == str:
+        return x.replace("_"," ")
+    return x
+
 
 jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         block_start_string = '\BLOCK{',
@@ -29,19 +34,21 @@ class QC_Controller(object):
     """
     All the class in the module derives from this class
     """
-    def __init__(self, conf, rule, log, **args):
+    def __init__(self, conf, rule, log, texfile, **args):
         self.env = jinja_env
         self.render = {}
         self.checkr = []
         self.summaryCheck = {}
         self.conf = conf
         self.rule = rule
+        self.texfile = texfile
         self.log = log
         self.debug = args.get("debug", False)
         self.threads = args.get("threads", 1)  
         self.template = self.env.get_template('template.tex')
         self.db = sqlite3.connect(resource_filename('chilin', 'db/QC_based_infomation.db')).cursor()
-#        self.record = LogWriter().record()
+        self.shiftsize = args.get("shiftsize", "")
+
 
     def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
         """
@@ -54,6 +61,7 @@ class QC_Controller(object):
 
             result = error_handler()
             if exit_:
+                raise
                 sys.exit(0)
             else:
                 return result
@@ -95,12 +103,12 @@ class QC_Controller(object):
                     line.append('Fail')
                     self.summarycheck.append(line)
 
-    def _render(self):
+    def _render(self, mode="a"):
         """ Generate the latex code for current section. """
-        temp = self.template.render(self.render)
-        temp = temp.replace('%','\\%')
-        self.filehandle.write(temp)
-        self.filehandle.flush()
+        content = self.template.render(self.render).replace('%','\\%')
+        with open(self.texfile, mode) as f:
+            f.write(content)
+
 
 
 class RawQC(QC_Controller):
@@ -108,9 +116,8 @@ class RawQC(QC_Controller):
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
     def __init__(self,conf = '',rule = '', texfile = '',summarycheck = [],log = '', **args):
-        super(RawQC, self).__init__(conf, rule, log, **args)
+        super(RawQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
-        self.filehandle =  texfile
         
     def _infile_parse(self,dataname): # extract information from fastqc result file 
         """ Extract information from fastqc result file. """
@@ -227,7 +234,7 @@ class RawQC(QC_Controller):
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
-        self.render['prefix_datasetid'] = self.conf['userinfo']['datasetid']
+        self.render['prefix_datasetid'] = _tospace(self.conf['userinfo']['datasetid'])
         if len(self.conf['userinfo']['controlpath']) ==0:
             rawdata = self.conf['userinfo']['treatpath']
             names = self.rule['qcresult']['treat_data']
@@ -245,7 +252,7 @@ class RawQC(QC_Controller):
             self.render['fastqc_check'] = True
         else:
             self.render['fastqc_check'] = Fasle
-        self._render()
+        self._render("w")
         self._check()
 
          
@@ -253,12 +260,10 @@ class RawQC(QC_Controller):
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
     def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
-        super(MappingQC, self).__init__(conf, rule, log, **args)
-        self.filehandle = texfile
+        super(MappingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.bowtiesummary = self.rule['root']['data_summary']
         self.log("Preparing mapping QC")
-
 
     def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
@@ -405,8 +410,10 @@ class MappingQC(QC_Controller):
         self.render['MappingQC_check'] = True
         self.render['Bowtie_check'] = True
         bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
+
         self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
-        self.render['basic_map_table'],names,mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+        self.render['basic_map_table'], names, mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+        print self._basic_mapping_statistics_info(bowtiesummary)
         self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
         self._render()
@@ -415,8 +422,7 @@ class MappingQC(QC_Controller):
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""
     def __init__(self,conf = '',rule = '',texfile = '',summarycheck = '',log = '', **args):
-        super(PeakcallingQC, self).__init__(conf, rule, log, **args)
-        self.filehandle = texfile
+        super(PeakcallingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.peaksxls = self.rule['macsresult']['peaks_xls']
         self.peaksbed = self.rule['macsresult']['treat_peaks']
@@ -427,26 +433,23 @@ class PeakcallingQC(QC_Controller):
     def _peak_summary_info(self,peaksxls):
         """Basic statistic of peak calling result."""
         name = 'dataset'+self.conf['userinfo']['datasetid']
-        fhd = open(peaksxls,"rU" )
-        float_fc = []
-        for i in fhd:
-            i = i.strip()
-            if i.startswith("# qvalue cutoff"):
-                cutoff = i.split('=')[1]
-            if i.startswith("# d"):
-                shiftsize = int(i.split('=')[1])/2
-            if i and not i.startswith("#") and not i.startswith("chr\t"):
-                fs = i.split("\t")
-                fc = fs[7]
-                float_fc.append(float(fc))
-        d = sorted(float_fc)
-        d20 = [x for x in d if x >= 20]
-        d10 = [x for x in d if x >= 10]
-        self.totalpeaks = len(d)+0.01
-        self.fold_20 = len(d20)+0.01
-        self.fold_10 = len(d10)+0.01
-        fhd.close()
-        peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%shiftsize]
+        with open(peaksxls,"rU" ) as fhd:
+            float_fc = []
+            for i in fhd:
+                i = i.strip()
+                cutoff = i.split('=')[1] if i.startswith("# qvalue cutoff")  else "unknown"
+                if i and not i.startswith("#") and not i.startswith("chr\t"):
+                    fs = i.split("\t")
+                    fc = fs[7]
+                    float_fc.append(float(fc))
+            d = sorted(float_fc)
+            d20 = [x for x in d if x >= 20]
+            d10 = [x for x in d if x >= 10]
+            self.totalpeaks = len(d)+0.01
+            self.fold_20 = len(d20)+0.01
+            self.fold_10 = len(d10)+0.01
+        
+        peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%self.shiftsize]
         self.checkr.append(['Totle peaks ','%s'%name,'%d'%self.totalpeaks,1000])
         return peaks_summary
         
@@ -616,7 +619,7 @@ class PeakcallingQC(QC_Controller):
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
         self.render['PeakcallingQC_check'] = True
         if exists(peaksxls):
-            self.render['peak_summary_table'] = self._peak_summary_info(peaksxls)
+            self.render['peak_summary_table'] = map(_tospace, self._peak_summary_info(peaksxls))
             self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
         if exists(peaksbed):
             self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
@@ -635,8 +638,7 @@ class PeakcallingQC(QC_Controller):
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
     def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
-        super(AnnotationQC, self).__init__(conf, rule, log, **args)
-        self.filehandle = texfile
+        super(AnnotationQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.peaksxls = self.rule['macsresult']['peaks_xls']
         self.ceasCode = self.rule['ceasresult']['ceasr']
@@ -648,16 +650,16 @@ class AnnotationQC(QC_Controller):
         """ Describe peaks' distribution and relative position. """
         fhd = open( peakxls,"r" )
         list_fc = []
-        for i in fhd:
-            i = i.strip()
-            if i.startswith("# Redundant rate in treatment"):
-                temp = i.split(":")
-                self.redundant_ratio = str(1-float(temp[1]))
-            if i and not i.startswith("#") and not i.startswith("chr\t"):
-                fs = i.split("\t")
-                fc = fs[7]
-                list_fc.append(fc)
-        fhd.close()
+        with open(peakxls) as fhd:
+            for i in fhd:
+                i = i.strip()
+                if i.startswith("# Redundant rate in treatment"):
+                    temp = i.split(":")
+                    self.redundant_ratio = str(1-float(temp[1]))
+                if i and not i.startswith("#") and not i.startswith("chr\t"):
+                    fs = i.split("\t")
+                    fc = fs[7]
+                    list_fc.append(fc)
         
         ceastring = open(ceasCode).read()
         Metaregxcontent = re.findall(r'layout\(matrix\(c\(1, 2, 3, 3, 4, 5\)[^z]*abline\(v=3000\.000000,lty=2,col=c\("black"\)\)', ceastring)[0]
@@ -695,7 +697,8 @@ class AnnotationQC(QC_Controller):
 
     def _distance(self,x,y):
         if len(x)!=len(y):
-            print 'error'
+            self.log("warning: x and y has different length")
+            x = x[::10][:-1]
         lenght = len(x)
         s=[]
         for i in range(lenght):
@@ -791,7 +794,7 @@ class AnnotationQC(QC_Controller):
 
     def motif_info(self,sqposeTable,Zippath):
         outdir = self.conf['userinfo']['outputdirectory']
-        p=MP.MotifParser()
+        p=MotifParser()
         p.ParserTable(sqposeTable)
         s2 = p.motifs.values()
         logoList = []
@@ -838,6 +841,8 @@ class AnnotationQC(QC_Controller):
         peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
         if exists(ceasCode):
+            print "laila"
+            print "NIMEI"
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
         if exists(conservationFile) and exists(conservationR):
@@ -859,19 +864,25 @@ class AnnotationQC(QC_Controller):
 class SummaryQC(QC_Controller):
     """Generate summary report for each QC item and package function"""
     def __init__(self,conf = '',rule = '', log = "", texfile = '', **args):
-        super(SummaryQC, self).__init__(conf, rule, log, **args)
-        self.filehandle = texfile
+        super(SummaryQC, self).__init__(conf, rule, log, texfile, **args)
         self.conf = conf
         self.rule = rule
 
     def run(self,checkList):
-        self.render['SummaryQC_check'] = True 
-        self.render['summary_table'] = checkList
+        self.render['SummaryQC_check'] = True
+        def _prune_id(x):
+            if type(x) == str:
+                if x.startswith("dataset"):
+                    return x[7:]
+            return x
+
+        self.render['summary_table'] = map(lambda sub_list: map(lambda x:_prune_id(_tospace(x)),
+                                                                sub_list),
+                                           checkList)
+        print self.render
         self._render()
-        self.filehandle.close()
-
-
-
+        cmd = "pdflatex {0}".format(self.texfile)
+        self.run_cmd(cmd)
     def packfile(self):
         pass
 
