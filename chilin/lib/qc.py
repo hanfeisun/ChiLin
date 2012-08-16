@@ -195,7 +195,7 @@ class RawQC(QC_Controller):
         fastqc_summary = []    #fasqtQC summary
         rCode = self.rule['qcresult']['fastqc_pdf_r']
         pdfName = self.rule['qcresult']['fastqc_pdf']
-        names = map(lambda x: x.replace('_', ' '), names)
+        names = map(_tospace, names)
         for j in range(len(npeakl)):
             temp = ['%s' % names[j],'%s' % str(nseqlen[j]),'%s' % str(npeakl[j])]
             fastqc_summary.append(temp)
@@ -267,33 +267,33 @@ class MappingQC(QC_Controller):
 
     def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
-        fhd = open(bowtiesummary)
         summary = []
         names,totleReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
         redundant = []
         mapRatior = []
-        for line in fhd:
-            line.strip()
-            if line.startswith('sam file'):
-                names.append(line.split('=')[1].strip().split('.')[0])
-            if line.startswith('total reads'):
-                totle = line.split('=')[1].strip()
-                totleReads.append(totle)
-            if line.startswith('mapped reads'):
-                mapped = line.split('=')[1].strip()
-                mappedReads.append(mapped)
-            if line.startswith('unique location'):
-                uniqueLocation.append(line.split('=')[1].strip())
-                ratio = round(float(mapped)/float(totle),3)
-                mapRatior.append(str(ratio*100)+'%')
-                mapRatio.append(ratio)
+        with open(bowtiesummary) as fhd:
+            for line in fhd:
+                line.strip()
+                if line.startswith('sam file'):
+                    names.append(line.split('=')[1].strip().split('.')[0])
+                if line.startswith('total reads'):
+                    totle = line.split('=')[1].strip()
+                    totleReads.append(totle)
+                if line.startswith('mapped reads'):
+                    mapped = line.split('=')[1].strip()
+                    mappedReads.append(mapped)
+                if line.startswith('unique location'):
+                    uniqueLocation.append(line.split('=')[1].strip())
+                    ratio = round(float(mapped)/float(totle),3)
+                    mapRatior.append(str(ratio*100)+'%')
+                    mapRatio.append(ratio)
 
-        namesr = map(lambda x: x.replace('_', ' '), names)
-        fredundant = open(self.rule['qcresult']['filterdup'])
-        for line in fredundant:
-            score = round(float(line.strip().split('=')[1]),3)
-            redundant.append(score)
-        fredundant.close()
+        namesr = map(_tospace, names)
+        with open(self.rule['qcresult']['filterdup']) as fredundant:
+            for line in fredundant:
+                score = round(float(line.strip().split('=')[1]),3)
+                redundant.append(score)
+                
         for i in range(len(namesr)):
             temp = [namesr[i],totleReads[i],mappedReads[i],mapRatior[i],uniqueLocation[i],redundant[i]]
             tempcheck = ['Unique mappable reads',namesr[i],mappedReads[i],5000000]
