@@ -277,7 +277,7 @@ class PipeBowtie(PipeController):
                            
     
 
-    def _extract(self, cnt, files):
+    def _extract(self, cnt, files, control = False):
         """
         inputfile : sam files(treat or control)
         cnt : replicates number
@@ -316,7 +316,7 @@ class PipeBowtie(PipeController):
             uniq_location = len(location_dict)
             usable_percentage = float(uniq_read)/float(total_reads)*100
 
-            info = { 'name':self.rule['bowtietmp']['treat_sam'][sam_rep],
+            info = { 'name':self.rule['bowtietmp']['treat_sam'][sam_rep] if not control else self.rule['bowtietmp']['control_sam'][sam_rep],
                      'total': total_reads,
                      'mapped': mapped_reads,
                      'unireads': uniq_read,
@@ -361,8 +361,8 @@ class PipeBowtie(PipeController):
             print "skip rendering"
             pass
         else:
-            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'])
-            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'])
+            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
+            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
             self._render()
         self.log("bowtie run successfully")
 
@@ -810,9 +810,9 @@ class PipeCEAS(PipeController):
         #                            )
         # abandon ceas-ex in the future
         
-        cmd = "cp {0} {1}"
-        cmd = cmd.format(self.rule['root']['ceas_pdf'], self.rule['ceasresult']['ceaspdf'])
-        self.run_cmd(cmd)
+        # cmd = "cp {0} {1}"
+        # cmd = cmd.format(self.rule['root']['ceas_pdf'], self.rule['ceasresult']['ceaspdf'])
+        # self.run_cmd(cmd)
 
     def run(self):
         """
