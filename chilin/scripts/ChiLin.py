@@ -38,7 +38,7 @@ def parse_args():
 
     template_parser = sub_parsers.add_parser("gen",  help = "generate a template of config file",
                                              description = "ChiLin-gen: A config template generator for ChiLin")
-    template_parser.add_argument("--species", choices = ("hg19", "mm9"), required = True)
+    template_parser.add_argument("-s","--species", choices = ("hg19", "mm9"), required = True)
 
     pipe_parser = sub_parsers.add_parser("run", help = "run pipeline using a config file",
                                          description = "ChiLin-run: Run ChiLin pipeline using a config file")

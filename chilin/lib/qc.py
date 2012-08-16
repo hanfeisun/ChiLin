@@ -100,7 +100,7 @@ class QC_Controller(object):
                     line.append('pass')
                     self.summarycheck.append(line)
                 else:
-                    line.append('Fail')
+                    line.append('fail')
                     self.summarycheck.append(line)
 
     def _render(self, mode="a"):
