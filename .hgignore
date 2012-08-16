@@ -4,6 +4,7 @@ dist
 build
 docs/_build
 chilin.egg-info
+chilin/lib/template/ChiLinjinja.conf
 
 *~
 *.pyc

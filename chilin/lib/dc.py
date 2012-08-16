@@ -32,7 +32,7 @@ class LogWriter:
         return logcontent
 
 def gen_conf( species ):
-    env = Environment(loader = PackageLoader('chilin', 'db'))
+    env = Environment(loader = PackageLoader('chilin', 'template'))
     temp = env.get_template('ChiLinjinja.conf')
     if species == 'hg19':
         conf = temp.render(species = species,
@@ -40,9 +40,7 @@ def gen_conf( species ):
     elif species == 'mm9':
         conf = temp.render(species = species,
                            filterdup_species = 'mm')
-    with open('ChiLin.conf', 'w') as cf:
-        cf.write(conf)
-    cf.close()
+    print conf
 
 class PipePreparation:
     def __init__(self, ChiLinconfPath,
