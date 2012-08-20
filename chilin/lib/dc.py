@@ -40,7 +40,9 @@ def gen_conf( species ):
     elif species == 'mm9':
         conf = temp.render(species = species,
                            filterdup_species = 'mm')
-    print conf
+    with open('ChiLin.conf', 'w') as f:
+        f.write(conf)
+    f.close()
 
 class PipePreparation:
     def __init__(self, ChiLinconfPath,
@@ -351,7 +353,7 @@ class PipeBowtie(PipeController):
                 uniq_location = con[3].rstrip('\n')
                 usable_percentage = float(con[2])/float(con[0])*100
 
-            self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
+           # self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
 
             # uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
             # uniq_location = len(location_dict)
@@ -1023,7 +1025,7 @@ class PipeMotif(PipeController):
             self.run_cmd(cmd)
         self._format()
 
-def package(conf, names, log):
+def package(conf, rule, log, **args):
     """
     package all the results in datasetid folder
     """

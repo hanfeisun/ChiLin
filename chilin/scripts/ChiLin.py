@@ -126,6 +126,7 @@ def main():
 
     summaryqc = p(SummaryQC)()
     summaryqc.run(annotationqc.summarycheck)
+    p(package)()
             
 
 
