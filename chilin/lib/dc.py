@@ -283,36 +283,79 @@ class PipeBowtie(PipeController):
         sams = [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...] **args
         sams = self.rendercontent
         sams = {'sams': [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...]} *arg
+        use awk to speed up a little
         """
         print "working on extracting"
         for sam_rep in range(cnt):
-            reads_dict = {}
-            location_dict = {}
-            total_reads = 0
-            mapped_reads = 0
-            with open(files[sam_rep]) as samfile:
-                for line in samfile:
-                    if line.startswith("@"): # eliminate the table's head
-                        continue
-                    li = line.split("\t")
-                    
-                    total_reads += 1
-                    if total_reads % 1000000 == 0: print total_reads
-                    if len(li) < 3:
-                        print line + "looks strange, skipped"
-                        continue
-                    if li[1] == "4": # "4" means not mapped
-                        continue
+            # reads_dict = {}
+            # location_dict = {}
+            # total_reads = 0
+            # mapped_reads = 0
+            # with open(files[sam_rep]) as samfile:
+            #     for line in samfile:
+            #         if line.startswith("@"): # eliminate the table's head
+            #             continue
+            #         li = line.split("\t")
+            #         total_reads += 1
+            #         if total_reads % 1000000 == 0: print total_reads
+            #         if len(li) < 3:
+            #             print line + "looks strange, skipped"
+            #             continue
+            #         if li[1] == "4": # "4" means not mapped
+            #             continue
 
-                    
-                    mapped_reads += 1
-                    location = ":".join(li[1:4])
-                    reads_dict[li[0]] = reads_dict.get(li[0], 0) + 1
-                    location_dict[location] = location_dict.get(location, 0) + 1
-                    
-            uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
-            uniq_location = len(location_dict)
-            usable_percentage = float(uniq_read)/float(total_reads)*100
+
+            #         mapped_reads += 1
+            #         location = ":".join(li[1:4])
+            #         reads_dict[li[0]] = reads_dict.get(li[0], 0) + 1
+            #         location_dict[location] = location_dict.get(location, 0) + 1
+            cmd = '''
+            time awk -F \'\\t\' '
+            BEGIN{total=0; map=0; a=0;b=0}
+            {
+            if (/^[^@]/){
+                total+=1
+                {
+                    if ($2!="4")
+                    {
+                        map+=1 
+                        ur[$1] += 1
+                        ul[$2":"$3":"$4] += 1
+                    }
+            }
+            }
+            }
+            END{
+                for (urr in ur)
+                    a+=1
+                for (ull in ul)
+                    b+=1
+            print total
+            print map
+            print a
+            print b
+            }' %s > bowtie.tmp
+            ''' % (
+                files[sam_rep]
+                )
+
+            if self.debug:
+                self.if_runcmd('bowtie.tmp', cmd)
+            else:
+                self.run_cmd(cmd)
+            with open('bowtie.tmp') as f:
+                con = f.readlines()
+                total_reads = con[0]
+                mapped_reads = con[1]
+                uniq_read = con[2].rstrip('\n')
+                uniq_location = con[3].rstrip('\n')
+                usable_percentage = float(con[2])/float(con[0])*100
+
+            self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
+
+            # uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
+            # uniq_location = len(location_dict)
+            # usable_percentage = float(uniq_read)/float(total_reads)*100
 
             info = { 'name':self.rule['bowtietmp']['treat_sam'][sam_rep] if not control else self.rule['bowtietmp']['control_sam'][sam_rep],
                      'total': total_reads,
@@ -320,7 +363,7 @@ class PipeBowtie(PipeController):
                      'unireads': uniq_read,
                      'uniloc': uniq_location,
                      'percentage' : str(usable_percentage) + '%'}
-            
+
             self.rendercontent['sams'].append(info)
 
     def run(self):
