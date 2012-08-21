@@ -1,0 +1,14 @@
+syntax: glob
+
+dist
+build
+docs/_build
+chilin.egg-info
+chilin/lib/template/ChiLinjinja.conf
+
+*~
+*.pyc
+*.orig
+*.swp
+.DS_Store
+test.jinja
