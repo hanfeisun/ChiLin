@@ -29,7 +29,7 @@ Modern high throughput sequencers can generate tens of millions of sequences in 
 \subsection{FastQC Summary table}
 \begin{quotation}
 FastQC aims to provide a QC report which can spot problems which originate in the sequencer. 
-The sequence quality score\footnote{* use 25 as cutoff}  listed in the table allows you to see if a subset of your sequences have universally low quality values. Here we can report the sequence quality scores of the new datasets and use our criteria to judge the quality of the new raw data(Table ~\ref{fastqctable}).\\
+The sequence quality score listed in the table allows you to see if a subset of your sequences have universally low quality values. Here we can report the sequence quality scores of the new datasets and use our criteria to judge the quality of the new raw data(Table ~\ref{fastqctable}).\\
 \end{quotation}
 \begin{table}[h]
 \caption{FastQC measurement}\label{fastqctable}
@@ -230,14 +230,13 @@ If biologist have replicate chipseq experiments,pipline will draw the venn plot.
 \section{Functional Genomic QC measurement}
 \subsection{Peak Height distribution}
 \begin{quotation}
-Using modern sequencer we do ChIp-seq experiments, thus get millions of factors-binding short reads we grabbed using specific proteins. We get the location and reads density information after  annotate them back to the whole genome, since the reads are located in distinct loci of genome, we can draw a Pie chart to show the distribution of all the reads(i.e.some reads are located in the promoter site while some are in other sites) and its density(namely "Peak Heights").(Figure ~\ref{Peakdist})
 \end{quotation}
 \begin{figure}[h] 
         \caption{Peak height distribution} \label{Peakdist}
         \setlength{\abovecaptionskip}{0pt} 
-        \setlength{\belowcaptionskip}{10pt}
+        \setlength{\belowcaptionskip}{0pt}
         \centering
-        {\includegraphics[width=0.8\textwidth]{\VAR{meta_gene_graph}}}
+        {\includegraphics[width=0.9\textwidth]{\VAR{meta_gene_graph}}}
 \end{figure}
 \newpage
 

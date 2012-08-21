@@ -77,7 +77,7 @@ class PipePreparation:
         
     def get_tex(self):
         return self._rule["qcresult"]["qctex"]
-    
+
     def get_summary(self):
         return self._rule['root']['data_summary']
         
@@ -184,7 +184,7 @@ class PipePreparation:
         check_list(c)
         self.log('ChiLin config parse success, and dependency check has passed!')        
         self.checked = True
-        
+
 
 class PipeController(object):
     def __init__(self, conf, rule, log, **args):
@@ -211,6 +211,7 @@ class PipeController(object):
             # if encounters error
             result = error_handler()
             if exit_:
+                print "`"+cmd+"`"+" failed, exit"
                 sys.exit(0)
             else:
                 return result
@@ -247,6 +248,34 @@ class PipeController(object):
         ds_rendered = DA.render(self.rendercontent)
         with open(self.datasummary,"a") as df:
             df.write(ds_rendered)
+class PipeGroom(PipeController):
+    def __init__(self, conf, rule, log, stepcontrol, **args):
+        """
+        pipeline bowtie part"""
+        super(PipeGroom, self).__init__(conf, rule, log, **args)
+        self.stepcontrol = stepcontrol
+    def run(self):
+        groom_path = lambda x:x.replace(".bam", ".fastq")
+        need_groom = lambda x:".bam" in x
+        for treat_rep in range(self.conf['userinfo']['treatnumber']):
+            if need_groom(self.conf['userinfo']['treatpath'][treat_rep]):
+                cmd  = '{0} -q {1} > {2}'
+                cmd = cmd.format(self.conf['bowtie']['BAMTOFASTQ'],
+                                 self.conf['userinfo']['treatpath'][treat_rep],
+                                 groom_path(self.conf['userinfo']['treatpath'][treat_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
+                self.run_cmd(cmd)
+                self.conf['userinfo']['treatpath'][treat_rep] = groom_path(self.conf['userinfo']['treatpath'][treat_rep])
+        for control_rep in range(self.conf['userinfo']['controlnumber']):
+            if need_groom(self.conf['userinfo']['controlpath'][control_rep]):
+                cmd  = '{0} -q {1} > {2}'
+                cmd = cmd.format(self.conf['bowtie']['BAMTOFASTQ'],
+                                 self.conf['userinfo']['controlpath'][control_rep],
+                                 groom_path(self.conf['userinfo']['controlpath'][control_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
+                self.run_cmd(cmd)
+                self.conf['userinfo']['controlpath'][control_rep] = groom_path(self.conf['userinfo']['controlpath'][control_rep])
+        
 
 
 class PipeBowtie(PipeController):
@@ -256,7 +285,6 @@ class PipeBowtie(PipeController):
         super(PipeBowtie, self).__init__(conf, rule, log, **args)
         self.rendercontent = {}
         self.stepcontrol = stepcontrol
-
         
     def _sam2bam(self, sam, bam):
         """
@@ -900,7 +928,7 @@ class PipeConserv(PipeController):
         if self.type == 'TF' or self.type == 'Dnase':
             width_option = ' '
         elif self.type == 'Histone':
-            width_option = ' -w ' + self.conf['conservation']['width']  # for histone using width 4000
+            width_option = ' -w 4000'   # for histone using width 4000
         else:
             self.log("conservation plot may not support, use default")
         cmd = cmd.format(self.conf['conservation']['conserv_plot_main'],

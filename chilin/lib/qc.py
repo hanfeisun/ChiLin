@@ -37,7 +37,7 @@ class QC_Controller(object):
     def __init__(self, conf, rule, log, texfile, **args):
         self.env = jinja_env
         self.render = {}
-        self.checkr = []
+        self.checker = []
         self.summaryCheck = {}
         self.conf = conf
         self.rule = rule
@@ -92,16 +92,17 @@ class QC_Controller(object):
     
     def _check(self):
         """ Check whether the quality of the dataset is ok. """
-        if len(self.checkr)!=0:
-            for line in self.checkr:
-                value = round(float(line[2]),3)
-                cutoff = round(float(line[3]),3)
+        ord = lambda x:[x["desc"], x["data"], x["value"], x["cutoff"], x["test"]]
+        if len(self.checker)!=0:
+            for i in self.checker:
+                value = round(float(i["value"]),3)
+                cutoff = round(float(i["cutoff"]),3)
                 if value >= cutoff:
-                    line.append('pass')
-                    self.summarycheck.append(line)
+                    i["test"] = 'Pass'
+                    self.summarycheck.append(ord(i))
                 else:
-                    line.append('fail')
-                    self.summarycheck.append(line)
+                    i["test"] = 'Fail'
+                    self.summarycheck.append(ord(i))
 
     def _render(self, mode="a"):
         """ Generate the latex code for current section. """
@@ -199,8 +200,10 @@ class RawQC(QC_Controller):
         for j in range(len(npeakl)):
             temp = ['%s' % names[j],'%s' % str(nseqlen[j]),'%s' % str(npeakl[j])]
             fastqc_summary.append(temp)
-            tempcheck = ['FastqQC','%s' % names[j],'%s' % str(npeakl[j]),25]
-            self.checkr.append(tempcheck)
+            self.checker.append({"desc":"FastqQC",
+                                 "data": names[j],
+                                 "value":npeakl[j],
+                                 "cutoff":25})
 
 
         self.db.execute("select peak_number from fastqc_info_tb")
@@ -267,8 +270,9 @@ class MappingQC(QC_Controller):
 
     def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
+        
         summary = []
-        names,totleReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
+        names, totalReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
         redundant = []
         mapRatior = []
         with open(bowtiesummary) as fhd:
@@ -277,30 +281,41 @@ class MappingQC(QC_Controller):
                 if line.startswith('sam file'):
                     names.append(line.split('=')[1].strip().split('.')[0])
                 if line.startswith('total reads'):
-                    totle = line.split('=')[1].strip()
-                    totleReads.append(totle)
+                    total = line.split('=')[1].strip()
+                    totalReads.append(total)
                 if line.startswith('mapped reads'):
                     mapped = line.split('=')[1].strip()
                     mappedReads.append(mapped)
                 if line.startswith('unique location'):
                     uniqueLocation.append(line.split('=')[1].strip())
-                    ratio = round(float(mapped)/float(totle),3)
+                    ratio = round(float(mapped)/float(total),3)
                     mapRatior.append(str(ratio*100)+'%')
                     mapRatio.append(ratio)
-
-        namesr = map(_tospace, names)
-        with open(self.rule['qcresult']['filterdup']) as fredundant:
-            for line in fredundant:
+        
+        name_sp = map(_tospace, names)
+        with open(self.rule['qcresult']['filterdup']) as frddt:
+            for line in frddt:
                 score = round(float(line.strip().split('=')[1]),3)
                 redundant.append(score)
-                
-        for i in range(len(namesr)):
-            temp = [namesr[i],totleReads[i],mappedReads[i],mapRatior[i],uniqueLocation[i],redundant[i]]
-            tempcheck = ['Unique mappable reads',namesr[i],mappedReads[i],5000000]
-            self.checkr.append(tempcheck)
-            summary.append(temp)
-        print summary
-        return summary,namesr,mapRatio
+        for i in range(len(name_sp)):
+            self.checker.append({"desc": 'Unique mappable reads',
+                                 "data": name_sp[i],
+                                 "value": mappedReads[i],
+                                 "cutoff": 5000000})
+            summary.append([name_sp[i],
+                            totalReads[i],
+                            mappedReads[i],
+                            mapRatior[i],
+                            uniqueLocation[i],
+                            redundant[i]])
+            
+        for i in range(len(name_sp)):
+            self.checker.append({"desc": 'Unique location',
+                                 "data": name_sp[i],
+                                 "value": uniqueLocation[i],
+                                 "cutoff": 5000000})            
+            
+        return summary,name_sp,mapRatio
 
         
     def _mappable_ratio_info(self,ratioList,names):
@@ -404,16 +419,16 @@ class MappingQC(QC_Controller):
         print 'mapping qc'
         bowtiesummary = self.bowtiesummary
         historyData = resource_filename('chilin', 'db/all_data.txt')
-        f = open(historyData)
-        self.historyData = f.readlines()
-        f.close()
+        with open(historyData) as f:
+            self.historyData = f.readlines()
+
         self.render['MappingQC_check'] = True
         self.render['Bowtie_check'] = True
         bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
-
         self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+
+
         self.render['basic_map_table'], names, mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
-        print self._basic_mapping_statistics_info(bowtiesummary)
         self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
         self._render()
@@ -450,7 +465,10 @@ class PeakcallingQC(QC_Controller):
             self.fold_10 = len(d10)+0.01
         
         peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%self.shiftsize]
-        self.checkr.append(['Totle peaks ','%s'%name,'%d'%self.totalpeaks,1000])
+        self.checker.append({"desc":'Total peaks ',
+                             "data": name,
+                             "value": self.totalpeaks,
+                             "cutoff":1000})
         return peaks_summary
         
 
@@ -482,7 +500,10 @@ class PeakcallingQC(QC_Controller):
         f.write('dev.off()\n')
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
-        self.checkr.append(['Fold change ','%s'%name,'%d'%lg_10,3])
+        self.checker.append({"desc":'Fold change ',
+                             "data":name,
+                             "value":lg_10,
+                             "cutoff":3})
         return pdfName
         
 
@@ -528,9 +549,9 @@ class PeakcallingQC(QC_Controller):
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         if velcro_ratio >= 0.1:
-            judge = 'pass'
+            judge = 'Pass'
         else:
-            judge = 'fail'
+            judge = 'Fail'
         self.summarycheck.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1,judge])
         return pdfName
         
@@ -573,7 +594,10 @@ class PeakcallingQC(QC_Controller):
         f.write("dev.off()\n")
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
-        self.checkr.append(['Overlap with DHSs  ','%s'%name,'%f'%dhs_ratio,0.8])
+        self.checker.append({"desc":'Overlap with DHSs  ',
+                             "data":'%s'%name,
+                             "value":'%f'%dhs_ratio,
+                             "cutoff":0.8})
         return pdfName
         
     def _replicate_info(self,vennGraph = '',correlationPlot = '',correlationR = ''):
@@ -605,9 +629,9 @@ class PeakcallingQC(QC_Controller):
         else:
             cor = round(sum(cors)/len(cors),3)
         if cor >= 0.6:
-            judge = 'pass'
+            judge = 'Pass'
         else:
-            judge = 'fail'
+            judge = 'Fail'
         self.summarycheck.append(['Replication QC','%s rep treatment'%m,'%s'%str(cor),'0.6',judge])
 
 
@@ -698,11 +722,18 @@ class AnnotationQC(QC_Controller):
     def _distance(self,x,y):
         if len(x)!=len(y):
             self.log("warning: x and y has different length")
-            x = x[::10][:-1]
+            steps = len(x)/len(y)
+            x = x[::steps][:-1]
         lenght = len(x)
         s=[]
         for i in range(lenght):
-            s1=math.pow((float(x[i])-float(y[i])) , 2)
+            try:
+                s1=math.pow((float(x[i])-float(y[i])) , 2)
+            except:
+                print len(x)
+                print len(y)
+                print i
+                raise
             s.append(s1)
         distance=round(math.sqrt(sum(s)),4)
         return distance
@@ -720,16 +751,16 @@ class AnnotationQC(QC_Controller):
         value = [float(i) for i in value]
         sumvalue = sum(value)
         value = [i/sumvalue for i in value]
+        
         if atype == 'TF' or atype == 'Dnase':
             histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
-            fph = open(histotyDataName)
-            historyData = fph.readlines()
-            cutoff = len(historyData)/2
-        elif atype == "Histone":
+        else:
             histotyDataName = resource_filename("chilin", os.path.join("db", "Histone_centers.txt"))
-            historyData = fph.readlines()
-            fph = open(histotyDataName)
+            
+        with open(histotyDataName) as fph:
+            historyData = fph.readlines()            
             cutoff = len(historyData)/2
+            
         scoreList = []
         for i in range(len(historyData)):
             temp = historyData[i].strip()
@@ -739,9 +770,9 @@ class AnnotationQC(QC_Controller):
             scoreList.append(score)
         mindist = round(scoreList.index(min(scoreList)),3)
         if mindist <=cutoff:
-            judge = 'pass'
+            judge = 'Pass'
         else:
-            judge = 'fail'
+            judge = 'Fail'
         fph.close()
         temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
         self.summarycheck.append(temp)
@@ -828,9 +859,9 @@ class AnnotationQC(QC_Controller):
     def motif_check(self,logoList,factor):
         factor = factor.upper()
         if factor in logoList:
-            judge = 'pass'
+            judge = 'Pass'
         else:
-            judge = 'fail'
+            judge = 'Fail'
         temp = ['Motif QC','dataste%s'% self.conf['userinfo']['datasetid'],factor,'-15',judge]
         self.summarycheck.append(temp)
 
@@ -841,8 +872,6 @@ class AnnotationQC(QC_Controller):
         peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
         if exists(ceasCode):
-            print "laila"
-            print "NIMEI"
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
         if exists(conservationFile) and exists(conservationR):
@@ -855,10 +884,7 @@ class AnnotationQC(QC_Controller):
                 self.render['motif_check'] = True
                 self.render['motif_table'] = motifTable
                 self.motif_check(logoList,self.conf['userinfo']['factor'])
-
-
         self._render()
-        print self.summarycheck
 
 
 class SummaryQC(QC_Controller):
@@ -870,19 +896,20 @@ class SummaryQC(QC_Controller):
 
     def run(self,checkList):
         self.render['SummaryQC_check'] = True
+        
         def _prune_id(x):
             if type(x) == str:
                 if x.startswith("dataset"):
                     return x[7:]
             return x
 
-        self.render['summary_table'] = map(lambda sub_list: map(lambda x:_prune_id(_tospace(x)),
-                                                                sub_list),
+        self.render['summary_table'] = map(lambda sub_list: map(lambda x:_prune_id(_tospace(x)), sub_list),
                                            checkList)
-        print self.render
         self._render()
+
         cmd = "pdflatex {0}".format(self.texfile)
         self.run_cmd(cmd)
+        self.run_cmd(cmd)       # the pdflatex command should be run twice!
     def packfile(self):
         pass
 

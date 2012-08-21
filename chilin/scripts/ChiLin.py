@@ -8,6 +8,7 @@ from pkg_resources import resource_filename
 import argparse
 from functools import partial
 from chilin.dc import (gen_conf,
+                       PipeGroom,
                        PipePreparation,
                        PipeBowtie,
                        PipeMACS2,
@@ -81,7 +82,7 @@ def main():
     conf = pp.get_config()
     rule = pp.get_rule()
 
-
+    
     p = lambda func:partial(func, conf=conf, rule=rule, log=log_func, debug=args.debug,
                             texfile=pp.get_tex(),
                             datasummary = pp.get_summary(),
@@ -92,12 +93,14 @@ def main():
                             ArgsionMethod = args.cor_method,
                             threads = args.max_threads)
 
+    groom = p(PipeGroom)()
+    groom.run()
+
     rawqc = p(RawQC)()
     rawqc.run()
 
     bowtie = p(PipeBowtie)()
     bowtie.run()
-
 
     mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
     mappingqc.run()
@@ -110,7 +113,7 @@ def main():
 
     peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
     peakcallingqc.run()
-
+    
     pipeceas = p(PipeCEAS)()
     pipeceas.run()
 
@@ -122,7 +125,7 @@ def main():
 
     annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck)
     annotationqc.run(args.atype)
-    summarycheck = annotationqc.summarycheck
+
 
     summaryqc = p(SummaryQC)()
     summaryqc.run(annotationqc.summarycheck)
