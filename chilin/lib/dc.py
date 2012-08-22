@@ -55,11 +55,13 @@ class PipePreparation:
         self._conf = {}
         self.checked = False
         self._read_conf(self.ChiLinconfPath)
-        parseinput = lambda x: x.split(',')
+        parseinput = lambda x: [i for i in x.strip().split(',') if i]
         self._conf['userinfo']['treatpath'] = parseinput(self._conf['userinfo']['treatpath'])
         self._conf['userinfo']['controlpath'] = parseinput(self._conf['userinfo']['controlpath'])
+        print self._conf["userinfo"]
         self._conf['userinfo']['treatnumber'] = len(self._conf['userinfo']['treatpath'])
         self._conf['userinfo']['controlnumber'] = len(self._conf['userinfo']['controlpath'])
+        print self._conf['userinfo']['controlnumber']
         os.chdir(self._conf['userinfo']['outputdirectory'])
 
         self._read_rule(self.NameConfPath)
@@ -132,7 +134,7 @@ class PipePreparation:
 
         # Convert treat, control in to list
         # get replicates number
-        head = lambda a_list: a_list[0] != ""
+        head = lambda a_list: len(a_list) > 0
 
         def fatal(prediction, error_info,
                   side_effect=lambda : True):

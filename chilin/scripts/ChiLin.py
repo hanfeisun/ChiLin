@@ -92,7 +92,7 @@ def main():
                             peaksnumber = args.top_peaks,
                             ArgsionMethod = args.cor_method,
                             threads = args.max_threads)
-
+    print conf
     groom = p(PipeGroom)()
     groom.run()
 
