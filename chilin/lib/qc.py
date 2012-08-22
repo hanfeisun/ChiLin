@@ -8,6 +8,7 @@ import subprocess
 from subprocess import call
 from jinja2 import Environment, FileSystemLoader,PackageLoader
 from pkg_resources import resource_filename
+from chilin.format import digit_format, percent_format
 from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
@@ -91,7 +92,8 @@ class QC_Controller(object):
         
     
     def _check(self):
-        """ Check whether the quality of the dataset is ok. """
+        """ Check whether the quality of the dataset is ok.
+        vcb is the callback function for value"""
         ord = lambda x:[x["desc"], x["data"], x["value"], x["cutoff"], x["test"]]
         if len(self.checker)!=0:
             for i in self.checker:
@@ -274,12 +276,13 @@ class MappingQC(QC_Controller):
         summary = []
         names, totalReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
         redundant = []
-        mapRatior = []
+        mapRatio = []
         with open(bowtiesummary) as fhd:
             for line in fhd:
                 line.strip()
                 if line.startswith('sam file'):
-                    names.append(line.split('=')[1].strip().split('.')[0])
+                    s = line.split('=')[1].strip().split('.')[0]
+                    names.append(s)
                 if line.startswith('total reads'):
                     total = line.split('=')[1].strip()
                     totalReads.append(total)
@@ -288,26 +291,27 @@ class MappingQC(QC_Controller):
                     mappedReads.append(mapped)
                 if line.startswith('unique location'):
                     uniqueLocation.append(line.split('=')[1].strip())
-                    ratio = round(float(mapped)/float(total),3)
-                    mapRatior.append(str(ratio*100)+'%')
-                    mapRatio.append(ratio)
-        
-        name_sp = map(_tospace, names)
+                    mapRatio.append(round(float(mapped)/float(total),3))
+
         with open(self.rule['qcresult']['filterdup']) as frddt:
             for line in frddt:
                 score = round(float(line.strip().split('=')[1]),3)
                 redundant.append(score)
+                
+        # formating
+        name_sp = map(_tospace, names)
+        digit_tex = lambda x:digit_format(x,sep="\,") # comma in Tex file should be "/,"
         for i in range(len(name_sp)):
             self.checker.append({"desc": 'Unique mappable reads',
                                  "data": name_sp[i],
                                  "value": mappedReads[i],
                                  "cutoff": 5000000})
             summary.append([name_sp[i],
-                            totalReads[i],
-                            mappedReads[i],
-                            mapRatior[i],
-                            uniqueLocation[i],
-                            redundant[i]])
+                            digit_tex(totalReads[i]),
+                            digit_tex(mappedReads[i]),
+                            percent_format(mapRatio[i]),
+                            digit_tex(uniqueLocation[i]),
+                            percent_format(redundant[i])])
             
         for i in range(len(name_sp)):
             self.checker.append({"desc": 'Unique location',
@@ -428,7 +432,7 @@ class MappingQC(QC_Controller):
         self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
 
 
-        self.render['basic_map_table'], names, mappedRatio = self._basic_mapping_statistics_info(bowtiesummary)
+        self.render['basic_map_table'], names,mappedRatio= self._basic_mapping_statistics_info(bowtiesummary)
         self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
         self._render()
@@ -450,9 +454,11 @@ class PeakcallingQC(QC_Controller):
         name = 'dataset'+self.conf['userinfo']['datasetid']
         with open(peaksxls,"rU" ) as fhd:
             float_fc = []
+            cutoff = "unknown"
             for i in fhd:
                 i = i.strip()
-                cutoff = i.split('=')[1] if i.startswith("# qvalue cutoff")  else "unknown"
+                if i.startswith("# qvalue cutoff"):
+                    cutoff = i.split('=')[1] 
                 if i and not i.startswith("#") and not i.startswith("chr\t"):
                     fs = i.split("\t")
                     fc = fs[7]
@@ -549,9 +555,9 @@ class PeakcallingQC(QC_Controller):
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         if velcro_ratio >= 0.1:
-            judge = 'Pass'
-        else:
             judge = 'Fail'
+        else:
+            judge = 'Pass'
         self.summarycheck.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1,judge])
         return pdfName
         
@@ -694,89 +700,31 @@ class AnnotationQC(QC_Controller):
         rCode = self.rule['qcresult']['ceas_qc_r']
         Metagene = self.rule['qcresult']['ceas_meta_pdf']
         Ceasprofile = self.rule['qcresult']['ceas_profile_pdf']
-        f = open(rCode,'w')
         list_fcr = ','.join(list_fc)
-        f.write("pdf('%s',height=11.5,width=8.5)\n" %Metagene )
-        f.write('nf <- layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow=TRUE),respect=TRUE)\n')
-        f.write('peaks_fc <- c(%s)\n' %list_fcr)
-        f.write('fn <- ecdf(peaks_fc)\n')
-        f.write('density <- fn(peaks_fc)\n')
-        f.write('fdd <- cbind(peaks_fc,density)\n')
-        f.write('fdd1 <- fdd[order(fdd[,1],decreasing = TRUE),]\n')
-        f.write('fdd2 <- cbind(fdd1[,1],1-fdd1[,2])\n')
-        f.write('ma <- max(fdd1[,1])\n')
-        f.write('mi <- min(fdd1[,1])\n')
-        f.write("plot(fdd2,type='p',col=2,pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
-        f.write('abline(v=20,lty=2,col=3)\n')
-        f.write(piescript)
-        f.write('dev.off()\n')
-        f.write('# the secend graph \n\n')
-        f.write("pdf('%s',height=7,width=5.5)\n" %Ceasprofile)
-        f.write("nf <- layout(matrix(c(1,2,3,3), 2, 2, byrow=TRUE), width= c(1,1),height=c(1,1),respect=TRUE)\n")
-        f.write(Metascript)
-        f.write('dev.off()\n')
-        f.close()
+        
+        with open(rCode,'w') as f:
+            f.write("pdf('%s',height=11.5,width=8.5)\n" %Metagene )
+            f.write('nf <- layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow=TRUE),respect=TRUE)\n')
+            f.write('peaks_fc <- c(%s)\n' %list_fcr)
+            f.write('fn <- ecdf(peaks_fc)\n')
+            f.write('density <- fn(peaks_fc)\n')
+            f.write('fdd <- cbind(peaks_fc,density)\n')
+            f.write('fdd1 <- fdd[order(fdd[,1],decreasing = TRUE),]\n')
+            f.write('fdd2 <- cbind(fdd1[,1],1-fdd1[,2])\n')
+            f.write('ma <- max(fdd1[,1])\n')
+            f.write('mi <- min(fdd1[,1])\n')
+            f.write("plot(fdd2,type='p',col=2,pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
+            f.write('abline(v=10,lty=2,col=3)\n')
+            f.write(piescript)
+            f.write('dev.off()\n')
+            f.write('# the secend graph \n\n')
+            f.write("pdf('%s',height=7,width=5.5)\n" %Ceasprofile)
+            f.write("nf <- layout(matrix(c(1,2,3,3), 2, 2, byrow=TRUE), width= c(1,1),height=c(1,1),respect=TRUE)\n")
+            f.write(Metascript)
+            f.write('dev.off()\n')
+
         self.run_cmd("Rscript %s"% rCode, exit_ = False)
         return Metagene,Ceasprofile
-
-    def _distance(self,x,y):
-        if len(x)!=len(y):
-            self.log("warning: x and y has different length")
-            steps = len(x)/len(y)
-            x = x[::steps][:-1]
-        lenght = len(x)
-        s=[]
-        for i in range(lenght):
-            try:
-                s1=math.pow((float(x[i])-float(y[i])) , 2)
-            except:
-                print len(x)
-                print len(y)
-                print i
-                raise
-            s.append(s1)
-        distance=round(math.sqrt(sum(s)),4)
-        return distance
-
-    def _conservation_info(self,conservationR,conservationFile,atype):
-        """ For TFcenters data 1,2,3 pass, 4,5,6 fail
-            For Histone center data 1,2,3,4 pass, 5,6,7,8 fail.
-        """
-        fph = open(conservationR)
-        for line in fph:
-            if re.findall(r'y0<-\S*\)',line):
-                value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
-                value = value.split(',')
-        fph.close()
-        value = [float(i) for i in value]
-        sumvalue = sum(value)
-        value = [i/sumvalue for i in value]
-        
-        if atype == 'TF' or atype == 'Dnase':
-            histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
-        else:
-            histotyDataName = resource_filename("chilin", os.path.join("db", "Histone_centers.txt"))
-            
-        with open(histotyDataName) as fph:
-            historyData = fph.readlines()            
-            cutoff = len(historyData)/2
-            
-        scoreList = []
-        for i in range(len(historyData)):
-            temp = historyData[i].strip()
-            line = temp.split(' ')
-
-            score = self._distance(value,line)
-            scoreList.append(score)
-        mindist = round(scoreList.index(min(scoreList)),3)
-        if mindist <=cutoff:
-            judge = 'Pass'
-        else:
-            judge = 'Fail'
-        fph.close()
-        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
-        self.summarycheck.append(temp)
-        return conservationFile
 
     def DictToList(self,root):
         """extract each node information"""
@@ -874,9 +822,6 @@ class AnnotationQC(QC_Controller):
         if exists(ceasCode):
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-        if exists(conservationFile) and exists(conservationR):
-            self.render['conservation_check'] = True
-            self.render['conservation_graph'] = self._conservation_info(conservationR,conservationFile,atype)
         if exists(Zippath):
             tempfile = self.get_seqpos(Zippath)
             motifTable,logoList = self.motif_info(tempfile,Zippath)
@@ -884,6 +829,10 @@ class AnnotationQC(QC_Controller):
                 self.render['motif_check'] = True
                 self.render['motif_table'] = motifTable
                 self.motif_check(logoList,self.conf['userinfo']['factor'])
+        if exists(conservationFile) and exists(conservationR):
+            self.render['conservation_check'] = True
+            self.render['conservation_graph'] = conservationFile
+        
         self._render()
 
 
@@ -903,8 +852,7 @@ class SummaryQC(QC_Controller):
                     return x[7:]
             return x
 
-        self.render['summary_table'] = map(lambda sub_list: map(lambda x:_prune_id(_tospace(x)), sub_list),
-                                           checkList)
+        self.render['summary_table'] = map(lambda x: map(lambda x:_prune_id(_tospace(x)), x), checkList)
         self._render()
 
         cmd = "pdflatex {0}".format(self.texfile)

@@ -10,7 +10,7 @@
 \usepackage{color}
 \DeclareGraphicsExtensions{.eps,.png,.pdf,.ps}
 \begin{document}
-\title{Chip-Seq QC Report For Dataset \VAR{prefix_datasetid} }
+\title{Chip-Seq QC Report For Dataset `` \VAR{prefix_datasetid} ''} 
 %#\author {DC group}
 \vspace{-1cm}
 \maketitle
@@ -127,7 +127,7 @@ This is a cumulative distribution file of the unique reads ratio of all the ChIP
 This report aims to show the quality of the peaks called by MACS. 
 The column of 'Cut off' shows what the Q-value (default is 0.01) is used when processing MACS. And the lower Q-value is used, MACS will call the more confident peaks. 
 The 'Peak count' shows the total number of peaks calculated under the condition of a Q-value. 
-For the column of 'peaks $\geq$ 10FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 20. The log value can give us more confidence in our data.
+For the column of 'peaks $\geq$ 10FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 10. The log value can give us more confidence in our data.
 The 'Shift size' shows that the distance between the Watson or Crick tags enrichment location and the binding site's location.(Table ~\ref{peaksum})
 \end{quotation}
 
@@ -135,7 +135,7 @@ The 'Shift size' shows that the distance between the Watson or Crick tags enrich
 	\caption{Peak summary table} \label{peaksum}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
 \hline
-Run name & Cutoff & Peak count & High confident peaks & Shift size \\
+Run name & Cutoff & Peak count & peaks $\geq$ 10FC & Shift size \\
 \hline
 \VAR{peak_summary_table|join(' & ')} \\
 \hline
@@ -144,7 +144,7 @@ Run name & Cutoff & Peak count & High confident peaks & Shift size \\
 \newpage		
 
 %#---------- Hight confident Peak
-\subsection{High confident Peak}
+\subsection{High confident Peak }
 \begin{quotation}
 The figure shows the distribution for the number's logarithm of peaks that require fold enrichment $\geq$ 10. For zero 10-fold-enrichment peaks, the number is set to 0.1. Here the cutoff is 3. If a data locates on the left side, it won't be considered to have sufficient high-confidence peaks. On the contrary, if a data locates on the right side, it can be thought to have sufficient high-confidence peaks. In other words, if the number of 10-fold enrichment peaks $\geq$ 1000, we can safely say the data have abundant high-confidence peaks.(Figure ~\ref{highconfipeak})
 \end{quotation}
@@ -255,9 +255,9 @@ Add all the reads density corresponding to its located meta genes(i.e. to the co
 %- endif
 
 %# ---------Conservation QC----------- conservation_graph
-%- if conservation_check
+
 \subsection{Peak conservation score} 
-still under development.(Figure ~\ref{fig:conservation}) \newline
+(Figure ~\ref{fig:conservation}) \newline
 \begin{figure}[h] 
         \caption{Phascon conservation distribution} \label{fig:conservation}
         \setlength{\abovecaptionskip}{0pt} 
@@ -266,7 +266,7 @@ still under development.(Figure ~\ref{fig:conservation}) \newline
         {\includegraphics[width=0.8\textwidth]{\VAR{conservation_graph}}}
 \end{figure}
 \newpage
-%- endif
+
 
 %# -----------motif QC---------------
 %- if motif_check
@@ -288,10 +288,10 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
-        \newcolumntype{R}{>{\raggedleft\arraybackslash}X}%
+        \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 \begin{tabularx}{1.2\textwidth}{ |X|c|c|c|X| }
 \hline
-factor name & Hits & Z-score & motif logo \tabularnewline
+factor name & Z-score & Hits  & motif logo \tabularnewline
 \hline
 \BLOCK{ for line in motif_table }
 \VAR{line|join(' & ')} \\
@@ -309,18 +309,6 @@ factor name & Hits & Z-score & motif logo \tabularnewline
 
 %- if SummaryQC_check
 \section{ChIP-Seq QC Summary Table}
-\begin{quotation}
-In order to evaluate each QC item, we defined a set of man-made standard,  which include fastqc, mapped reads, overlap  with DHS site and so on. If the one QC item pass the defined standard, we call mark it with pass. The detail judement as followings:(Table: ~\ref{summarytable})
-\begin{itemize}
-\item FastQC: For each sample, pass if the median sequence score upper than 25.
-\item Reads QC: Pass if more than 5 million unique mapped reads.
-\item FDR QC: If more than 500 peaks with q equal 0.01 cutoff, it pass.
-\item Fold QC: Pass if more than 1000 peaks with fold change greater than 10.
-\item Replicate QC: If wig correlation  0.6, pass.
-\item Dnase QC: If overlap more than 0.8, pass.
-\item Velcro QC: Peaks overlap velcro region of all peaks. If less than 0.1, pass.
-\end{itemize}
-\end{quotation}
 \begin{table}[h]
 \caption{QC Summary Table}\label{summarytable}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X|X| } 
