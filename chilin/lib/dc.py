@@ -259,10 +259,11 @@ class PipeGroom(PipeController):
     def run(self):
         groom_path = lambda x:x.replace(".bam", ".fastq")
         need_groom = lambda x:".bam" in x
+        print self.conf
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
             if need_groom(self.conf['userinfo']['treatpath'][treat_rep]):
                 cmd  = '{0} -q {1} > {2}'
-                cmd = cmd.format(self.conf['bowtie']['BAMTOFASTQ'],
+                cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
                                  self.conf['userinfo']['treatpath'][treat_rep],
                                  groom_path(self.conf['userinfo']['treatpath'][treat_rep]))
                 self.log("bam2fastq is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
@@ -566,8 +567,8 @@ class PipeMACS2(PipeController):
                                        control_option,
                                        self.rule['macstmp']['macs_init_mergename'])
             if self.debug:
-                self.if_runcmd(not any([exists(self.rule['macstmp']['macs_init_mergename'][treat_rep]+ '_treat_pileup.bdg'),
-                                        exists(self.rule['macstmp']['treat_bdg'][treat_rep])]), cmd)
+                self.if_runcmd(not any([exists(self.rule['macstmp']['macs_init_mergename']+ '_treat_pileup.bdg'),
+                                        exists(self.rule['macstmp']['treat_bdg'])]), cmd)
             else:
                 self.run_cmd(cmd)
             # convert macs default name to NameRule
@@ -777,11 +778,9 @@ class PipeVennCor(PipeController):
             self.run_cmd(cmd)
             self.log('venn diagram succeed')
             # correlation plot
-            cmd = '{0} -d {1} -s {2} -m {3} --min-score {4} --max-score {5} -r {6} {7} {8}'
+            cmd = '{0} -s {1} --min-score {2} --max-score {3} -r {4} {5} {6}'
             cmd = cmd.format(self.conf['correlation']['wig_correlation_main'],
-                                       self.conf['userinfo']['species'],
                                        self.conf['correlation']['wig_correlation_step'],
-                                       self.conf['correlation']['wig_correlation_method'],
                                        self.conf['correlation']['wig_correlation_min'],
                                        self.conf['correlation']['wig_correlation_max'],
                                        self.rule['represult']['cor_r'],
@@ -953,7 +952,6 @@ class PipeMotif(PipeController):
 
     def _format(self):
         cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
-        self.run_cmd(cmd)
 
     def extract(self):
         """
