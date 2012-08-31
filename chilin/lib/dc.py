@@ -134,7 +134,7 @@ class PipePreparation:
 
         # Convert treat, control in to list
         # get replicates number
-        head = lambda a_list: len(a_list) > 0
+        is_null = lambda a_list: len(a_list) > 0
 
         def fatal(prediction, error_info,
                   side_effect=lambda : True):
@@ -154,20 +154,31 @@ class PipePreparation:
         check_list = lambda check_funcs: (f() for f in check_funcs)
         
         c = []
-        c.append(fatal(not head(self._conf['userinfo']['treatpath']),
-                       'forget to fill the treat file path'))
-        c.append(danger(not head(self._conf['userinfo']['controlpath']),
+        c.append(fatal(is_null(self._conf['userinfo']['treatpath']),
+                       'No treat file path'))
+        c.append(danger(is_null(self._conf['userinfo']['controlpath']),
                         'No control file path'))
+        c.append(fatal(is_null(self._conf['userinfo']['datasetid']),
+                       'No datasetID'))
+        c.append(fatal(is_null(self._conf['userinfo']['factor']),
+                       'No factor'))
+        
         c.append(fatal(not os.path.isdir(self._conf['userinfo']['outputdirectory']),
                        'check output directory name'))
         c.append(fatal(self._conf['userinfo']['species'] not in ['hg19', 'mm9'],
-                       'forget to fill the species or species input not supported'))
-        c.append(fatal(False in map(os.path.isfile, self._conf['userinfo']['treatpath']),
-                       'check your input treat file, some error'))
-        c.append(fatal(False in map(os.path.isfile, self._conf['userinfo']['controlpath']),
-                       'check your input control file, some error'))
+                       'No species or current species %s not supported'%self._conf['userinfo']['species']))
+        c.append(fatal(all(map(os.path.isfile, self._conf['userinfo']['treatpath'])),
+                       'check your treat file, one of them is not a file'))
+        c.append(fatal(all(map(os.path.isfile, self._conf['userinfo']['controlpath'])),
+                       'check your control file, one of them is not a file'))
         c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
                        'fastqc not exists'))
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+                               self._conf['userinfo']['treatpath'])),
+                       'check your treat file, one of them is not ended with .fastq or .bam'))
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+                               self._conf['userinfo']['controlpath'])),
+                       'check your control file, one of them is not ended with .fastq or .bam'))                               
         c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
                        "bowtie program dependency has problem"))
         c.append(fatal(not exists(self._conf['samtools']['samtools_main']),
@@ -259,7 +270,6 @@ class PipeGroom(PipeController):
     def run(self):
         groom_path = lambda x:x.replace(".bam", ".fastq")
         need_groom = lambda x:".bam" in x
-        print self.conf
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
             if need_groom(self.conf['userinfo']['treatpath'][treat_rep]):
                 cmd  = '{0} -q {1} > {2}'
@@ -272,7 +282,7 @@ class PipeGroom(PipeController):
         for control_rep in range(self.conf['userinfo']['controlnumber']):
             if need_groom(self.conf['userinfo']['controlpath'][control_rep]):
                 cmd  = '{0} -q {1} > {2}'
-                cmd = cmd.format(self.conf['bowtie']['BAMTOFASTQ'],
+                cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
                                  self.conf['userinfo']['controlpath'][control_rep],
                                  groom_path(self.conf['userinfo']['controlpath'][control_rep]))
                 self.log("bam2fastq is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
@@ -1003,7 +1013,9 @@ class PipeMotif(PipeController):
                                    self.rule['motiftmp']['summits_p1000'],
                                    self.conf['userinfo']['species'] )
         if self.debug:
-            self.if_runcmd("./results/table_frame.html", cmd)
+            seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
+            self.if_runcmd(seqpos_out_path("mdseqpos_out.html"),
+                           cmd)
         else:
             self.run_cmd(cmd)
         self._format()

@@ -179,9 +179,11 @@ class RawQC(QC_Controller):
                              self.conf['userinfo']['outputdirectory'],
                              self.threads)
 
-            
+            print changed_name
+            print fastqc_out
             if self.debug:
-                self.if_runcmd(changed_name, cmd)
+                self.if_runcmd(not exists(changed_name) and not exists(fastqc_out),
+                               cmd)
             else:
                self.run_cmd(cmd)
             cmd = 'cp -rf {0} {1}'
@@ -189,7 +191,7 @@ class RawQC(QC_Controller):
             if self.debug:
                 self.if_runcmd(changed_name, cmd)
             else:
-                self.run_cmd(cmd)
+                self.run_cmd(cmd, exit_=False)
             self.run_cmd('rm %s.zip'% fastqc_out, exit_=False)
             dataname = changed_name+'/fastqc_data.txt'
             seqlen,peak = self._infile_parse(dataname)
@@ -672,10 +674,11 @@ class AnnotationQC(QC_Controller):
         self.summarycheck = summarycheck
         self.peaksxls = self.rule['macsresult']['peaks_xls']
         self.ceasCode = self.rule['ceasresult']['ceasr']
-        self.Zippath = self.rule['motifresult']['seqpos']
+        self.seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
+        self.seqpos_stats_out = "seqpos.txt"
         self.conservationFile = self.rule['conservresult']['conserv_png']
         self.conservationR = self.rule['conservresult']['conserv_r']
-        print 'intialization of function qc'
+        print 'initialization of function qc'
     def _ceas_info(self,peakxls,ceasCode):
         """ Describe peaks' distribution and relative position. """
         fhd = open( peakxls,"r" )
@@ -690,8 +693,9 @@ class AnnotationQC(QC_Controller):
                     fs = i.split("\t")
                     fc = fs[7]
                     list_fc.append(fc)
-        
-        ceastring = open(ceasCode).read()
+        with open(ceasCode) as cf:
+            ceastring = cf.read()
+            
         Metaregxcontent = re.findall(r'layout\(matrix\(c\(1, 2, 3, 3, 4, 5\)[^z]*abline\(v=3000\.000000,lty=2,col=c\("black"\)\)', ceastring)[0]
         Pieregxcontent = re.findall(r'# Thus, look at the labels of the pie chart[^z]*# ChIP regions over the genome', ceastring)[0]
         piescript = '\n'.join(Pieregxcontent.split('\n')[4:-3]) + '\n'
@@ -739,9 +743,9 @@ class AnnotationQC(QC_Controller):
                 result.extend(self.DictToList(each))
             return result
 
-    def get_seqpos(self,Zippath):
-        zipFile = zipfile.ZipFile(Zippath)
-        data = zipFile.read('results/mdseqpos_out.html')
+    def get_seqpos(self):
+        with open(self.seqpos_out_path("mdseqpos_out.html")) as mf:
+            data = mf.read()
         inf = data.split('\n')
         count = 0
         output = []
@@ -759,22 +763,19 @@ class AnnotationQC(QC_Controller):
         for i in mlist:
             if i['zscore']<-15 and i['id'].find('observed')>0:
                 count += 1
-                output.append([('00000%d'%count)[-4:],'|'.join(i['factors']), str(i['zscore']), '|'.join(i['species']), '['+str(i['pssm'])+']',str(i['logoImg']),str(i['hits'])])
-        outf = open('seqpose.txt','w')
-        outf.write('\t'.join(['id','synonym', 'zscore', 'species', 'pssm','logoImg','hits']) + '\n')
-    
-        for i in output:
-            outf.write('\t'.join(i)+'\n')
-        outf.close()
-        return 'seqpose.txt'
+                output.append([('00000%d'%count)[-4:],'|'.join(i['factors']),
+                               str(i['zscore']), '|'.join(i['species']),
+                               '['+str(i['pssm'])+']',str(i['logoImg']),str(i['hits'])])
 
+        with open(self.seqpos_stats_out, "w") as of:
+            of.write('\t'.join(['id','synonym', 'zscore', 'species', 'pssm','logoImg','hits']) + '\n')
+            for i in output:
+                of.write('\t'.join(i)+'\n')
 
-
-
-    def motif_info(self,sqposeTable,Zippath):
+    def motif_info(self):
         outdir = self.conf['userinfo']['outputdirectory']
         p=MotifParser()
-        p.ParserTable(sqposeTable)
+        p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
         logoList = []
         i = 0
@@ -796,39 +797,32 @@ class AnnotationQC(QC_Controller):
             if denovoNum >=2:
                 logo = list(set(logo))
                 logo[logo.index('denovo')] = 'denovo::%d'%denovoNum
-            cmd = 'unzip ' + Zippath + ' -d ' + outdir + ' \'results/%s\'' %str(i['logoImg'][0])
+                
             logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
             logorr  = '\includegraphics[angle=0,width=0.28\\textwidth]{%s}'% logor
             tempt = [' '.join(logo),str(i['zscore'][0]),str(i['hits'][0]),logorr]
-            os.system(cmd)
             output.append(tempt)
         return output,logoList
-
-    def motif_check(self,logoList,factor):
-        factor = factor.upper()
-        if factor in logoList:
-            judge = 'Pass'
-        else:
-            judge = 'Fail'
-        temp = ['Motif QC','dataste%s'% self.conf['userinfo']['datasetid'],factor,'-15',judge]
-        self.summarycheck.append(temp)
 
 
     def run(self,atype):
         """ Run some AnnotationQC function. """
         self.log('#Processing AnnotationQC' )
-        peaksxls,ceasCode,Zippath,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.Zippath,self.conservationFile,self.conservationR
+        peaksxls,ceasCode,conservationFile,conservationR = self.peaksxls,self.ceasCode,self.conservationFile,self.conservationR
         self.render['AnnotationQC_check'] =  True
         if exists(ceasCode):
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-        if exists(Zippath):
-            tempfile = self.get_seqpos(Zippath)
-            motifTable,logoList = self.motif_info(tempfile,Zippath)
+        print self.seqpos_out_path("mdseqpos_out.html")
+        print "MAI"
+        if exists(self.seqpos_out_path("mdseqpos_out.html")):
+            print "MAILA"
+            tempfile = self.get_seqpos()
+            motifTable,logoList = self.motif_info()
+            print motifTable
             if len(motifTable)>0:
-                self.render['motif_check'] = True
                 self.render['motif_table'] = motifTable
-                self.motif_check(logoList,self.conf['userinfo']['factor'])
+                self.render['motif_check'] = True
         if exists(conservationFile) and exists(conservationR):
             self.render['conservation_check'] = True
             self.render['conservation_graph'] = conservationFile
