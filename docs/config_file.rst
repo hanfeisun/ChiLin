@@ -17,7 +17,6 @@ Synopsis
 	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
 
     .. envvar:: species
-
         The name of species, written to the QCreport and log
 
 	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
@@ -67,13 +66,13 @@ Simpest config
 
 Here is one of the simpest Cpipe workflow you can make.
 
-.. literalinclude:: demo/hello_cpipe.conf
+.. literalinclude:: demo/start_chilin.conf
    :language: ini
    :linenos:
 
 Use your own path of :ref:`Raw Data<Raw Data>` to replace the Line 6. And use the path of the directory used to store :ref:`External Data` to replace Line 9.
 
-When saved to ``hello_cpipe.conf``, this config file can construct a powerful pipeline via:
+When saved to ``starter_chilin.conf``, this config file can construct a powerful pipeline via:
 
 ::
 
@@ -103,18 +102,16 @@ Then you can write the :envvar:`[meta]` section like this:
 
 .. code-block:: ini
    :linenos:
-   
-    [meta]
-    dataset.ID = demo_replicate
-    # species = human
-    # assembly = hg19
-    treatment.1 = demo_treat1.fastq  
-    treatment.2 = demo_treat2.fastq  
-    treatment.3 = demo_treat3.fastq  
-    control.1 = demo_control1.fastq
-    control.2 = demo_control2.fastq
+    [UserInfo]
+    User = testuser
+    datasetID = testid
+    species = hg19
+    factor = testfactor
+    treatpath = /mnt/Storage/home/qinq/treat1.fastq,/mnt/Storage/home/qinq/treat2.fastq
+    controlpath = /mnt/Storage/home/qinq/control1test.fastq
+    OutputDirectory = /mnt/Storage/home/qinq/testchilin3
+    ...
 
 Replace the commented in Line 2, Line 3 and Line 4 and complete other sections. Then load it with Cpipe.
 
 For the notation of output files, the :envvar:`${DatasetID}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
-

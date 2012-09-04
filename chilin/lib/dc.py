@@ -1065,6 +1065,20 @@ class PipeMotif(PipeController):
             self.run_cmd(cmd)
         self._format()
 
+class PipeReg(PipeController):
+    def __init__(self, conf, rule, log, stepcontrol, **args):
+        """pipeline RegPotential part, for extract the
+        annotated genes near the peaks region"""
+        super(PipeMotif, self).__init__(conf, rule, log, **args)
+        self.stepcontrol = stepcontrol
+
+    def _format(self):
+        """
+        REGPOTENTIAL.py -n test_score -t helawithDHS -g /mnt/Storage/data/RefGene/hg19.refGene
+        """
+        cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
+
+
 def package(conf, rule, log, **args):
     """
     package all the results in datasetid folder

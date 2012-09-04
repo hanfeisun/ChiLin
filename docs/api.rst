@@ -9,7 +9,7 @@ Controllers of QC
 .. automodule:: chilin.qc
 
 .. autoclass:: chilin.qc.QC_Controller
-    :members: run, _check, QCpreparation, _render
+    :members: runcmd, if_runcmd, _check, _render
 
 
 .. autoclass:: chilin.qc.RawQC
@@ -22,7 +22,7 @@ Controllers of QC
 	:members: _peak_summary_info, _high_confidentPeaks_info, _velcro_ratio_info, _DHS_ratio_info, _replicate_info, run
 
 .. autoclass:: chilin.qc.AnnotationQC
-	:members: _ceas_info, _distance, _conservation_info, _DictToList, _motif_info, run
+	:members: _ceas_info, _DictToList, get_seqpos, _motif_info, run
 .. autoclass:: chilin.qc.SummaryQC
 	:members: run, packfile
     

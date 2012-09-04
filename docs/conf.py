@@ -44,7 +44,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Cpipe manual'
+project = u'ChiLin manual'
 copyright = u'2012, DC'
 
 # The version info for the project you're documenting, acts as replacement for
