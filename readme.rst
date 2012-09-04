@@ -1,10 +1,10 @@
-
 About ChiLin
 ============
 
 ChiLin is the Chinese Unicorn. It is sometimes called the dragon horse, a mythical creature that has a lot of legends and stories associated to it.
 
 We use ChiLin for the name of our project as it has similar alphabet combination with **ChI**\ P-seq pipe\ **lin**\ e.
+Details please see in the http://docsmei.readthedocs.org/
 
 Usage of ChiLin
 ===============
@@ -61,22 +61,21 @@ optional arguments:
 Quick-install
 =============
 
-R
--
+R packages
+-------------
 
 install R, recommended the newest version
 in R session
 > install.packages('gplots')
-> install.packages('Rcolorbrew')
+> install.packages('RColorBrewer')
 
 
 Python
 ------
-
 In the terminal, change directory to the folder 
-python setup.py install # need root
+#python setup.py install # need root
 
 External program
 ----------------
 
-We created a package containing all the sources
+We created a package containing all the sources under this url(wait to construct)
