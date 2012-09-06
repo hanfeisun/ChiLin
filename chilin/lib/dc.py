@@ -33,7 +33,7 @@ class LogWriter:
 
 def gen_conf( species ):
     env = Environment(loader = PackageLoader('chilin', 'template'))
-    temp = env.get_template('ChiLinjinja.conf')
+    temp = env.get_template('ChiLinjinja.conf.sample')
     if species == 'hg19':
         conf = temp.render(species = species,
                            filterdup_species = 'hs')
@@ -1007,6 +1007,7 @@ class PipeMotif(PipeController):
 
     def _format(self):
         cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
+        self.run_cmd(cmd)
 
     def extract(self):
         """
@@ -1065,20 +1066,21 @@ class PipeMotif(PipeController):
             self.run_cmd(cmd)
         self._format()
 
-class PipeReg(PipeController):
-    def __init__(self, conf, rule, log, stepcontrol, **args):
-        """pipeline RegPotential part, for extract the
-        annotated genes near the peaks region"""
-        super(PipeMotif, self).__init__(conf, rule, log, **args)
-        self.stepcontrol = stepcontrol
-
-    def _format(self):
-        """
-        REGPOTENTIAL.py -n test_score -t helawithDHS -g /mnt/Storage/data/RefGene/hg19.refGene
-        """
-        cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
-
-
+#class PipeReg(PipeController):
+#    def __init__(self, conf, rule, log, stepcontrol, **args):
+#        """pipeline RegPotential part, for extract the
+#        annotated genes near the peaks region"""
+#        super(PipeReg, self).__init__(conf, rule, log, **args)
+#        self.stepcontrol = stepcontrol
+#
+#    def _format(self):
+#        """
+#        REGPOTENTIAL.py -n test_score -t helawithDHS -g /mnt/Storage/data/RefGene/hg19.refGene
+#        """
+#        pass
+#    def run(self):
+#        pass
+#
 def package(conf, rule, log, **args):
     """
     package all the results in datasetid folder
@@ -1093,8 +1095,10 @@ def package(conf, rule, log, **args):
     pdf = glob('_ceas_.pdf')
     r = glob('*_ceas_*.R')
     m = glob('*.zip')
-    su = glob('*.txt')
-    fls = [bams, xls, summits, peaks, bw, png, pdf, r, m, cor, su]
+    su = glob('dataset*.txt')
+    qc = glob('*.tex')
+    qcp = glob('*QC.pdf')
+    fls = [bams, xls, summits, peaks, bw, png, pdf, r, m, cor, su, qc, qcp]
     folder = 'dataset' + conf['userinfo']['datasetid']
     call('mkdir %s' % folder, shell = True)
     for fs in fls:
