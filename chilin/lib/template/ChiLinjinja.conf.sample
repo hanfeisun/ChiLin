@@ -1,3 +1,4 @@
+# on tongji bioserver2 
 [UserInfo]
 User = 
 datasetID = 
@@ -24,6 +25,7 @@ CHROM_LEN_BED_PATH = /opt/bin/chr_limit/chr_limit_{{ species }}.bed
 [macs]
 MACS_MAIN = /usr/local/bin/macs2
 BEDGRAPHTOBIGWIG_MAIN = /opt/bin/UCSCTools/bedGraphToBigWig
+bedclip = /usr/local/bin/bedClip
 
 [bedtools]
 INTERSECTBED_MAIN = /usr/local/bin/intersectBed
@@ -57,6 +59,7 @@ WIG_CORRELATION_MAX = 50
 VENN_DIAGRAM_MAIN = /usr/local/bin/venn_diagram.py
 DHS_BED_PATH = /mnt/Storage/data/DHS/DHS_{{ species }}.bed 
 VELCRO_PATH = /opt/bin/wgEncodeHg19ConsensusSignalArtifactRegions.bed
+# velcro only available for hg19
 
 [seqpos]
 SEQPOS_MAIN = /usr/local/bin/MDSeqPos.py

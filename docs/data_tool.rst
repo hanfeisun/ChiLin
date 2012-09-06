@@ -63,6 +63,7 @@ Venn Diagram
 Conservation Plot
 Correlation plot               bigwig_correlation
 bamtofastq
+BedClip
 wigTobigwiggle
 RegPotential
 sample_contamination
