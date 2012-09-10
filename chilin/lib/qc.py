@@ -231,6 +231,8 @@ class RawQC(QC_Controller):
             f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
+        f.write('abline(v=25,lty=2,col="red")\n')
+        f.write("text(26,0,'cutoff=25')\n")
         f.write("dev.off()\n")
         f.close()
         
@@ -503,7 +505,7 @@ class PeakcallingQC(QC_Controller):
         f.write("plot(ecdf(peaks_fc),verticals=TRUE,col.hor='blue', col.vert='black',main='Fold 10 peaks Distribution',xlab='lg(number of fold_enrichment>10 peaks)',ylab='Cumulative density function of all public data')\n")
         f.write("points(%f,fn(%f),pch=21,bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
         f.write("legend('topleft',c('ratio of foldchange greater than 10 : %s'),pch=21)\n"%pointText)
-        f.write('abline(v=3,col="red")\n')
+        f.write('abline(v=3,lty=2,col="red")\n')
         f.write("text(3.5,0,'cutoff=3')\n")
         f.write('dev.off()\n')
         f.close()
@@ -552,6 +554,8 @@ class PeakcallingQC(QC_Controller):
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='velro ratio',xlab='velcro ratio',ylab='Fn(velcro ratio)')\n")
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(velcro_ratio,velcro_ratio,int(pch[0]),col[0]))
+        f.write('abline(v=0.1,lty=2,col="red")\n')
+        f.write("text(0.15,0,'cutoff=3')\n")
         f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21)\n" %pointText)
         f.write("dev.off()\n")
         f.close()
@@ -598,6 +602,8 @@ class PeakcallingQC(QC_Controller):
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='overlapped_with_DHSs',xlab='overlapped_with_DHSs',ylab='Fn(overlapped_with_DHSs)')"+"\n")
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(dhs_ratio,dhs_ratio,int(pch[0]),col[0]))
+        f.write('abline(v=0.8,lty=2,col="red")\n')
+        f.write("text(0.85,0,'cutoff=0.8')\n")
         f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21)\n"%pointText)
         f.write("dev.off()\n")
         f.close()
@@ -718,7 +724,8 @@ class AnnotationQC(QC_Controller):
             f.write('ma <- max(fdd1[,1])\n')
             f.write('mi <- min(fdd1[,1])\n')
             f.write("plot(fdd2,type='p',col=2,pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
-            f.write('abline(v=10,lty=2,col=3)\n')
+            f.write('abline(v=10,lty=2,col="red")\n')
+            f.write("text(11,0,'cutoff=10')\n")
             f.write(piescript)
             f.write('dev.off()\n')
             f.write('# the secend graph \n\n')
@@ -777,6 +784,7 @@ class AnnotationQC(QC_Controller):
         p=MotifParser()
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
+        s2.sort(key=lambda x:x['zscore'][0],reverse=True)
         logoList = []
         i = 0
         while i<len(s2):
