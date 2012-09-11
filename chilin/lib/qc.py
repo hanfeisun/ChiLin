@@ -426,10 +426,6 @@ class MappingQC(QC_Controller):
         """
         print 'mapping qc'
         bowtiesummary = self.bowtiesummary
-        historyData = resource_filename('chilin', 'db/all_data.txt')
-        with open(historyData) as f:
-            self.historyData = f.readlines()
-
         self.render['MappingQC_check'] = True
         self.render['Bowtie_check'] = True
         bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
@@ -723,7 +719,7 @@ class AnnotationQC(QC_Controller):
             f.write('fdd2 <- cbind(fdd1[,1],1-fdd1[,2])\n')
             f.write('ma <- max(fdd1[,1])\n')
             f.write('mi <- min(fdd1[,1])\n')
-            f.write("plot(fdd2,type='p',col=2,pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
+            f.write("plot(fdd2,type='p',pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
             f.write('abline(v=10,lty=2,col="red")\n')
             f.write("text(11,0,'cutoff=10')\n")
             f.write(piescript)
