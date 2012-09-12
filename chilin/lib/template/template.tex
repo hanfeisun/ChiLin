@@ -230,6 +230,7 @@ If biologist have replicate chipseq experiments,pipline will draw the venn plot.
 \section{Functional Genomic QC measurement}
 \subsection{Peak Height distribution}
 \begin{quotation}
+According to the peak location, All peaks are separated into several part, promoter region; intron; Distal intragenic region and so on. In addition peaks fold change accumulative plot is set to value the peak quality and distribution. 
 \end{quotation}
 \begin{figure}[h] 
         \caption{Peak height distribution} \label{Peakdist}
@@ -257,7 +258,7 @@ Add all the reads density corresponding to its located meta genes(i.e. to the co
 %# ---------Conservation QC----------- conservation_graph
 
 \subsection{Peak conservation score} 
-(Figure ~\ref{fig:conservation}) \newline
+Conserved sequences are similar or identical sequences across species, it has been maintained by evolution despite speciation. Highly conserved sequences are thought to have conserved functional value. Conservation plot is set to judge the conservation of these transcriptions binding site or histome modification site. For transcription factor 500 bp upstream and 400 bp downstream to summit of each peak is predefined, 2000 bp for histome modification.(Figure ~\ref{fig:conservation}) \newline
 \begin{figure}[h] 
         \caption{Phascon conservation distribution} \label{fig:conservation}
         \setlength{\abovecaptionskip}{0pt} 

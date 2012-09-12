@@ -817,10 +817,10 @@ class AnnotationQC(QC_Controller):
         if exists(ceasCode):
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-        print self.seqpos_out_path("mdseqpos_out.html")
-        print "MAI"
+#        print self.seqpos_out_path("mdseqpos_out.html")
+#        print "MAI"
         if exists(self.seqpos_out_path("mdseqpos_out.html")):
-            print "MAILA"
+#            print "MAILA"
             tempfile = self.get_seqpos()
             motifTable,logoList = self.motif_info()
             print motifTable
