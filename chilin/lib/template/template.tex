@@ -270,7 +270,6 @@ Conserved sequences are similar or identical sequences across species, it has be
 
 
 %# -----------motif QC---------------
-%- if motif_check
 \subsection{Motif QC measurement analysis}
 \begin{quotation}
 Sequence motifs are short, recurring patterns in DNA that are presumed to have a biological function. Often they indicate sequence-specific binding sites for proteins such as nucleases and transcription factors (TF). \\footnote{D'haeseleer P: What are DNA sequence motifs? nature biotechnology 2006, 24:423-425.}
@@ -283,10 +282,10 @@ We might find several motifs different from the antibody we use. For example, we
 In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. 
 We search in cistrome database and use denovo motif finding methods 
 to generate prediction of experiment factor's motifs. 
-In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. (Table ~\ref{motif})
+In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. In addition, those credibile motif with Zscore under -15 were kept, So if none significant motif detected, motif table won't display in QC report.(Table ~\ref{motif})
 \end{quotation}
 \newpage
-
+%- if motif_check
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
@@ -295,7 +294,8 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 factor name & Z-score & Hits  & motif logo \tabularnewline
 \hline
 \BLOCK{ for line in motif_table }
-\VAR{line|join(' & ')} \\
+*\VAR{line.motif|join(' ')} & \VAR{line.Zscore} & \VAR{line.hits} & \includegraphics[angle=0,width=0.28\textwidth]{\VAR{line.logo}} \\
+%#\VAR{line|join(' & ')} \\
 \hline
 \BLOCK{ endfor }
 \end{tabularx}
