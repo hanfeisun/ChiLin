@@ -225,7 +225,7 @@ class RawQC(QC_Controller):
         f.write("cbind(sequence_quality_score,density)->fndd\n")
         f.write("fndd2<-fndd[order(fndd[,1]),]\n")
         f.write("pdf('%s')\n" % pdfName)
-        f.write("plot(fndd2,type='b',pch=18,col=2,main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
+        f.write("plot(fndd2,type='b',pch=18,col='blue',main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
         j=0
         for p in npeakl:
             f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
@@ -660,7 +660,7 @@ class PeakcallingQC(QC_Controller):
         if self.conf['userinfo']['species']=='hg19':
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
-        if len(self.conf['userinfo']['treatpath']) >= 2:
+        if len(self.conf['userinfo']['treatpath']) >= 2 :
             vennGraph = os.path.abspath('macs2/'+self.rule['represult']['ven_png'])
             correlationPlot = os.path.abspath('macs2/'+self.rule['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
@@ -719,7 +719,7 @@ class AnnotationQC(QC_Controller):
             f.write('fdd2 <- cbind(fdd1[,1],1-fdd1[,2])\n')
             f.write('ma <- max(fdd1[,1])\n')
             f.write('mi <- min(fdd1[,1])\n')
-            f.write("plot(fdd2,type='p',pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
+            f.write("plot(fdd2,type='p',col='blue',pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
             f.write('abline(v=10,lty=2,col="red")\n')
             f.write("text(11,0,'cutoff=10')\n")
             f.write(piescript)
@@ -745,6 +745,58 @@ class AnnotationQC(QC_Controller):
             for each in root['children']:
                 result.extend(self.DictToList(each))
             return result
+
+    def _distance(self,x,y):
+        if len(x)!=len(y):
+            print 'error'
+        lenght = len(x)
+        s=[]
+        for i in range(lenght):
+            s1=math.pow((float(x[i])-float(y[i])) , 2)
+            s.append(s1)
+        distance=round(math.sqrt(sum(s)),4)
+        return distance
+
+    def _conservation_info(self,conservationR,conservationFile,atype):
+        """ For TFcenters data 1,2,3 pass, 4,5,6 fail
+            For Histone center data 1,2,3,4 pass, 5,6,7,8 fail.
+        """
+        fph = open(conservationR)
+        for line in fph:
+            if re.findall(r'y0<-\S*\)',line):
+                value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
+                value = value.split(',')
+        fph.close()
+        value = [float(i) for i in value]
+        sumvalue = sum(value)
+        value = [i/sumvalue for i in value]
+        if atype == 'TF' or atype == 'Dnase':
+            histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
+            fph = open(histotyDataName)
+            historyData = fph.readlines()
+            cutoff = len(historyData)/2
+        elif atype == "Histone":
+            histotyDataName = resource_filename("chilin", os.path.join("db", "Histone_centers.txt"))
+            historyData = fph.readlines()
+            fph = open(histotyDataName)
+            cutoff = len(historyData)/2
+        scoreList = []
+        for i in range(len(historyData)):
+            temp = historyData[i].strip()
+            line = temp.split(' ')
+
+            score = self._distance(value,line)
+            scoreList.append(score)
+        mindist = round(scoreList.index(min(scoreList)),3)
+        if mindist <=cutoff:
+            judge = 'pass'
+        else:
+            judge = 'fail'
+        fph.close()
+        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
+        self.summarycheck.append(temp)
+        return conservationFile
+
 
     def get_seqpos(self):
         with open(self.seqpos_out_path("mdseqpos_out.html")) as mf:
@@ -781,7 +833,6 @@ class AnnotationQC(QC_Controller):
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
         s2.sort(key=lambda x:x['zscore'][0],reverse=True)
-        logoList = []
         i = 0
         while i<len(s2):
             logo = [s2[i]['synonym'][0]]
@@ -796,17 +847,23 @@ class AnnotationQC(QC_Controller):
         output = []
         for i in s2:
             logo = i['synonym']
-            logoList += logo
             denovoNum = logo.count('denovo')
             if denovoNum >=2:
-                logo = list(set(logo))
-                logo[logo.index('denovo')] = 'denovo::%d'%denovoNum
-                
+                logo.reverse()
+                count = denovoNum
+                for lo in range(len(logo)-1,0,-1):
+                    if logo[lo]=='denovo':
+                        del logo[lo]
+                        count -= 1
+                        if count==1:
+                            break
+                logo[logo.index('denovo')] = 'denovo:%d'%denovoNum
+                print logo      
             logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
-            logorr  = '\includegraphics[angle=0,width=0.28\\textwidth]{%s}'% logor
-            tempt = [' '.join(logo),str(i['zscore'][0]),str(i['hits'][0]),logorr]
+            tempt = {'motif':logo,'hits':str(i['hits'][0]),'Zscore':str(i['zscore'][0]),'logo':logor}
             output.append(tempt)
-        return output,logoList
+            print output
+        return output
 
 
     def run(self,atype):
@@ -822,14 +879,15 @@ class AnnotationQC(QC_Controller):
         if exists(self.seqpos_out_path("mdseqpos_out.html")):
 #            print "MAILA"
             tempfile = self.get_seqpos()
-            motifTable,logoList = self.motif_info()
+            motifTable = self.motif_info()
             print motifTable
             if len(motifTable)>0:
                 self.render['motif_table'] = motifTable
                 self.render['motif_check'] = True
         if exists(conservationFile) and exists(conservationR):
             self.render['conservation_check'] = True
-            self.render['conservation_graph'] = conservationFile
+#            self.render['conservation_graph'] = conservationFile
+            self.render['conservation_graph'] = self._conservation_info(conservationR,conservationFile,atype)
         
         self._render()
 
