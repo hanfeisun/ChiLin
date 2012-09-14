@@ -850,6 +850,7 @@ class PipeCEAS(PipeController):
         """run ceas from top n peaks"""
         super(PipeCEAS, self).__init__(conf, rule, log, **args)
         self.peaks = peaksnumber
+        self.type = args[a_type]
         self.stepcontrol = stepcontrol
 
     def _format(self):
@@ -876,7 +877,11 @@ class PipeCEAS(PipeController):
         bedge.close()
         cmd = 'sort -r -g -k 5 %s > %s' % (self.rule['macsresult']['treat_peaks'], self.rule['macstmp']['sortedbed'])
         self.run_cmd(cmd)
-        cmd = 'head -n %s %s > %s' % (self.peaks, self.rule['macstmp']['sortedbed'],  self.rule['ceastmp']['ceasp5000'])
+        
+        if self.type == "Dnase": # for Dnase, use all peaks for ceas
+            cmd = 'mv %s %s' % (self.rule['macstmp']['sortedbed'], self.rule['ceastmp']['ceasptop'])
+        else:
+            cmd = 'head -n %s %s > %s' % (self.peaks, self.rule['macstmp']['sortedbed'],  self.rule['ceastmp']['ceasptop'])
         self.run_cmd(cmd)
 
     def extract(self):
@@ -926,7 +931,7 @@ class PipeCEAS(PipeController):
         cmd = cmd.format(self.conf['ceas']["ceas_main"],
                          self.rule['ceastmp']['ceasname'],
                          gt_option + sizes_option + bisizes_option + rel_option,
-                         self.rule['ceastmp']['ceasp5000'],
+                         self.rule['ceastmp']['ceasptop'],
                          self.rule['macsresult']['treat_bw'],
                          len_option)
         if self.debug:
