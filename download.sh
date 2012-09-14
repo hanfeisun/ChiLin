@@ -185,9 +185,15 @@ if [ ! -f cistrome-app.tar.gz ]; then
         https://bitbucket.org/cistrome/cistrome-applications-harvard/get/e82ed15a486b.tar.gz -O cistrome-app.tar.gz
     tar xvfz cistrome-app.tar.gz
     cd cistrome-applications-harvard
-    
+    # ceas
+    cd published-packages/CEAS
+    python setup.py install
+    cd gdb && gunzip hg19* && gunzip mm9*
+    cp hg19* mm9* $bin
+    cd ../../cistrome-extra-apps
+    python setup.py install
+    # mdseqpos problem
 fi
-
 # special download need copy sub directory
 # conservation Phascon bigwiggle
 BASE_CHRS="\
