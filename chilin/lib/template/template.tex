@@ -33,7 +33,7 @@ The sequence quality score listed in the table allows you to see if a subset of 
 \end{quotation}
 \begin{table}[h]
 \caption{FastQC measurement}\label{fastqctable}
-\begin{tabularx}{\textwidth}{ |X|X|X|X|X| } 
+\begin{tabularx}{\textwidth}{ |X|c|c| } 
 \hline
 Sample name & Sequence length & Sequence quality score \\
 \hline
@@ -266,6 +266,13 @@ Conserved sequences are similar or identical sequences across species, it has be
         \centering
         {\includegraphics[width=0.8\textwidth]{\VAR{conservation_graph}}}
 \end{figure}
+\begin{figure}[h] 
+        \caption{Phascon conservation distribution of original group and compared group} \label{fig:conservation_compare}
+        \setlength{\abovecaptionskip}{0pt} 
+        \setlength{\belowcaptionskip}{10pt}
+        \centering
+        {\includegraphics[width=0.8\textwidth]{\VAR{conservation_compare_graph}}}
+\end{figure}
 \newpage
 
 
@@ -284,7 +291,7 @@ We search in cistrome database and use denovo motif finding methods
 to generate prediction of experiment factor's motifs. 
 In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. In addition, those credibile motif with Zscore under -15 were kept, So if none significant motif detected, motif table won't display in QC report.(Table ~\ref{motif})
 \end{quotation}
-\newpage
+
 %- if motif_check
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
@@ -312,7 +319,7 @@ factor name & Z-score & Hits  & motif logo \tabularnewline
 \section{ChIP-Seq QC Summary Table}
 \begin{table}[h]
 \caption{QC Summary Table}\label{summarytable}
-\begin{tabularx}{\textwidth}{ |X|X|X|X|X|X| } 
+\begin{tabularx}{\textwidth}{ |X|X|c|c|c|c| } 
 \hline
 QC item & Sample or dataset & score & cutoff & Pass or Fail \\
 \hline

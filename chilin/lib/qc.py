@@ -387,8 +387,7 @@ class MappingQC(QC_Controller):
                             score = round(float(score),3)
                             fph.write('%s=%f\n'%(names[i],score))
 
-
-                            
+                  
         with open(self.rule['qcresult']['filterdup']) as fph:
             for line in fph:
                 score = round(float(line.strip().split('=')[1]),3)
@@ -473,7 +472,7 @@ class PeakcallingQC(QC_Controller):
         peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%self.shiftsize]
         self.checker.append({"desc":'Total peaks ',
                              "data": name,
-                             "value": self.totalpeaks,
+                             "value": int(self.totalpeaks),
                              "cutoff":1000})
         return peaks_summary
         
@@ -766,6 +765,8 @@ class AnnotationQC(QC_Controller):
             if re.findall(r'y0<-\S*\)',line):
                 value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
                 value = value.split(',')
+            elif re.findall(r'x<-c\S*\)',line):
+                xlab = line
         fph.close()
         value = [float(i) for i in value]
         sumvalue = sum(value)
@@ -787,15 +788,37 @@ class AnnotationQC(QC_Controller):
 
             score = self._distance(value,line)
             scoreList.append(score)
-        mindist = round(scoreList.index(min(scoreList)),3)
+        mindist = scoreList.index(min(scoreList))
         if mindist <=cutoff:
             judge = 'pass'
         else:
             judge = 'fail'
         fph.close()
-        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%mindist,'K-means cluster','%s'%judge]
+        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%min(scoreList),' ','%s'%judge]
         self.summarycheck.append(temp)
-        return conservationFile
+        print historyData[mindist]
+        print value
+        judgevalue = historyData[mindist].strip().split(' ')
+        judgevalue = [str(i) for i in judgevalue]
+        value = [str(i) for i in value]
+        ymax = max(value+judgevalue)
+        ymin = min(value+judgevalue)
+        rCode = self.rule['qcresult']['conservation_compare_r']
+        pdfName = self.rule['qcresult']['conservation_compare_pdf']
+        with open(rCode,'w') as f:
+            f.write("pdf('%s',height=8.5,width=8.5)\n" % pdfName)
+            f.write("%s\n" % xlab)
+            f.write("y1<-c(%s)\n" % ','.join(judgevalue))
+            f.write("y2<-c(%s)\n" % ','.join(value))
+            f.write("ymax<-(%s)\n" %ymax)
+            f.write("ymin<-(%s)\n" %ymin)
+            f.write("yquart <- (ymax-ymin)/4\n")
+            f.write("plot(x,y2,type='l',col='red',main='Normalized Conservation_at_summits',xlab='Distance from the Center (bp)',ylab='Normalized Average Phastcons',ylim=c(ymin-yquart,ymax+yquart))\n")
+            f.write("points(x,y1,type='l',col='blue',lty=2)\n")
+            f.write("legend('topleft',c('original group','compared group'),lty=c(1,2),col=c('red', 'blue'))\n")
+            f.write("dev.off()\n")
+        self.run_cmd("Rscript %s"% rCode, exit_ = False)
+        return conservationFile,pdfName
 
 
     def get_seqpos(self):
@@ -887,7 +910,7 @@ class AnnotationQC(QC_Controller):
         if exists(conservationFile) and exists(conservationR):
             self.render['conservation_check'] = True
 #            self.render['conservation_graph'] = conservationFile
-            self.render['conservation_graph'] = self._conservation_info(conservationR,conservationFile,atype)
+            self.render['conservation_graph'],self.render['conservation_compare_graph'] = self._conservation_info(conservationR,conservationFile,atype)
         
         self._render()
 
