@@ -12,3 +12,4 @@ chilin/lib/template/ChiLinjinja.conf
 *.swp
 .DS_Store
 test.jinja
+chilindata
