@@ -1,9 +1,7 @@
 #!/bin/bash
-# need root 
 # get depend data and program from internet
 # and update the original ChiLin config
 # at the same time check all dependency
-
 #------------------------
 # # chilin source
 # get https://bitbucket.org/shenglinmei/chilin/get/6e472d7e69a6.tar.gz
@@ -11,12 +9,11 @@
 # cd shenglinmei*
 # python setup.py install
 
-
-
 help()
 {
     cat <<HELP
 Instruction: download all the depend and install automatically
+              need root gcc numpy ghostscript and django
 USAGE EXAMPLE: bash install.sh -p pathd
     -p pathd: where to store download data
 HELP
@@ -64,6 +61,11 @@ if [ ! -n $bin ];then
     bin=/usr/bin
 fi
 
+cp chilin/lib/db/*.bed $bin
+cp chilin/lib/db/*.txt $bin
+unzip chilin/lib/db/DHS.zip -d $bin
+
+
 if [ -d $pathd ]
 then
     echo "directory exists"
@@ -84,10 +86,10 @@ if uname -a | grep Darwin; then
     fi
 elif uname -a |grep Linux; then
     if uname -a | grep x86; then
-        machine="Linux.x86_64"
+        machine="linux.x86_64"
 	echo "Your machine type is linux machine"
     else
-        machine="Linux.i386"
+        machine="linux.i386"
     fi
 fi
 
@@ -114,8 +116,6 @@ get() {
 
 install() {
     suffix=$1
-    tar xvfz $2   # for samtools and bowtie
-    cd $2
     if [ ${suffix##*.} = py ];then
 	python setup.py install
 	return $?
@@ -144,11 +144,19 @@ for i in $URL_BASE;do
         echo "download $i ready"
     fi
 done
+install other bedClip
+install other bedGraphToBigWig
+unzip fastqc_v0.10.1.zip -d $bin
+cd $bin
+chmod 755 fastqc
+cd -
 
-# for sourceforge special
+## for sourceforge special
 wget -c http://sourceforge.net/projects/bowtie-bio/files/bowtie/0.12.8/bowtie-0.12.8-src.zip/download -O bowtie.zip
 wget -c http://sourceforge.net/projects/samtools/files/samtools/0.1.18/samtools-0.1.18.tar.bz2/download -O samtools.tar.bz2
+unzip bowtie.zip
 install cc bowtie.zip
+tar xvfj samtools.tar.bz2
 install cc samtools.tar.bz2
 
 # bowtie index
@@ -160,9 +168,10 @@ hg19 \
 BowtieIndexBase="ftp://ftp.cbcb.umd.edu/pub/data/bowtie_indexes/"
 for index in $species; do
     if [ ! -f ${index}.ebwt.zip ]; then
-	if get ${BowtieIndexBase}/${index}.ebwt.zip; then
-	    echo "Bowtie index download successfully"
-	fi
+		if get ${BowtieIndexBase}/${index}.ebwt.zip; then
+			    echo "Bowtie index download successfully"
+					unzip ${BowtieIndexBase}/${index}.ebwt.zip -d $bin
+			fi
     fi
 done
 
@@ -175,25 +184,31 @@ else:
    echo "Latest macs2 downloaded from github"
    install py macs2.tar.gz
 fi
+
 # mercurial cistrome-applications
 # included program
-#   ceas, conservation_plot
+#   ceas, conservation_plot, mdseqpos, bigwiggle_correlation.py
+#   venn_diagram.py
 # included data
 #   refgene
 if [ ! -f cistrome-app.tar.gz ]; then
     wget --no-check-certificate \
         https://bitbucket.org/cistrome/cistrome-applications-harvard/get/e82ed15a486b.tar.gz -O cistrome-app.tar.gz
     tar xvfz cistrome-app.tar.gz
-    cd cistrome-applications-harvard
+    cd cistrome-applications-harvard*
     # ceas
     cd published-packages/CEAS
-    python setup.py install
+    python setup.py install --prefix=`dirname $bin`
     cd gdb && gunzip hg19* && gunzip mm9*
     cp hg19* mm9* $bin
     cd ../../cistrome-extra-apps
-    python setup.py install
+    python setup.py install --prefix=`dirname $bin`
     # mdseqpos problem
+    export CC=gcc  # upper case
+    cd ../../mdseqpos
+    python setup.py install --prefix=`dirname $bin`
 fi
+#
 # special download need copy sub directory
 # conservation Phascon bigwiggle
 BASE_CHRS="\
@@ -222,20 +237,91 @@ chr22 \
 chrX \
 chrY \
 chrM"
-for c in $BASE_CHRS;do
-    for s in $species;do
-        mkdir conservationhg19
-        wget -c http://cistrome.org/~hanfei/conservation/$s/vertebrate/${c}.bw -O conservationhg19/${c}.bw
+for s in $species;do
+	for c in $BASE_CHRS;do
+		mkdir conservation_$s 2>/dev/null
+		# vertebrate
+		wget -c http://cistrome.org/~hanfei/conservation/$s/vertebrate/${c}.bw -O conservation_$s/${c}.bw
     done
+    cp -r conservation_$s $bin
 done
 
-#wget -c -r -np -nd  http://cistrome.org/~hanfei/conservation/hg19/vertebrate/ # will get index.html
+cd - #back to the chilin directory
 
-# update config for default
-# ChiLin.conf.new
-echo 
+echo "\
+[UserInfo]
+User = 
+datasetID = 
+species = {{ species }}
+factor = 
+treatpath = 
+controlpath = 
+OutputDirectory = 
+# should add fastq or bam suffix
+[bowtie]
+BAMTOFASTQ = $bin/bam2fastx
+BOWTIE_MAIN = $bin/bowtie
+BOWTIE_GENOME_INDEX_PATH = $bin/BowtieIndex/{{ species }}
+nBOWTIE_MAX_ALIGNMENT = 1
 
+[samtools]
+SAMTOOLS_MAIN = $bin/samtools
+SAMTOOLS_CHROM_LEN_PATH = $bin/chromInfo_{{ species }}.txt
+CHROM_LEN_BED_PATH = $bin/chr_limit_{{ species }}.bed
 
+[macs]
+MACS_MAIN = $bin/macs2
+BEDGRAPHTOBIGWIG_MAIN = $bin/bedGraphToBigWig
+bedclip = $bin/bedClip
+
+[bedtools]
+INTERSECTBED_MAIN = $bin/intersectBed
+
+[bed2bam]
+BEDTOBAM_MAIN = $bin/bedToBam
+
+[ceas]
+CEAS_MAIN = $bin/ceasBW
+ceas_ex = $bin/ceas-exon
+CEAS_GENETABLE_PATH = $bin/{{ species }}.refGene
+CHROM_LEN = $bin/chromInfo_{{ species }}.txt
+CEAS_PROMOTER_SIZES = 
+CEAS_BIPROMOTER_SIZES = 
+CEAS_REL_DIST = 
+
+[conservation]
+CONSERV_PLOT_MAIN = $bin/conservation_plot.py
+PEAKS_NUM = 3000
+CONSERV_PLOT_PHAST_PATH = $bin/conservation_{{ species }}
+# use vertebrate Phascon
+
+[correlation]
+WIG_CORRELATION_MAIN = $bin/wig_correlation_bigwig_input_only.py
+WIG_CORRELATION_STEP = 10
+WIG_CORRELATION_METHOD = mean 
+WIG_CORRELATION_MIN = 2
+WIG_CORRELATION_MAX = 50
+
+[venn]
+VENN_DIAGRAM_MAIN = $bin/venn_diagram.py
+DHS_BED_PATH = $bin/DHS/DHS_{{ species }}.bed 
+VELCRO_PATH = $bin/wgEncodeHg19ConsensusSignalArtifactRegions.bed
+# velcro only available for hg19
+
+[seqpos]
+SEQPOS_MAIN = $bin/MDSeqPos.py
+SEQPOS_TOP_PEAKS = 1000
+SEQPOS_MDSCAN_WIDTH = 200
+SEQPOS_MDSCAN_TOP_PEAKS = 200
+SEQPOS_MDSCAN_TOP_PEAKS_REFINE = 500
+SEQPOS_WIDTH = 600
+SEQPOS_PVALUE_CUTOFF = 0.001
+SEQPOS_MOTIF_DB_SELECTION = cistrome.xml
+
+[QC]
+FASTQC_MAIN = $bin/fastqc
+FILTERDUP_SPECIES = {{ filterdup_species }}
+" > ChiLin.conf.new
 if $?
 then
    echo "ChiLin data config succeed!:)"
