@@ -33,14 +33,19 @@ class LogWriter:
 
 def gen_conf( species ):
     env = Environment(loader = PackageLoader('chilin', 'template'))
-    temp = env.get_template('ChiLinjinja.conf.sample')
+    try:
+        new_temp = "ChiLinjinja.conf.new"
+        temp = env.get_template(new_temp)
+    except:
+        new_temp = "ChiLinjinja.conf"
+        temp = env.get_template(new_temp)
     if species == 'hg19':
         conf = temp.render(species = species,
                            filterdup_species = 'hs')
     elif species == 'mm9':
         conf = temp.render(species = species,
                            filterdup_species = 'mm')
-    with open('ChiLin.conf', 'w') as f:
+    with open(new_temp, 'w') as f:
         f.write(conf)
     f.close()
 
@@ -270,11 +275,17 @@ class PipeGroom(PipeController):
         super(PipeGroom, self).__init__(conf, rule, log, **args)
         self.stepcontrol = stepcontrol
     def run(self):
+        """use bedtools bamToFastq to replace tophat bamtofastx
+        TODO server no such program
+        bamToFastq -i x.bam -fq test.fq
+        """
         groom_path = lambda x:x.replace(".bam", ".fastq")
         need_groom = lambda x:".bam" in x
+        n_cmd = '{0} -i {1} -fq {2}'
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
             if need_groom(self.conf['userinfo']['treatpath'][treat_rep]):
-                cmd  = '{0} -q {1} > {2}'
+                # cmd  = '{0} -q {1} > {2} '
+                cmd = n_cmd
                 cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
                                  self.conf['userinfo']['treatpath'][treat_rep],
                                  groom_path(self.conf['userinfo']['treatpath'][treat_rep]))
@@ -283,7 +294,8 @@ class PipeGroom(PipeController):
                 self.conf['userinfo']['treatpath'][treat_rep] = groom_path(self.conf['userinfo']['treatpath'][treat_rep])
         for control_rep in range(self.conf['userinfo']['controlnumber']):
             if need_groom(self.conf['userinfo']['controlpath'][control_rep]):
-                cmd  = '{0} -q {1} > {2}'
+                # cmd  = '{0} -q {1} > {2}'
+                cmd = n_cmd
                 cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
                                  self.conf['userinfo']['controlpath'][control_rep],
                                  groom_path(self.conf['userinfo']['controlpath'][control_rep]))
