@@ -843,11 +843,12 @@ class PipeVennCor(PipeController):
                                                     xrange(1, self.conf['userinfo']['treatnumber'] + 1)))
                                        )
             self.run_cmd(cmd)
+            self.run_cmd('mv venn_diagram.png %s'%self.rule['represult']['ven_png'])
             self.log('venn diagram succeed')
             # correlation plot
             cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7}'
             cmd = cmd.format(self.conf['correlation']['wig_correlation_main'],
-                             self.conf['UserInfo']['species'],
+                             self.conf['userinfo']['species'],
                                        self.conf['correlation']['wig_correlation_step'],
                                        self.conf['correlation']['wig_correlation_min'],
                                        self.conf['correlation']['wig_correlation_max'],
@@ -855,6 +856,7 @@ class PipeVennCor(PipeController):
                                        ' '.join(self.rule['macsresult']['treatrep_bw']),
                                        ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf['userinfo']['treatnumber'] + 1))), )
             self.run_cmd(cmd)
+            self.run_cmd('mv %s.pdf %s' %(self.rule['represult']['cor_r'],self.rule['represult']['cor_pdf']))
             self.log('correlation plot succeed')
 
 
