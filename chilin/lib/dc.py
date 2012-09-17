@@ -845,8 +845,9 @@ class PipeVennCor(PipeController):
             self.run_cmd(cmd)
             self.log('venn diagram succeed')
             # correlation plot
-            cmd = '{0} -s {1} --min-score {2} --max-score {3} -r {4} {5} {6}'
+            cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7}'
             cmd = cmd.format(self.conf['correlation']['wig_correlation_main'],
+                             self.conf['UserInfo']['species'],
                                        self.conf['correlation']['wig_correlation_step'],
                                        self.conf['correlation']['wig_correlation_min'],
                                        self.conf['correlation']['wig_correlation_max'],
@@ -862,7 +863,7 @@ class PipeCEAS(PipeController):
         """run ceas from top n peaks"""
         super(PipeCEAS, self).__init__(conf, rule, log, **args)
         self.peaks = peaksnumber
-        self.type = args[a_type]
+        self.type = args['a_type']
         self.stepcontrol = stepcontrol
 
     def _format(self):
