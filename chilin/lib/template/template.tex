@@ -298,7 +298,7 @@ In order to avoid redundant motif prediction and motifs with too much similarity
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 \begin{tabularx}{1.2\textwidth}{ |X|c|c|c|X| }
 \hline
-factor name & Z-score & Hits  & motif logo \tabularnewline
+Factor name & Z-score & Hits  & Motif logo \tabularnewline
 \hline
 \BLOCK{ for line in motif_table }
 *\VAR{line.motif|join(' ')} & \VAR{line.Zscore} & \VAR{line.hits} & \includegraphics[angle=0,width=0.28\textwidth]{\VAR{line.logo}} \\
@@ -321,7 +321,7 @@ factor name & Z-score & Hits  & motif logo \tabularnewline
 \caption{QC Summary Table}\label{summarytable}
 \begin{tabularx}{\textwidth}{ |X|X|c|c|c|c| } 
 \hline
-QC item & Sample or dataset & score & cutoff & Pass or Fail \\
+QC item & Sample or Dataset & Score & Cutoff & Pass or Fail \\
 \hline
 \BLOCK{ for line in summary_table }
 \VAR{line|join(' & ')} \\
