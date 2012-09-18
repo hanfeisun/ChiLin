@@ -611,7 +611,7 @@ class PeakcallingQC(QC_Controller):
         
     def _replicate_info(self,vennGraph = '',correlationPlot = '',correlationR = ''):
         """ ReplicateQC aims to describe the similarity of replicate experiment. Venn diagram and correlation plot will be used."""
-        self.render['replicte_check'] = True
+        self.render['replicate_check'] = True
         self.render['venn_graph'] = vennGraph
         self.render['correlation_graph'] = correlationPlot
         corrR = self.corrR
@@ -660,9 +660,10 @@ class PeakcallingQC(QC_Controller):
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
         if len(self.conf['userinfo']['treatpath']) >= 2 :
-            vennGraph = os.path.abspath('macs2/'+self.rule['represult']['ven_png'])
-            correlationPlot = os.path.abspath('macs2/'+self.rule['represult']['cor_pdf'])
+            vennGraph = os.path.abspath(self.rule['represult']['ven_png'])
+            correlationPlot = os.path.abspath(self.rule['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
+            print vennGraph,correlationPlot
         self._render()
         self._check()
         
