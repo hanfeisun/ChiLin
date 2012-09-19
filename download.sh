@@ -13,13 +13,13 @@
 help()
 {
     cat <<HELP
-Instruction: download all the depend and install automatically
-              need root gcc
-	      note: mdseqpos needs numpy ghostscript and django
-USAGE EXAMPLE: sudo bash install.sh -p pathd
-    -p pathd: where to store download data
+usage: $0 install [-p DIR]
+
+optional arguments:
+  -p DIR		specify the directory to store the downloaded data DEFAULT: DOWNLOADED
+
 HELP
-    exit 0
+
 }
 
 while [ -n "$1" ]; do
@@ -32,9 +32,9 @@ while [ -n "$1" ]; do
     esac
 done
 
-if [ -z $pathd ]; then
+if [ -n $pathd ]; then
     help
-    echo "please input the path for containing download data"
+    echo "Please input the path for storing download data"
 fi
 
 ## choose for all users or single user
@@ -49,7 +49,7 @@ u=`whoami`
 if [ $u = root ]; then
     echo "install for all users"
 else
-    echo "need root authority, ask your administrator!"
+    echo "Need root authority, please ask your administrator!"
     exit 1
 fi
 #else
@@ -65,6 +65,8 @@ if [ ! -n $bin ];then
         bin=/usr/bin
     fi
 fi
+
+# TODO: User could also customize data path
 
 cp chilin/lib/db/*.bed $bin
 cp chilin/lib/db/*.txt $bin
@@ -115,6 +117,7 @@ get() {
 }
 
 install() {
+    # TODO: detect whether python version is 2.7
     suffix=$1
     if [ ${suffix##*.} = py ];then
 	echo "installining $2"
@@ -167,6 +170,7 @@ if [ ! -f bowtie.zip ]; then
     if [ ! -f samtools.tar.bz2 ]; then
 	wget -c http://sourceforge.net/projects/samtools/files/samtools/0.1.18/samtools-0.1.18.tar.bz2/download -O samtools.tar.bz2
     fi
+    # TODO: curl implementation
 fi
 
 unzip bowtie.zip >/dev/null
@@ -188,6 +192,7 @@ for index in $species; do
 	if get ${BowtieIndexBase}/${index}.ebwt.zip; then
 	    echo "Bowtie index download successfully"
 	    unzip ${BowtieIndexBase}/${index}.ebwt.zip -d $bin
+	    # Use data instead of bin
 	fi
     fi
 done
@@ -346,6 +351,9 @@ SEQPOS_MOTIF_DB_SELECTION = cistrome.xml
 FASTQC_MAIN = $bin/FastQC/fastqc
 FILTERDUP_SPECIES = {{ filterdup_species }}
 " > chilin/lib/template/ChiLinjinja.conf.new
+
+# TODO: display informatrion that the new file is chilin/lib/template/ChiLinjinja.conf.new
+# TODO: copy the ChiLinjinja.conf.new to ChiLinjinja.conf
 
 echo "========================================="
 #python setup.py install # ChiLin
