@@ -253,9 +253,9 @@ class PipeController(object):
                 test = False     
             else:
                 if not_null(test) and size_check:
-                    test = False 
+                    test = True
                 else:
-                    test = True 
+                    test = False
         if not test:
             return self.run_cmd(cmd, exit_)
         else:
@@ -265,7 +265,7 @@ class PipeController(object):
     def smart_run(self, cmd, can_skip = False, can_exit = True):
         if self.debug:
             self.ifnot_runcmd(can_skip, cmd, can_exit)
-        else self.run_cmd(cmd, can_exit)
+        else: self.run_cmd(cmd, can_exit)
         
     def cp(self, orig, new):
         return 'cp %s %s' % (orig, new)
@@ -577,15 +577,15 @@ class PipeMACS2(PipeController):
         else:
             genome_option = ' '
 
-        model_option = " " if self.model else " --nomodel --shift-size=%s " % self.shiftsize
+        model_option = " " if self.model else " --nomodel --shiftsize=%s " % self.shiftsize
         control_option = " " if self.conf['userinfo']['controlnumber'] == 0 else ' -c '+rule['bowtieresult']['bamcontrolmerge']
 
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
-                return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], input, output)
-            else:
-                return 'cp %s %s'%input, output
+                return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], output, ' '.join(input))
+           else:
+                return 'mv %s %s' % (' '.join(input), output)
 
         def cmd_callpeak(input_bam, output):
             cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 {2} -t {3} {4} -n {5}'
@@ -594,16 +594,19 @@ class PipeMACS2(PipeController):
                               control_option, output)
             
         # Commands
-        cp = lambda orig, dest: self.smart_run(cp(orig, dest))
+        cp = lambda orig, dest: self.smart_run(self.cp(orig, dest))
         merge = lambda orig, dest: self.smart_run(cmd_merge(orig, dest), dest)
         callpeak = lambda orig, dest, test: self.smart_run(cmd_callpeak(orig, dest), test)
+#        def callpeak(orig, dest, test, exit): # TODO deal with model failure
+#            return self.smart_run(cmd_callpeak(orig, dest), test, exit)
         
         # Start processing
-        merge(' '.join(rule['bowtieresult']['bam_treat']), rule['bowtieresult']['bamtreatmerge'])
-        merge(' '.join(rule['bowtieresult']['bam_control']), rule['bowtieresult']['bamcontrolmerge'])
+        merge(rule['bowtieresult']['bam_treat'], rule['bowtieresult']['bamtreatmerge'])
+        merge(rule['bowtieresult']['bam_control'], rule['bowtieresult']['bamcontrolmerge'])
 
-            
-        for repn in range(self.conf['userinfo']['trearepnber']):
+        for repn in range(self.conf['userinfo']['treatnumber']):
+            print rule['bowtieresult']['bam_treat'][repn]
+            print rule['macstmp']['macs_initrep_name'][repn]
             callpeak(rule['bowtieresult']['bam_treat'][repn],
                      rule['macstmp']['macs_initrep_name'][repn],
                      any([exists(rule['macstmp']['macs_initrep_name'][repn]+ '_treat_pileup.bdg'),
@@ -623,7 +626,7 @@ class PipeMACS2(PipeController):
         if len(rule['bowtieresult']['bam_treat']) > 1:
             callpeak(rule['bowtieresult']['bamtreatmerge'],
                      rule['macstmp']['macs_init_mergename'],
-                     any([exists(rule['macstmp']['macs_init_mergename']) + '_treat_pileup.bdg',
+                     any([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'), \
                           exists(rule['macstmp']['treat_bdg'])]))
             
             # convert macs default name to NameRule
@@ -769,14 +772,14 @@ class PipeVennCor(PipeController):
                                    self.rule['macsresult']['treat_peaks'])
         self.run_cmd(cmd)
         cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                     (self.rule['macsresult']['summits'],
+                     (self.rule['macsresult']['_summits'],
                       self.rule['macstmp']['summits'])
         self.run_cmd(cmd)
         cmd = "{0} {1} {2} {3}"
         cmd = cmd.format(self.conf['macs']['bedclip'],
                                    self.rule['macstmp']['summits'],
                                    self.conf['ceas']['chrom_len'],
-                                   self.rule['macsresult']['summits'])
+                                   self.rule['macsresult']['_summits'])
         self.run_cmd(cmd)
 
         if self.stepcontrol < 3:
@@ -942,7 +945,7 @@ class PipeConserv(PipeController):
         get top n summits from macs2 summits.bed according to ChiLin config
         default 3000 summits
         """
-        cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.rule['macsresult']['summits'], self.conf['conservation']['peaks_num'], self.rule['conservationtmp']['conserv_topn_summits'])
+        cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.rule['macsresult']['_summits'], self.conf['conservation']['peaks_num'], self.rule['conservationtmp']['conserv_topn_summits'])
         self.run_cmd(cmd)
 
     def run(self):
@@ -994,7 +997,7 @@ class PipeMotif(PipeController):
             remove chrM from top n summits
             default top 1000 summits.bed, may modify seqpos config
         """
-        cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.rule['macsresult']['summits'], self.conf['seqpos']['seqpos_top_peaks'], self.rule['motiftmp']['summits_p1000']) 
+        cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.rule['macsresult']['_summits'], self.conf['seqpos']['seqpos_top_peaks'], self.rule['motiftmp']['summits_p1000']) 
         self.run_cmd(cmd)
 
     def run(self):

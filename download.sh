@@ -43,15 +43,17 @@ do
 done
 
 if [ $name = global ]; then
-u=`whoami`
+    u=`whoami`
+fi
+
 if [ $u = root ]; then
     echo "install for all users"
-elif
+else:
     echo "Need root authority, please ask your administrator!"
+    echo "Or try personal install"
     exit 1
-else
-   echo "Please reinput your ChiLin data to $pathd for single user"
 fi
+
 # Users could customize executive bin path
 read -p "choose where the bin is " bin
 read -p "choose where the data is" data
