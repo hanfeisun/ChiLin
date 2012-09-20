@@ -58,10 +58,9 @@ optional arguments:
   
   --species SPECIES   select a specie
 
-Quick-install
-=============
-
-R packages
+3 steps to install ChiLin
+===========================
+1. R packages
 -------------
 
 install R, recommended the newest version
@@ -69,13 +68,13 @@ in R session
 > install.packages('gplots')
 > install.packages('RColorBrewer')
 
+2.External program
+-------------------
+We created a bash shell script `install.sh` to prepare all the dependent data and program for you.
+# cd path_to_chilin
+# sudo bash install.sh -p downloaddatapath # should mkdir under the chilin directory
 
-Python
-------
+3.Install ChiLin
+-------------------
 In the terminal, change directory to the folder 
 #python setup.py install # need root
-
-External program
-----------------
-
-We created a package containing all the sources under this url(wait to construct)
