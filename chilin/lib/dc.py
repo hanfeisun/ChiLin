@@ -641,7 +641,7 @@ class PipeMACS2(PipeController):
             origs = ["peaksrep_xls", 'treatrep_peaks', 'rep_summits', 'treatrep_bw', 'controlrep_bw']
             dests = map(lambda x: x.replace("rep_", "_"), origs)
             macs_d = rule['macsresult']
-            map(lambda orig, dest: cp(macs_d[orig][0], dest),
+            map(lambda orig, dest: cp(macs_d[orig][0], macs_d[dest]),
                 origs, dests)   
         self.extract()
 
