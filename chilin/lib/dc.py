@@ -268,7 +268,7 @@ class PipeController(object):
         else self.run_cmd(cmd, can_exit)
         
     def cp(self, orig, new):
-        self.smart_run('cp %s %s' % (orig, new), new, True)        
+        return 'cp %s %s' % (orig, new)
         
     def _render(self):
         """
@@ -583,15 +583,15 @@ class PipeMACS2(PipeController):
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
-                cmd = '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], input, output)
+                return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], input, output)
             else:
-                cmd = 'cp %s %s'%input, output
+                return 'cp %s %s'%input, output
 
         def cmd_callpeak(input_bam, output):
             cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 {2} -t {3} {4} -n {5}'
-            cmd = cmd.format(self.conf['macs']['macs_main'], genome_option,
-                             model_option, input_bam,
-                             control_option, output)
+            return cmd.format(self.conf['macs']['macs_main'], genome_option,
+                              model_option, input_bam,
+                              control_option, output)
             
         # Commands
         cp = lambda orig, dest: self.smart_run(cp(orig, dest))
