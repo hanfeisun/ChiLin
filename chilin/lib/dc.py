@@ -7,6 +7,7 @@ from ConfigParser import SafeConfigParser
 from glob import glob
 from pkg_resources import resource_filename
 from jinja2 import Environment, PackageLoader
+from functools import partial
 
 exists = os.path.exists
 error = logging.error
@@ -222,7 +223,7 @@ class PipeController(object):
         self.threads = args.get("threads", 1)
         self.datasummary = args.get("datasummary", 1)
 
-    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
+    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :False):
         """
         univeral call shell and judge
         """
@@ -238,7 +239,7 @@ class PipeController(object):
         else:
             return True
 
-    def if_runcmd(self, condition, cmd, else_handler = lambda :True, size_check=True):
+    def if_runcmd(self, condition, cmd, exit_ = True, else_handler = lambda :True, size_check=True):
         """
         run a command conditionally
         """
@@ -253,7 +254,7 @@ class PipeController(object):
                     condition = False
                     
         if condition:
-            return self.run_cmd(cmd)
+            return self.run_cmd(cmd, exit_)
         else:
             else_handler()
             return self.log(cmd+" is skipped")
@@ -471,6 +472,7 @@ class PipeMACS2(PipeController):
                 --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
+        self.model = args.get('Macs2Model', 0)
         self.macsinfo = {}
 
         self.stepcontrol = stepcontrol
@@ -549,7 +551,10 @@ class PipeMACS2(PipeController):
         testid_macs_summits.bed      # result
         testid_macs_treat_pileup.bdg # -> bw result
         shell example
-            macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 --nomodel --shiftsize=73 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1
+            build model
+            macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1             
+            specify shiftsize
+            macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 --nomodel --shiftsize=73 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1        
         """
         if self.stepcontrol < 2:
             sys.exit(1)
@@ -560,99 +565,83 @@ class PipeMACS2(PipeController):
             genome_option = ' -g mm '
         else:
             genome_option = ' '
-        if self.conf['userinfo']['treatnumber'] > 1:
-            cmd = '{0} merge -f {1}  {2}'
-            cmd = cmd.format(self.conf['samtools']['samtools_main'],
-                                       self.rule['bowtieresult']['bamtreatmerge'],
-                                       '  '.join(self.rule['bowtieresult']['bam_treat']))
-            if self.debug:
-                self.if_runcmd(self.rule['bowtieresult']['bamtreatmerge'], cmd)
-            else:
-                self.run_cmd(cmd)
 
-        if self.conf['userinfo']['controlnumber'] > 1:
-            cmd = '{0} merge -f {1}  {2}'
-            cmd = cmd.format(self.conf['samtools']['samtools_main'],
-                                       self.rule['bowtieresult']['bamcontrolmerge'],
-                                       '  '.join(self.rule['bowtieresult']['bam_control']))
-            if self.debug:
-                self.if_runcmd(self.rule['bowtieresult']['bamcontrolmerge'], cmd)
+        # t for self.model to build model, fail false
+        model_option = lambda use_model: " " if use_model else " --nomodel --shift-size=%s " % self.shiftsize
+        # specify exit_ for macs build model failure
+        smart_run = lambda cmd, exit_, check: self.if_runcmd(check, cmd, exit_) if self.debug else self.run_cmd(cmd, exit_)
+        
+        def merge(input, output):
+           if len(input) >1:
+                cmd = '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], input, output)
+                smart_run(output, cmd, True)
             else:
-                self.run_cmd(cmd)
+                smart_run('mv %s %s'%input, output))
 
-        # set control option, merge bam control for universal control
+
+        merge(' '.join(self.rule['bowtieresult']['bam_treat']), 
+              self.rule['bowtieresult']['bamtreatmerge'])
+        merge(' '.join(self.rule['bowtieresult']['bam_control']), 
+              self.rule['bowtieresult']['bamcontrolmerge'])
+
+        # control option, merge bam control for universal control
         if self.conf['userinfo']['controlnumber'] == 1:
             control_option = ' -c ' + self.rule['bowtieresult']['bam_control'][0]
         elif self.conf['userinfo']['controlnumber'] > 1:
             control_option = ' -c ' + self.rule['bowtieresult']['bamcontrolmerge']
         else:
             control_option = ' '
-
-        # each bam file peak calling
+        def callpeak(inputdata, output, debug_item):
+            def callpeakcmd(p0, p1, p3, p4, p5, p2):
+                cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 {2} ' + \
+                    '-t {3} {4} -n {5}'
+                cmd = cmd.format(p0, p1, p2, p3, p4, p5)
+            cmdf_ = partial(cmdf, self.conf['macs']['macs_main'],
+                            genome_option,
+                            inputdata,
+                            control_option,
+                            output)
+            if self.model:
+                if smart_run(debug_item, cmdf_(model_option(self.model)), False):
+                    self.log("macs2 build model run successfully!")
+                else:
+                    self.log("macs2 build model failed, use default shift size")
+                    smart_run(debug_item, cmdf_(model_option(False), True))
+            else:
+                smart_run(debug_item, cmdf_(model_option(False)), True)
+        
+        def rename(orig, new):
+            """rename default macs output to new name
+            """
+            cmd = 'cp %s %s' % (orig, new)
+            smart_run(new, cmd, True)
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
-            cmd = '{0} callpeak {1}  -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel ' + \
-                  '-t {3} {4} -n {5}'
-            cmd = cmd.format(self.conf['macs']['macs_main'],
-                                       genome_option,
-                                       self.shiftsize,
-                                       self.rule['bowtieresult']['bam_treat'][treat_rep],
-                                       control_option,
-                                       self.rule['macstmp']['macs_initrep_name'][treat_rep])
+            callpeak(self.rule['bowtieresult']['bam_treat'][treat_rep], 
+                     self.rule['macstmp']['macs_initrep_name'][treat_rep],
+                     not any([exists(self.rule['macstmp']['macs_initrep_name'][treat_rep]+ '_treat_pileup.bdg'),
+                              exists(self.rule['macstmp']['treatrep_bdg'][treat_rep])]))
             # convert macs default name to NameRule
-            if self.debug:
-                self.if_runcmd(not any([exists(self.rule['macstmp']['macs_initrep_name'][treat_rep]+ '_treat_pileup.bdg'),
-                                        exists(self.rule['macstmp']['treatrep_bdg'][treat_rep])]), cmd)
-            else:
-                self.run_cmd(cmd)
-            cmd = 'mv %s %s' % (self.rule['macstmp']['macs_initrep_name'][treat_rep]+ '_treat_pileup.bdg',
-                                self.rule['macstmp']['treatrep_bdg'][treat_rep])
-            if self.debug:
-                self.if_runcmd(self.rule['macstmp']['treatrep_bdg'][treat_rep], cmd)
-            else:
-                self.run_cmd(cmd)
-                
-            cmd = 'mv %s %s' % (self.rule['macstmp']['macs_initrep_name'][treat_rep] + '_control_lambda.bdg',
-                                self.rule['macstmp']['controlrep_bdg'][treat_rep])
-            if self.debug:
-                self.if_runcmd(self.rule['macstmp']['controlrep_bdg'][treat_rep], cmd)
-            else:
-                self.run_cmd(cmd)
+            rename(self.rule['macstmp']['macs_initrep_name'][treat_rep]+ '_treat_pileup.bdg',
+                   self.rule['macstmp']['treatrep_bdg'][treat_rep])
+            rename(self.rule['macstmp']['macs_initrep_name'][treat_rep] + '_control_lambda.bdg',
+                   self.rule['macstmp']['controlrep_bdg'][treat_rep])
             self._format(self.rule['macstmp']['treatrep_bdg'][treat_rep], 
                          self.rule['macstmp']['treatrep_tmp_bdg'][treat_rep], 
                          self.rule['macsresult']['treatrep_bw'][treat_rep])
             self._format(self.rule['macstmp']['controlrep_bdg'][treat_rep],
                          self.rule['macstmp']['controlrep_tmp_bdg'][treat_rep], 
                          self.rule['macsresult']['controlrep_bw'][treat_rep])
-
         # merge treat bam files for peaks calling
         if len(self.rule['bowtieresult']['bam_treat']) > 1:
-            cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 --shiftsize {2} --nomodel -t {3} {4} -n {5}'
-            cmd = cmd.format(self.conf['macs']['macs_main'],
-                                       genome_option,
-                                       self.shiftsize,
-                                       self.rule['bowtieresult']['bamtreatmerge'],
-                                       control_option,
-                                       self.rule['macstmp']['macs_init_mergename'])
-            if self.debug:
-                self.if_runcmd(not any([exists(self.rule['macstmp']['macs_init_mergename']+ '_treat_pileup.bdg'),
-                                        exists(self.rule['macstmp']['treat_bdg'])]), cmd)
-            else:
-                self.run_cmd(cmd)
+            callpeak(self.rule['bowtieresult']['bamtreatmerge'],
+                     self.rule['macstmp']['macs_init_mergename'],
+                     not any([exists(self.rule['macstmp']['macs_init_mergename']) + '_treat_pileup.bdg',
+                              exists(self.rule['macstmp']['treat_bdg'])]))
             # convert macs default name to NameRule
-            cmd = 'mv %s %s' % (self.rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg',
-                                self.rule['macstmp']['treat_bdg'])
-            if self.debug:
-                self.if_runcmd(self.rule['macstmp']['treat_bdg'], cmd)
-            else:
-                self.run_cmd(cmd)
-                
-            cmd = 'mv %s %s' % (self.rule['macstmp']['macs_init_mergename'] + '_control_lambda.bdg',
-                                self.rule['macstmp']['control_bdg'])
-            if self.debug:
-                self.if_runcmd( self.rule['macstmp']['control_bdg'], cmd)
-            else:
-                self.run_cmd(cmd)
-                
+            rename(self.rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg',
+                   self.rule['macstmp']['treat_bdg'])
+            rename(self.rule['macstmp']['macs_init_mergename'] + '_control_lambda.bdg',
+                   self.rule['macstmp']['control_bdg'])
             self._format(self.rule['macstmp']['treat_bdg'], 
                          self.rule['macstmp']['treat_bdgtmp'], 
                          self.rule['macsresult']['treat_bw'])
@@ -660,32 +649,18 @@ class PipeMACS2(PipeController):
                          self.rule['macstmp']['control_tmp_bdg'], 
                          self.rule['macsresult']['control_bw'])
         elif len(self.rule['bowtieresult']['bam_treat']) == 1:
-                cmd = 'cp %s %s' % (self.rule['macsresult']['peaksrep_xls'][0],
-                                    self.rule['macsresult']['peaks_xls'])
-                self.run_cmd(cmd)
-                cmd = 'cp %s %s' % (self.rule['macsresult']['treatrep_peaks'][0],
-                                    self.rule['macsresult']['treat_peaks'])
-                self.run_cmd(cmd)
-                cmd = 'cp %s %s' % (self.rule['macsresult']['rep_summits'][0],
-                                    self.rule['macsresult']['summits'])
-                self.run_cmd(cmd)
-                cmd = 'cp %s %s' % (self.rule['macsresult']['rep_summits'][0],
-                                    self.rule['macsresult']['summits'])
-
-                cmd = 'cp %s %s' % (self.rule['macsresult']['treatrep_bw'][0],
-                                    self.rule['macsresult']['treat_bw'])
-                if self.debug:
-                    self.if_runcmd(self.rule['macsresult']['treat_bw'], cmd)
-                else:
-                    self.run_cmd(cmd)
-                    
-                cmd = 'cp %s %s' % (self.rule['macsresult']['controlrep_bw'][0],
-                                    self.rule['macsresult']['control_bw'])
-                if self.debug:
-                    self.if_runcmd(self.rule['macsresult']['control_bw'], cmd)
-                else:
-                    self.run_cmd(cmd)
-                
+            rename(self.rule['macsresult']['peaksrep_xls'][0],
+                   self.rule['macsresult']['peaks_xls'])
+            rename(self.rule['macsresult']['treatrep_peaks'][0],
+                   self.rule['macsresult']['treat_peaks'])
+            rename(self.rule['macsresult']['rep_summits'][0],
+                   self.rule['macsresult']['summits'])
+            rename(self.rule['macsresult']['rep_summits'][0],
+                   self.rule['macsresult']['summits'])
+            rename(self.rule['macsresult']['treatrep_bw'][0],
+                   self.rule['macsresult']['treat_bw'])
+            rename(self.rule['macsresult']['controlrep_bw'][0],
+                   self.rule['macsresult']['control_bw'])
         self.extract()
 
 class PipeVennCor(PipeController):
@@ -865,7 +840,7 @@ class PipeCEAS(PipeController):
         """run ceas from top n peaks"""
         super(PipeCEAS, self).__init__(conf, rule, log, **args)
         self.peaks = peaksnumber
-        self.type = args['a_type']
+        self.type = args.get('a_type', 1)
         self.stepcontrol = stepcontrol
 
     def _format(self):
