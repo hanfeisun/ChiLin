@@ -7,7 +7,6 @@ from ConfigParser import SafeConfigParser
 from glob import glob
 from pkg_resources import resource_filename
 from jinja2 import Environment, PackageLoader
-from functools import partial
 
 exists = os.path.exists
 error = logging.error
@@ -181,12 +180,12 @@ class PipePreparation:
                        'check your control file, one of them is not a file'))
         c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
                        'fastqc not exists'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
                                self._conf['userinfo']['treatpath'])),
-                       'check your treat file, one of them is not ended with .fastq or .bam'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+                       'check your treat file, one of them is not ended with .fastq or .bam or .bed'))
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
                                self._conf['userinfo']['controlpath'])),
-                       'check your control file, one of them is not ended with .fastq or .bam'))                               
+                       'check your control file, one of them is not ended with .fastq or .bam or .bed'))                               
         c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
                        "bowtie program dependency has problem"))
         c.append(fatal(not exists(self._conf['samtools']['samtools_main']),
@@ -433,44 +432,49 @@ class PipeBowtie(PipeController):
 
     def run(self):
         self.rendercontent['sams'] = []
-        for treat_rep in range(self.conf['userinfo']['treatnumber']):
-            cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
-            cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['nbowtie_max_alignment'],
-                             self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['userinfo']['treatpath'][treat_rep],
-                             self.rule['bowtietmp']['treat_sam'][treat_rep],
-                             self.threads)
-            self.log("bowtie is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
-            if self.debug:
-                self.ifnot_runcmd(self.rule['bowtietmp']['treat_sam'][treat_rep], cmd)
-            else:
-                self.run_cmd(cmd)
-            self._sam2bam(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
+        bed_ = map(lambda x: x.endswith('bed'), self.conf['userinfo']['treatpath'])
+        self.rule['bowtieresult']['bam_treat'] = self.conf['userinfo']['treatpath'] \
+                                                if bed_ else self.rule['bowtieresult']['bam_treat']
+        if not bed_:
+            for treat_rep in range(self.conf['userinfo']['treatnumber']):
+                cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
+                cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
+                                 self.conf['bowtie']['nbowtie_max_alignment'],
+                                 self.conf['bowtie']['bowtie_genome_index_path'],
+                                 self.conf['userinfo']['treatpath'][treat_rep],
+                                 self.rule['bowtietmp']['treat_sam'][treat_rep],
+                                 self.threads)
+                self.log("bowtie is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
+                if self.debug:
+                    self.ifnot_runcmd(self.rule['bowtietmp']['treat_sam'][treat_rep], cmd)
+                else:
+                    self.run_cmd(cmd)
+                self._sam2bam(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
 
 
-        for control_rep in range(self.conf['userinfo']['controlnumber']):
-            cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
-            cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['nbowtie_max_alignment'],
-                             self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['userinfo']['controlpath'][control_rep],
-                             self.rule['bowtietmp']['control_sam'][control_rep],
-                             self.threads)
-            self.log("bowtie is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
-            if self.debug:
-                self.ifnot_runcmd(self.rule['bowtietmp']['control_sam'][control_rep], cmd)
+            for control_rep in range(self.conf['userinfo']['controlnumber']):
+                cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
+                cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
+                                 self.conf['bowtie']['nbowtie_max_alignment'],
+                                 self.conf['bowtie']['bowtie_genome_index_path'],
+                                 self.conf['userinfo']['controlpath'][control_rep],
+                                 self.rule['bowtietmp']['control_sam'][control_rep],
+                                 self.threads)
+                self.log("bowtie is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
+                if self.debug:
+                    self.ifnot_runcmd(self.rule['bowtietmp']['control_sam'][control_rep], cmd)
+                else:
+                    self.run_cmd(cmd)
+                self._sam2bam(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
+            if exists(self.datasummary) and self.debug:
+                print "skip rendering"
+                pass
             else:
-                self.run_cmd(cmd)
-            self._sam2bam(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
-        if exists(self.datasummary) and self.debug:
-            print "skip rendering"
-            pass
-        else:
-            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
-            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
-            self._render()
-        self.log("bowtie run successfully")
+                self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
+                self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
+                self._render()
+            self.log("bowtie run successfully")
+
 
 class PipeMACS2(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, shiftsize, **args):
