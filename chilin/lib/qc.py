@@ -250,21 +250,19 @@ class RawQC(QC_Controller):
         else:
             rawdata = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
             names = self.rule['qcresult']['treat_data']+self.rule['qcresult']['control_data']
-        suffix = lambda x: x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".fq") or x.endswith(".bed")
         for i in range(len(rawdata)-1,-1,-1):
-            if suffix(rawdata[i]):
+            if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.fq' in rawdata[i]:
                 pass
             else:
                 del rawdata[i]
         print rawdata
-        if not map(lambda x: x.endswith(".bed"), rawdata):
-            if len(rawdata)!=0:
-                self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
-                self.render['fastqc_check'] = True
-            else:
-                self.render['fastqc_check'] = False
-            self._render("w")
-            self._check()
+        if len(rawdata)!=0:
+            self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
+            self.render['fastqc_check'] = True
+        else:
+            self.render['fastqc_check'] = Fasle
+        self._render("w")
+        self._check()
 
          
         
