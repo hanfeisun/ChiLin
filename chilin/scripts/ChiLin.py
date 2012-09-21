@@ -49,8 +49,8 @@ def parse_args():
                         help = "the most important option for ChiLin specify the analysis type and the shiftsize {Dnase: 50, Histone and TF:73} of MACS2")
     pipe_parser.add_argument("-m", dest = "cor_method", default = "mean",choices = ("mean",),
                         help = "specify method for correlation plot")
-    pipe_parser.add_argument("-e", dest = "model", action = "store_true", default = False,
-                             help = "MACS2 establish model or not, use default shift-size if failed.")
+    #    pipe_parser.add_argument("-e", dest = "model", action = "store_true", default = False,
+    #                         help = "MACS2 establish model or not, use default shift-size if failed.")
     pipe_parser.add_argument("-p", dest = "top_peaks", type = int, default = 5000,
                         help = "specify peaks number for CEAS")
     pipe_parser.add_argument("--threads", dest = "max_threads", type = int, default = 1, choices = range(1,9),
@@ -92,7 +92,7 @@ def main():
                             shiftsize = args.shiftsize,
                             peaksnumber = args.top_peaks,
                             ArgsionMethod = args.cor_method,
-                            Macs2Model = args.model,
+                            #                            Macs2Model = args.model,
                             threads = args.max_threads)
     print conf
     groom = p(PipeGroom)()

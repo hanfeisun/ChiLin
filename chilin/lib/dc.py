@@ -481,7 +481,12 @@ class PipeMACS2(PipeController):
                 --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
-        self.model = args.get('Macs2Model', 0)
+        # modify as a hidden option in conf
+        if conf['macs'].get('model', False).lower() == 'yes':
+            self.model = True
+        else:
+            self.model = False
+       # self.model = args.get('Macs2Model', 0)
         self.macsinfo = {}
 
         self.stepcontrol = stepcontrol
