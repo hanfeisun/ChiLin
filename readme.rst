@@ -70,7 +70,9 @@ in R session
 
 2.External program
 -------------------
-We created a bash shell script `install.sh` to prepare all the dependent data and program for you.
+Before you run, please modify ChiLinjinja.conf.sample to up to your dependency.
+or run download.sh to automatically config as ChiLinjinja.conf.new
+We created a bash shell script `download.sh` to prepare all the dependent data and program for you.
 # cd path_to_chilin
 # sudo bash install.sh -p downloaddatapath # should mkdir under the chilin directory
 

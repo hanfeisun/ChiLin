@@ -112,6 +112,11 @@ class QC_Controller(object):
         with open(self.texfile, mode) as f:
             f.write(content)
 
+    def _enddoc(self, test = lambda : True):
+        def add():
+            return '\\end{document}'
+        return add()
+
 
 
 class RawQC(QC_Controller):
@@ -250,19 +255,21 @@ class RawQC(QC_Controller):
         else:
             rawdata = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
             names = self.rule['qcresult']['treat_data']+self.rule['qcresult']['control_data']
+        suffix = lambda x: x.endswith(".bed") or x.endswith(".bam") or x.endswith(".fastq")
         for i in range(len(rawdata)-1,-1,-1):
-            if '.fastq' in rawdata[i] or '.bam' in rawdata[i] or '.fq' in rawdata[i]:
+            if suffix(rawdata[i]):
                 pass
             else:
                 del rawdata[i]
         print rawdata
-        if len(rawdata)!=0:
-            self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
-            self.render['fastqc_check'] = True
-        else:
-            self.render['fastqc_check'] = Fasle
-        self._render("w")
-        self._check()
+        if not map(lambda x: x.endswith(".bed"), rawdata):
+            if len(rawdata)!=0:
+                self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
+                self.render['fastqc_check'] = True
+            else:
+                self.render['fastqc_check'] = False
+            self._render("w")
+            self._check()
 
          
         
@@ -424,18 +431,20 @@ class MappingQC(QC_Controller):
             input: mapping result and path of bam file.  
         """
         print 'mapping qc'
-        bowtiesummary = self.bowtiesummary
-        self.render['MappingQC_check'] = True
-        self.render['Bowtie_check'] = True
-        bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
-        self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
+        print self.rule['bowtieresult']['bam_treat']
+        if not map(lambda x: x.endswith(".bed"), self.rule['bowtieresult']['bam_treat']):
+            bowtiesummary = self.bowtiesummary
+            self.render['MappingQC_check'] = True
+            self.render['Bowtie_check'] = True
+            bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
+            self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
 
 
-        self.render['basic_map_table'], names,mappedRatio= self._basic_mapping_statistics_info(bowtiesummary)
-        self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
+            self.render['basic_map_table'], names,mappedRatio= self._basic_mapping_statistics_info(bowtiesummary)
+            self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
-        self._render()
-        self._check()
+            self._render()
+            self._check()
 
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""

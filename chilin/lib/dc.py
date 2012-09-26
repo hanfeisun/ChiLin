@@ -7,7 +7,6 @@ from ConfigParser import SafeConfigParser
 from glob import glob
 from pkg_resources import resource_filename
 from jinja2 import Environment, PackageLoader
-from functools import partial
 
 exists = os.path.exists
 error = logging.error
@@ -181,10 +180,10 @@ class PipePreparation:
                        'check your control file, one of them is not a file'))
         c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
                        'fastqc not exists'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
                                self._conf['userinfo']['treatpath'])),
                        'check your treat file, one of them is not ended with .fastq or .bam'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam"),
+        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
                                self._conf['userinfo']['controlpath'])),
                        'check your control file, one of them is not ended with .fastq or .bam'))                               
         c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
@@ -268,7 +267,7 @@ class PipeController(object):
         else: self.run_cmd(cmd, can_exit)
         
     def cp(self, orig, new):
-        return 'cp %s %s' % (orig, new)
+        return 'cp -rf %s %s' % (orig, new)
         
     def _render(self):
         """
@@ -379,10 +378,8 @@ class PipeBowtie(PipeController):
             BEGIN{total=0; map=0; a=0;b=0}
             {
             if (/^[^@]/){
-                total+=1
-                {
-                    if ($2!="4")
-                    {
+                total+=1 {
+                    if ($2!="4") {
                         map+=1 
                         ur[$1] += 1
                         ul[$2":"$3":"$4] += 1
@@ -403,7 +400,6 @@ class PipeBowtie(PipeController):
             ''' % (
                 files[sam_rep]
                 )
-
             if self.debug:
                 self.ifnot_runcmd('bowtie.tmp', cmd)
             else:
@@ -416,7 +412,7 @@ class PipeBowtie(PipeController):
                 uniq_location = con[3].rstrip('\n')
                 usable_percentage = float(con[2])/float(con[0])*100
 
-           # self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
+            self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
 
             # uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
             # uniq_location = len(location_dict)
@@ -588,23 +584,25 @@ class PipeMACS2(PipeController):
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
-                return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], output, ' '.join(input))
+               return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], output, ' '.join(input))
+           elif len(input) == 0:
+               return ""
            else:
-                return 'mv %s %s' % (' '.join(input), output)
+               return 'cp -rf %s %s' % (' '.join(input), output)
 
         def cmd_callpeak(input_bam, output):
             cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 {2} -t {3} {4} -n {5}'
             return cmd.format(self.conf['macs']['macs_main'], genome_option,
                               model_option, input_bam,
                               control_option, output)
-            
+
         # Commands
         cp = lambda orig, dest: self.smart_run(self.cp(orig, dest))
         merge = lambda orig, dest: self.smart_run(cmd_merge(orig, dest), dest)
         callpeak = lambda orig, dest, test: self.smart_run(cmd_callpeak(orig, dest), test)
 #        def callpeak(orig, dest, test, exit): # TODO deal with model failure
 #            return self.smart_run(cmd_callpeak(orig, dest), test, exit)
-        
+
         # Start processing
         merge(rule['bowtieresult']['bam_treat'], rule['bowtieresult']['bamtreatmerge'])
         merge(rule['bowtieresult']['bam_control'], rule['bowtieresult']['bamcontrolmerge'])
@@ -614,7 +612,7 @@ class PipeMACS2(PipeController):
             print rule['macstmp']['macs_initrep_name'][repn]
             callpeak(rule['bowtieresult']['bam_treat'][repn],
                      rule['macstmp']['macs_initrep_name'][repn],
-                     any([exists(rule['macstmp']['macs_initrep_name'][repn]+ '_treat_pileup.bdg'),
+                     all([exists(rule['macstmp']['macs_initrep_name'][repn]+ '_treat_pileup.bdg'),
                           exists(rule['macstmp']['treatrep_bdg'][repn])]))
             
             # convert macs default name to NameRule
@@ -631,7 +629,7 @@ class PipeMACS2(PipeController):
         if len(rule['bowtieresult']['bam_treat']) > 1:
             callpeak(rule['bowtieresult']['bamtreatmerge'],
                      rule['macstmp']['macs_init_mergename'],
-                     any([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'), \
+                     all([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'), \
                           exists(rule['macstmp']['treat_bdg'])]))
             
             # convert macs default name to NameRule
