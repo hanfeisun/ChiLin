@@ -262,14 +262,13 @@ class RawQC(QC_Controller):
             else:
                 del rawdata[i]
         print rawdata
-        if not map(lambda x: x.endswith(".bed"), rawdata):
-            if len(rawdata)!=0:
-                self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
-                self.render['fastqc_check'] = True
-            else:
-                self.render['fastqc_check'] = False
-            self._render("w")
-            self._check()
+        if len(rawdata)!=0:
+            self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
+            self.render['fastqc_check'] = True
+        else:
+            self.render['fastqc_check'] = False
+        self._render("w")
+        self._check()
 
          
         
