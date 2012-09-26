@@ -351,54 +351,7 @@ class PipeBowtie(PipeController):
         """
         print "working on extracting"
         for sam_rep in range(cnt):
-            # reads_dict = {}
-            # location_dict = {}
-            # total_reads = 0
-            # mapped_reads = 0
-            # with open(files[sam_rep]) as samfile:
-            #     for line in samfile:
-            #         if line.startswith("@"): # eliminate the table's head
-            #             continue
-            #         li = line.split("\t")
-            #         total_reads += 1
-            #         if total_reads % 1000000 == 0: print total_reads
-            #         if len(li) < 3:
-            #             print line + "looks strange, skipped"
-            #             continue
-            #         if li[1] == "4": # "4" means not mapped
-            #             continue
-
-
-            #         mapped_reads += 1
-            #         location = ":".join(li[1:4])
-            #         reads_dict[li[0]] = reads_dict.get(li[0], 0) + 1
-            #         location_dict[location] = location_dict.get(location, 0) + 1
-            cmd = '''
-            time awk -F \'\\t\' '
-            BEGIN{total=0; map=0; a=0;b=0}
-            {
-            if (/^[^@]/){
-                total+=1 
-                if ($2!="4") {
-                    map+=1 
-                    ur[$1] += 1
-                    ul[$2":"$3":"$4] += 1
-                }
-            }
-            }
-            END{
-            for (urr in ur)
-                a+=1
-            for (ull in ul)
-                b+=1
-            print total
-            print map
-            print a
-            print b
-            }' %s > bowtie.tmp
-            ''' % (
-                files[sam_rep]
-                )
+            cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' % (resource_filename("chilin", "bowtie_stats.awk"), files[sam_rep])
             if self.debug:
                 self.ifnot_runcmd('bowtie.tmp', cmd)
             else:

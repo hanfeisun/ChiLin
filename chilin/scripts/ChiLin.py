@@ -3,8 +3,6 @@
 Main program of DC pipeline
 """
 import sys
-import os
-from pkg_resources import resource_filename
 import argparse
 from functools import partial
 from chilin.dc import (gen_conf,
@@ -92,7 +90,6 @@ def main():
                             shiftsize = args.shiftsize,
                             peaksnumber = args.top_peaks,
                             ArgsionMethod = args.cor_method,
-                            #                            Macs2Model = args.model,
                             threads = args.max_threads)
     print conf
     groom = p(PipeGroom)()
