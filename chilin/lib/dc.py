@@ -351,7 +351,7 @@ class PipeBowtie(PipeController):
         """
         print "working on extracting"
         for sam_rep in range(cnt):
-            cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' % (resource_filename("chilin", "bowtie_stats.awk"), files[sam_rep])
+            cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' % (resource_filename("chilin", "awk/bowtie_stats.awk"), files[sam_rep])
             if self.debug:
                 self.ifnot_runcmd('bowtie.tmp', cmd)
             else:
