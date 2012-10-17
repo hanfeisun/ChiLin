@@ -1038,5 +1038,5 @@ def package(conf, rule, log, **args):
     call('mkdir %s' % folder, shell = True)
     for fs in fls:
         for f in fs:
-            call('mv %s %s' % (f, folder), shell = True)
+            call('cp %s %s' % (f, folder), shell = True)
     log('package success')
