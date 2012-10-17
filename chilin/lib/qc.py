@@ -315,6 +315,14 @@ class MappingQC(QC_Controller):
                                  "data": name_sp[i],
                                  "value": mappedReads[i],
                                  "cutoff": 5000000})
+            print name_sp
+            print redundant
+            print totalReads
+            print mappedReads
+            print mapRatio
+            print uniqueLocation
+            print i
+            
             summary.append([name_sp[i],
                             digit_tex(totalReads[i]),
                             digit_tex(mappedReads[i]),
@@ -430,7 +438,7 @@ class MappingQC(QC_Controller):
         """
         print 'mapping qc'
         print self.rule['bowtieresult']['bam_treat']
-        if not map(lambda x: x.endswith(".bed"), self.rule['bowtieresult']['bam_treat']):
+        if not any(map(lambda x: x.endswith(".bed"), self.rule['bowtieresult']['bam_treat'])):
             bowtiesummary = self.bowtiesummary
             self.render['MappingQC_check'] = True
             self.render['Bowtie_check'] = True
