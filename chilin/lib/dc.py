@@ -349,34 +349,11 @@ class PipeBowtie(PipeController):
         sams = {'sams': [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...]} *arg
         use awk to speed up a little
         """
-        print "working on extracting"
         for sam_rep in range(cnt):
-            # reads_dict = {}
-            # location_dict = {}
-            # total_reads = 0
-            # mapped_reads = 0
-            # with open(files[sam_rep]) as samfile:
-            #     for line in samfile:
-            #         if line.startswith("@"): # eliminate the table's head
-            #             continue
-            #         li = line.split("\t")
-            #         total_reads += 1
-            #         if total_reads % 1000000 == 0: print total_reads
-            #         if len(li) < 3:
-            #             print line + "looks strange, skipped"
-            #             continue
-            #         if li[1] == "4": # "4" means not mapped
-            #             continue
-
-
-            #         mapped_reads += 1
-            #         location = ":".join(li[1:4])
-            #         reads_dict[li[0]] = reads_dict.get(li[0], 0) + 1
-            #         location_dict[location] = location_dict.get(location, 0) + 1
+            bowtie_tmp = "%s.bowtie.tmp"%files[sam_rep]
             cmd = '''
             time awk -F \'\\t\' '
-            BEGIN{total=0; map=0; a=0;b=0}
-            {
+            BEGIN{total=0; map=0; a=0;b=0} {
             if (/^[^@]/){
                 total+=1 
                 if ($2!="4") {
@@ -386,7 +363,7 @@ class PipeBowtie(PipeController):
                 }
             }
             }
-            END{
+            END {
             for (urr in ur)
                 a+=1
             for (ull in ul)
@@ -395,15 +372,13 @@ class PipeBowtie(PipeController):
             print map
             print a
             print b
-            }' %s > bowtie.tmp
-            ''' % (
-                files[sam_rep]
-                )
+            }' %s > %s
+            ''' % ( files[sam_rep],bowtie_tmp)
             if self.debug:
-                self.ifnot_runcmd('bowtie.tmp', cmd)
+                self.ifnot_runcmd(bowtie_tmp, cmd)
             else:
                 self.run_cmd(cmd)
-            with open('bowtie.tmp') as f:
+            with open(bowtie_tmp) as f:
                 con = f.readlines()
                 total_reads = con[0]
                 mapped_reads = con[1]
@@ -1085,5 +1060,5 @@ def package(conf, rule, log, **args):
     call('mkdir %s' % folder, shell = True)
     for fs in fls:
         for f in fs:
-            call('mv %s %s' % (f, folder), shell = True)
+            call('cp %s %s' % (f, folder), shell = True)
     log('package success')
