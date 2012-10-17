@@ -129,9 +129,8 @@ class RawQC(QC_Controller):
         
     def _infile_parse(self,dataname): # extract information from fastqc result file 
         """ Extract information from fastqc result file. """
-        fph = open(dataname)
-        data = fph.readlines()
-        fph.close()
+        with open(dataname) as fph:
+            data = fph.readlines()
         seqquality = []
         seqlen = 0
         quality_flag = 0
@@ -769,27 +768,28 @@ class AnnotationQC(QC_Controller):
         """ For TFcenters data 1,2,3 pass, 4,5,6 fail
             For Histone center data 1,2,3,4 pass, 5,6,7,8 fail.
         """
-        fph = open(conservationR)
-        for line in fph:
-            if re.findall(r'y0<-\S*\)',line):
-                value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
-                value = value.split(',')
-            elif re.findall(r'x<-c\S*\)',line):
-                xlab = line
-        fph.close()
-        value = [float(i) for i in value]
-        sumvalue = sum(value)
-        value = [i/sumvalue for i in value]
+        with open(conservationR) as fph:
+            for line in fph:
+                if re.findall(r'y0<-\S*\)',line):
+                    value = re.findall(r'y0<-\S*\)',line)[0][6:-1]
+                    value = value.split(',')
+                elif re.findall(r'x<-c\S*\)',line):
+                    xlab = line
+            value = [float(i) for i in value]
+            sumvalue = sum(value)
+            value = [i/sumvalue for i in value]
+
+
         if atype == 'TF' or atype == 'Dnase':
             histotyDataName = resource_filename("chilin", os.path.join("db", "TFcenters.txt"))
-            fph = open(histotyDataName)
-            historyData = fph.readlines()
-            cutoff = len(historyData)/2
+
         elif atype == "Histone":
             histotyDataName = resource_filename("chilin", os.path.join("db", "Histone_centers.txt"))
-            historyData = fph.readlines()
-            fph = open(histotyDataName)
-            cutoff = len(historyData)/2
+
+        with open(histotyDataName) as hf:
+                historyData = hf.readlines()
+                cutoff = len(historyData)/2
+                
         scoreList = []
         for i in range(len(historyData)):
             temp = historyData[i].strip()
@@ -802,7 +802,6 @@ class AnnotationQC(QC_Controller):
             judge = 'pass'
         else:
             judge = 'fail'
-        fph.close()
         temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%min(scoreList),' ','%s'%judge]
         self.summarycheck.append(temp)
         print historyData[mindist]
