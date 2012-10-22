@@ -372,7 +372,7 @@ class MappingQC(QC_Controller):
         self.log('Processing redundant reads')
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
         print names
-        ratioList = []
+        ratioList = []# store ratio for plot
         if notzero(self.rule['qcresult']['filterdup']) and self.debug:    
             self.log("filterdup is skipped because %s exists" % self.rule['qcresult']['filterdup'])
         else:
@@ -397,7 +397,7 @@ class MappingQC(QC_Controller):
                         judge = re.findall(r'Redundant rate of alignment file',line)
                         if judge:
                             score = line.split(':')[-1].strip()
-                            score = round(float(score),3)
+                            score = 1-round(float(score),3)
                             fph.write('%s=%f\n'%(names[i],score))
 
                   
@@ -405,6 +405,12 @@ class MappingQC(QC_Controller):
             for line in fph:
                 score = round(float(line.strip().split('=')[1]),3)
                 ratioList.append(score)
+        name_sp = map(_tospace, names)
+        for i in range(len(name_sp)):
+            self.checker.append({"desc": 'Non-Redundant ratio',
+                                 "data": name_sp[i],
+                                 "value": ratioList[i],
+                                 "cutoff": 0.8})         
 
         pdfName = self.rule['qcresult']['redundant_ratio']
         rCode = self.rule['qcresult']['redundant_ratio_r']
@@ -412,7 +418,7 @@ class MappingQC(QC_Controller):
         self.db.execute("select redundant_rate from peak_calling_tb")
         redundant_history = self.db.fetchall()
         historyData = [str(i[0]) for i in redundant_history]
-        historyData = [i for i in historyData if i!='null']
+        historyData = [str(1-float(i)) for i in historyData if i!='null']
         historyData = ','.join(historyData)
         f=open("%s"%rCode,"w")
         col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
@@ -420,7 +426,7 @@ class MappingQC(QC_Controller):
         f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
         f.write("redun_data<-c(%s)\n" % historyData)
         f.write("fn<-ecdf(redun_data)\n")
-        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Redundant rate ',xlab='Redundant ratio',ylab='Fn(Redundant rate)')"+"\n")
+        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Non-Redundant rate ',xlab='Non-Redundant ratio',ylab='Fn(Non-Redundant rate)')"+"\n")
         j=0
         for p in ratioList:
             f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
