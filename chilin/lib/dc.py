@@ -157,9 +157,8 @@ class PipePreparation:
                 if prediction:
                     warn(warn_info)
             return check
-        
+
         check_list = lambda check_funcs: (f() for f in check_funcs)
-        
         c = []
         c.append(fatal(is_null(self._conf['userinfo']['treatpath']),
                        'No treat file path'))
@@ -245,7 +244,7 @@ class PipeController(object):
         else execute the cmd
         """
         not_null = lambda x: os.path.isfile(x) and os.path.getsize(x) >0
-        
+
         if type(test) == str:
             self.log("checking file " + test)
             if not exists(test):
