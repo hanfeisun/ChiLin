@@ -81,7 +81,7 @@ def main():
     conf = pp.get_config()
     rule = pp.get_rule()
 
-
+    print rule
     p = lambda func:partial(func, conf=conf, rule=rule, log=log_func, debug=args.debug,
                             texfile=pp.get_tex(),
                             datasummary = pp.get_summary(),
@@ -92,8 +92,9 @@ def main():
                             ArgsionMethod = args.cor_method,
                             threads = args.max_threads)
     print conf
-    groom = p(PipeGroom)()
-    groom.run()
+    if not args.onlyqc:
+    	groom = p(PipeGroom)()
+    	groom.run()
 
     rawqc = p(RawQC)()
     rawqc.run()
@@ -111,8 +112,8 @@ def main():
         pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
         pipevenncor.run()
 
-    # peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
-    # peakcallingqc.run()
+        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
+        peakcallingqc.run()
     
         pipeceas = p(PipeCEAS)()
         pipeceas.run()
@@ -130,8 +131,9 @@ def main():
 
 
     summaryqc = p(SummaryQC)()
-    summaryqc.run(annotationqc.summarycheck)
-    p(package)()
+    summaryqc.run(annotationqc.summarycheck,args.onlyqc)
+
+#    p(package)()
             
 
 
