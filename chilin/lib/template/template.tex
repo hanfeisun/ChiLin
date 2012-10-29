@@ -263,7 +263,7 @@ Add all the reads density corresponding to its located meta genes(i.e. to the co
 %- endif
 
 %# ---------Conservation QC----------- conservation_graph
-
+%- if conservation_check
 \subsection{Peak conservation score} 
 Conserved sequences are similar or identical sequences across species, it has been maintained by evolution despite speciation. Highly conserved sequences are thought to have conserved functional value. Conservation plot is set to judge the conservation of these transcriptions binding site or histome modification site. For transcription factor 500 bp upstream and downstream to summit of each peak is predefined, 2000 bp for histome modification.Through k-means cluster method we separate our history datasets\' conservation plot into several pattern, we choose the most similar conservation pattern with your dataset as a judgement.     (Figure ~\ref{fig:conservation}) \newline
 \begin{figure}[h] 
@@ -281,8 +281,10 @@ Conserved sequences are similar or identical sequences across species, it has be
         {\includegraphics[width=0.8\textwidth]{\VAR{conservation_compare_graph}}}
 \end{figure}
 \newpage
+%- endif
 
 
+%- if motif_check
 %# -----------motif QC---------------
 \subsection{Motif QC measurement analysis}
 \begin{quotation}
@@ -300,7 +302,6 @@ In order to avoid redundant motif prediction and motifs with too much similarity
 For TF we set a QC judgement, if the experiment transcription factor can be detected in the motif table, the dataset pass motif QC.   (Table ~\ref{motif})
 \end{quotation}
 
-%- if motif_check
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
