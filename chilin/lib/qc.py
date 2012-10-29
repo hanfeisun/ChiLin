@@ -946,7 +946,7 @@ class AnnotationQC(QC_Controller):
         print "MAI"
         if exists(self.seqpos_out_path("mdseqpos_out.html")):
 #            print "MAILA"
-#            tempfile = self.get_seqpos()
+            self.get_seqpos()
             motifTable = self.motif_info(atype)
             print motifTable
             if len(motifTable)>0:
