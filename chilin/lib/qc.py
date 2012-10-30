@@ -550,14 +550,14 @@ class PeakcallingQC(QC_Controller):
         num_overlapped_peaks = len(fhd.readlines())
         fhd.close()
 
-        velcro_ratio = round(float(num_overlapped_peaks)/self.totalpeaks,3)
+        velcro_ratio = round(1-float(num_overlapped_peaks)/self.totalpeaks,3)
         rCode = self.rule['qcresult']['velcro_ratio_r']
         pdfName = self.rule['qcresult']['velcro_ratio']
 
         self.db.execute("select velcro_rate from peak_calling_tb")
         velcro_history = self.db.fetchall()
         historyData = [str(i[0]) for i in velcro_history]
-        historyData = [i for i in historyData if i!='null']
+        historyData = [str(1-float(i)) for i in historyData if i!='null']
         historyData = ','.join(historyData)
 
 
@@ -568,19 +568,23 @@ class PeakcallingQC(QC_Controller):
         f.write("pdf('%s',height=8.5,width=8.5)\n"% pdfName)
         f.write("rawdata<-c(%s)\n" % historyData)
         f.write("fn<-ecdf(rawdata)\n")
-        f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='velro ratio',xlab='velcro ratio',ylab='Fn(velcro ratio)')\n")
+        f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='Non-velro ratio',xlab='non-velcro ratio',ylab='Fn(non-velcro ratio)')\n")
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(velcro_ratio,velcro_ratio,int(pch[0]),col[0]))
-        f.write('abline(v=0.1,lty=2,col="red")\n')
-        f.write("text(0.15,0,'cutoff=3')\n")
+        f.write('abline(v=0.9,lty=2,col="red")\n')
+        f.write("text(0.95,0,'cutoff=0.9')\n")
         f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21)\n" %pointText)
         f.write("dev.off()\n")
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
-        if velcro_ratio >= 0.1:
-            judge = 'Fail'
-        else:
-            judge = 'Pass'
-        self.summarycheck.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1,judge])
+#        if velcro_ratio >= 0.1:
+#            judge = 'Fail'
+#        else:
+#            judge = 'Pass'
+#        self.summarycheck.append(['Overlap with velcro  ','%s'%name,'%f'%velcro_ratio,0.1,judge])
+        self.checker.append({"desc":'Overlap with non-velcro ',
+                             "data":name,
+                             "value":velcro_ratio,
+                             "cutoff":0.9})		
         return pdfName
         
     def _DHS_ratio_info(self,peakbed):
@@ -816,10 +820,10 @@ class AnnotationQC(QC_Controller):
             judge = 'pass'
         else:
             judge = 'fail'
-        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%min(scoreList),' ','%s'%judge]
+        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%round(min(scoreList),3),' ','%s'%judge]
         self.summarycheck.append(temp)
-        print historyData[mindist]
-        print value
+#        print historyData[mindist]
+#        print value
         judgevalue = historyData[mindist].strip().split(' ')
         judgevalue = [str(i) for i in judgevalue]
         value = [str(i) for i in value]
@@ -872,7 +876,7 @@ class AnnotationQC(QC_Controller):
             for i in output:
                 of.write('\t'.join(i)+'\n')
 
-    def motif_info(self):
+    def motif_info(self,atype):
         outdir = self.conf['userinfo']['outputdirectory']
         p=MotifParser()
         p.ParserTable(self.seqpos_stats_out)
@@ -890,8 +894,10 @@ class AnnotationQC(QC_Controller):
             s2[i]['synonym'] = logo
             i = i+1
         output = []
+        logList = []
         for i in s2:
             logo = i['synonym']
+            tt = [logList.append(j) for j in logo]
             denovoNum = logo.count('denovo')
             if denovoNum >=2:
                 logo.reverse()
@@ -908,6 +914,17 @@ class AnnotationQC(QC_Controller):
             tempt = {'motif':logo,'hits':str(i['hits'][0]),'Zscore':str(i['zscore'][0]),'logo':logor}
             output.append(tempt)
             print output
+        print '--------------------',logList
+        
+        factor = self.conf['userinfo']['factor'].upper()
+        print factor
+        if atype == 'TF' or atype == 'Dnase':
+            if factor in logList:
+                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','pass']
+                self.summarycheck.append(temp)
+            else:
+                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','fail']
+                self.summarycheck.append(temp)
         return output
 
 
@@ -919,21 +936,22 @@ class AnnotationQC(QC_Controller):
         if exists(ceasCode):
             self.render['ceas_check'] = True
             self.render['meta_gene_graph'],self.render['gene_distribution_graph'] = self._ceas_info(peaksxls,ceasCode)
-#        print self.seqpos_out_path("mdseqpos_out.html")
-#        print "MAI"
-        if exists(self.seqpos_out_path("mdseqpos_out.html")):
-#            print "MAILA"
-            tempfile = self.get_seqpos()
-            motifTable = self.motif_info()
-            print motifTable
-            if len(motifTable)>0:
-                self.render['motif_table'] = motifTable
-                self.render['motif_check'] = True
+
         if exists(conservationFile) and exists(conservationR):
             self.render['conservation_check'] = True
 #            self.render['conservation_graph'] = conservationFile
             self.render['conservation_graph'],self.render['conservation_compare_graph'] = self._conservation_info(conservationR,conservationFile,atype)
-        
+
+        print self.seqpos_out_path("mdseqpos_out.html")
+        print "MAI"
+        if exists(self.seqpos_out_path("mdseqpos_out.html")):
+#            print "MAILA"
+            self.get_seqpos()
+            motifTable = self.motif_info(atype)
+            print motifTable
+            if len(motifTable)>0:
+                self.render['motif_table'] = motifTable
+                self.render['motif_check'] = True        
         self._render()
 
 
@@ -944,7 +962,7 @@ class SummaryQC(QC_Controller):
         self.conf = conf
         self.rule = rule
 
-    def run(self,checkList):
+    def run(self,checkList,onlyqc):
         self.render['SummaryQC_check'] = True
         
         def _prune_id(x):
@@ -959,9 +977,23 @@ class SummaryQC(QC_Controller):
         cmd = "pdflatex {0}".format(self.texfile)
         self.run_cmd(cmd)
         self.run_cmd(cmd)       # the pdflatex command should be run twice!
+        if onlyqc:
+            self.packfile()
     def packfile(self):
-        pass
-
+        qcfolder = '%s_QCresult' %self.conf['userinfo']['datasetid']
+        os.system('mkdir %s' %qcfolder)
+        for iterm in self.rule['qcresult']:
+            print self.rule['qcresult'][iterm]
+            if isinstance(self.rule['qcresult'][iterm], list):
+                for subiterm in self.rule['qcresult'][iterm]:
+                    if notzero(subiterm):
+                        cmd = 'mv %s %s'%(subiterm, qcfolder)
+                        self.run_cmd(cmd)
+                        print subiterm
+            elif notzero(self.rule['qcresult'][iterm]):
+                print self.rule['qcresult'][iterm]
+                cmd = 'mv %s %s'%(self.rule['qcresult'][iterm], qcfolder)
+                self.run_cmd(cmd)
 
 
 

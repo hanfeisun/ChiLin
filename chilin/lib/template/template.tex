@@ -17,10 +17,13 @@
 \tableofcontents
 \setcounter{tocdepth}{2}
 \newpage
+ 
+
+ 
          
 \section{Reads Genomic Mapping QC measurement}
 \begin{quotation}
-Modern high throughput sequencers can generate tens of millions of sequences in a single run. Before analysing this sequence to draw biological conclusions you should always perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data which may affect how you can usefully use it.
+Modern high throughput sequencers can generate tens of millions of sequences in a single run. Before analysing this sequence to draw biological conclusions you should always perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data which may affect how you can usefully use it.Based on the our data collection, there are 4642 dataset (2888 human) stored as history data for quality comparison.
 \end{quotation} 
 
 %# -------------fastqc--------------fastqc_check : fastqc_table ; fastqc_graph
@@ -29,7 +32,7 @@ Modern high throughput sequencers can generate tens of millions of sequences in 
 \subsection{FastQC Summary table}
 \begin{quotation}
 FastQC aims to provide a QC report which can spot problems which originate in the sequencer. 
-The sequence quality score listed in the table allows you to see if a subset of your sequences have universally low quality values. Here we can report the sequence quality scores of the new datasets and use our criteria to judge the quality of the new raw data(Table ~\ref{fastqctable}).\\
+The sequence quality score listed in the table allows you to see if a subset of your sequences have universally low quality values. Here we can report the sequence quality scores of the new datasets and use our criteria to judge the quality of the new raw data.Sequence quality score of each sample means that more than 50% reads' sequence quality upper than the number. The higher the raw data is better. Here we set 25 as a cutoff based on our collected datasets.(Table ~\ref{fastqctable}).\\
 \end{quotation}
 \begin{table}[h]
 \caption{FastQC measurement}\label{fastqctable}
@@ -67,18 +70,17 @@ We draw the cumulative percentage plot of the sequence quality scores of all his
 \begin{quotation}
 Bowtie is an ultrafast, memory-efficient alignment program for aligning short DNA sequence reads to large genomes.\footnote{Langmead B, Trapnell C, Pop M, Salzberg SL: Ultrafast and memory-efficient alignment of short DNA sequences to the human genome. Genome Biology 2009, 10(3):R25}
 Short DNA sequence reads sample: AAAGGGCTGAGCTGAATGACTCAT.
-Total reads: all reads sequenced in one ChIP-seq experiment.  The file size should be at least 5 mega bytes, or we will fail this QC. 
+Total reads: all reads sequenced in one ChIP-seq experiment. 
 Mappable reads: reads can align to large genomes when 2 mismatches at most allowed.
-Mapping rate: mappable reads / total reads. Percentage of mappable reads. The bigger the percentage is, the better.  
 Unique mappable reads: reads that can only map to one location.
 Unique mappable locations: locations that can only be mapped by one read.
-Unique reads ratio: percentage of unique mappable reads in mappable reads.(Table ~\ref{basicqc})
+Unique reads ratio: percentage of unique mappable reads in mappable reads. The bigger the percentage is, the better.For QC judgement, Here we set 5 mega as a cutoff for unique mappable reads. if unique mappable reads is more than 5 mega, the datasets can pass mapping QC.(Table ~\ref{basicqc})
 \end{quotation}
 \begin{table}[h]
 \caption{Basic QC statistics} \label{basicqc}
 \begin{tabularx}{\textwidth}{ |X|X|X|X|X|X|X|X| } 
 \hline
-Sample & Total reads & Unique Mappable reads & Unique Mappable rate & Unique Mappable location & Redundant rate \\
+Sample & Total reads & Unique Mappable reads & Unique Mappable rate & Unique Mappable location & Non-Redundant rate \\
 \hline
 \BLOCK{ for line in basic_map_table }
 \VAR{line|join(' & ')} \\
@@ -105,7 +107,7 @@ For following figure, this is a cumulative distribution file of the mappable rat
 %# -------mappable redundant rate-----------
 \subsection{Mappable Non-Redundant rate}
 \begin{quotation}
-This is a cumulative distribution file of the unique reads ratio of all the ChIP-seq data in our data collection program,the x axis is the unique reads ray and the y axis represents the percentage of this ratio among all the data.Given several new sets of data, we can generate the locations of your data among all the data.The unique here means one read only map to one location of the genome, and the higher this ration is, the higher data quality your data is.(Figure: ~\ref{fig:uni})
+This is a cumulative distribution file of the mappable non-redundant ratio of all the ChIP-seq data in our data collection program,the x axis is the non-redundant ratio and the y axis represents the percentage of this ratio among all the data.Given several new sets of data, we can generate the locations of your data among all the data. the higher this ratio is, the higher data quality your data is.Here we set 0.8 as a cutoff for non-redundant rate.(Figure: ~\ref{fig:uni})
 \end{quotation}
 \begin{figure}[h] 
 \caption{Mappable Non-Redundant rate} \label{fig:uni}
@@ -124,11 +126,11 @@ This is a cumulative distribution file of the unique reads ratio of all the ChIP
 \section{Peak calling QC measurement}
 \subsection{Peak calling summary}
 \begin{quotation}
-This report aims to show the quality of the peaks called by MACS. 
+This report aims to show the quality of the peaks called by MACS.Peaks summary,  distribution, high confident peaks, Peaks overlapped with DHS, Peaks overlapped with Velcro sites(human only) is arranged to value peak calling result. 
 The column of 'Cut off' shows what the Q-value (default is 0.01) is used when processing MACS. And the lower Q-value is used, MACS will call the more confident peaks. 
 The 'Peak count' shows the total number of peaks calculated under the condition of a Q-value. 
-For the column of 'peaks $\geq$ 10FC', it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 10. The log value can give us more confidence in our data.
-The 'Shift size' shows that the distance between the Watson or Crick tags enrichment location and the binding site's location.(Table ~\ref{peaksum})
+For the column of 'peaks $\geq$ 10FC' refers to high confident peaks, it shows that the number of peaks that require the fold enrichment of tags locate on the genome $\geq$ 10. The log value can give us more confidence in our data.
+The 'Shift size' shows that the distance between the Watson or Crick tags enrichment location and the binding site's location. Here we set 1000 and 3 as cutoff for total peaks number on default Q-value and number of high confident peaks under log10. (Table ~\ref{peaksum})
 \end{quotation}
 
 \begin{table}[h]
@@ -161,28 +163,33 @@ The figure shows the distribution for the number's logarithm of peaks that requi
 %#-------Peaks overlapped with DHS----------
 \subsection{Peaks overlapped with DHS(Dnase Hypersensitivity sites)}
 \begin{quotation}
-In eukaryotes, transcription is regulated in a cell-type and condition-specific manner through the association of transcription factors with chromatin. The genome-wide binding sites of transcription factors, or the transcription factor cistromes, are influenced by the active protein levels of the transcription factors, chromatin structure, and DNA sequence.
+In eukaryotes, transcription is regulated in a cell-type and condition-specific manner through the association of transcription factors with chromatin. The genome-wide binding sites of transcription factors are influenced by the active protein levels of the transcription factors, chromatin structure, and DNA sequence.
 DNase I hypersensitivity is an alternative measure of chromatin accessibility (Wu 1980). DNase I hypersensitive sites (DHS), short regions of chromatin that are highly sensitive to cleavage by DNase I, typically occur in nucleosome free regions and frequently arise as a result of transcription factor binding. DNase I digestion followed by high-throughput sequencing (DNase-seq) has evolved into a powerful technique for identifying genome-wide DNase hypersensitive sites. \footnote{Ling et al. 2010; John et al. 2011; Siersbaek et al. 2011}
-We draw a CDF curve of the overlap with union DHS sites of all DC data, then we can assess the confidence level of  the TF binding sites described by your peak file. (Figure: ~\ref{DHS})
+We draw a CDF curve of the overlap with union DHS sites of all DC data, then we can assess the confidence level of  the TF binding sites described by your peak file.Here we set 0.8 as a cutoff to judge whether peaks overlapped with DHS can pass our QC criterion. (Figure: ~\ref{DHS})
 \end{quotation}
 \begin{figure}[h]
 \begin{center}
 \caption{Peaks overlapped with DHS data} \label{DHS}
-{\includegraphics[width=0.72\textwidth]{\VAR{DHS_ratio_graph}}}
+{\includegraphics[width=0.70\textwidth]{\VAR{DHS_ratio_graph}}}
 \end{center}
 \end{figure}
 \newpage		
 
+
+
+
+
+
 %# -------peaks overlaped with Velcro---------
 %- if verlcro_check
-\subsection{Velcro ratio(human only)}
+\subsection{Non-Velcro ratio(human only)}
 \begin{quotation}
 There has a comprehensive set of regions in the human genome that have anomalous, unstructured, high signal/read counts in next gen sequencing experiments independent of cell line and type of experiment. We call them Consensus Signal Artifact Regions (verlcro region). The breadth of cell-lines covered by the ENCODE datasets allows us to accomplish this in a systematic manner.
 We use 80 open chromatin tracks (DNase and FAIRE datasets) and 12 ChIP-seq input/control tracks spanning ~60 cell lines in total , identify ~400 Consensus Signal Artifact Regions. We judge the quality and the confidence level of the TF binding sites by its overlap with these region. If the binding sites of a TF have more than 5% binding sites that overlap with these region, it may tell that the TF binding sites are not so reliable.
-We draw a CDF curve of the overlap with verlcro region of all DC data, then we can assess the confidence level of  the TF binding sites described by your peak file. (Figure: ~\ref{fig:velcro})
+We draw a CDF curve of the overlap with Non-verlcro region of all DC data, then we can assess the confidence level of  the TF binding sites described by your peak file.For non-verlcro region, we set 0.9 as a cutoff to do QC. (Figure: ~\ref{fig:velcro})
 \end{quotation}
 \begin{figure}[h] 
-\caption{Velcro ratio} \label{fig:velcro}
+\caption{Non-Velcro ratio} \label{fig:velcro}
 \setlength{\abovecaptionskip}{0pt} 
 \setlength{\belowcaptionskip}{10pt}
 \centering
@@ -196,7 +203,7 @@ We draw a CDF curve of the overlap with verlcro region of all DC data, then we c
 %- if replicate_check
 \subsection{Profile correlation within union peak regions}
 \begin{quotation}
-If biologist have replicate chipseq experiments,pipline will draw the correlation plot.the score means the correlation among these replicates' profiles. We can judge the replicate experiment quality if the correlaton is high.(Table: ~\ref{fig:profileunion})
+If biologist have replicate chipseq experiments,pipline will draw the correlation plot.the score means the correlation among these replicates' profiles. We can judge the replicate experiment quality if the correlaton is higher than 0.8.(Table: ~\ref{fig:profileunion})
 \end{quotation}
 \begin{figure}[h]
         \caption{Peaks Overlap correlation diagram between Replicates} \label{fig:profileunion}
@@ -256,9 +263,9 @@ Add all the reads density corresponding to its located meta genes(i.e. to the co
 %- endif
 
 %# ---------Conservation QC----------- conservation_graph
-
+%- if conservation_check
 \subsection{Peak conservation score} 
-Conserved sequences are similar or identical sequences across species, it has been maintained by evolution despite speciation. Highly conserved sequences are thought to have conserved functional value. Conservation plot is set to judge the conservation of these transcriptions binding site or histome modification site. For transcription factor 500 bp upstream and 400 bp downstream to summit of each peak is predefined, 2000 bp for histome modification.(Figure ~\ref{fig:conservation}) \newline
+Conserved sequences are similar or identical sequences across species, it has been maintained by evolution despite speciation. Highly conserved sequences are thought to have conserved functional value. Conservation plot is set to judge the conservation of these transcriptions binding site or histome modification site. For transcription factor 500 bp upstream and downstream to summit of each peak is predefined, 2000 bp for histome modification.Through k-means cluster method we separate our history datasets\' conservation plot into several pattern, we choose the most similar conservation pattern with your dataset as a judgement.     (Figure ~\ref{fig:conservation}) \newline
 \begin{figure}[h] 
         \caption{Phascon conservation distribution} \label{fig:conservation}
         \setlength{\abovecaptionskip}{0pt} 
@@ -274,12 +281,14 @@ Conserved sequences are similar or identical sequences across species, it has be
         {\includegraphics[width=0.8\textwidth]{\VAR{conservation_compare_graph}}}
 \end{figure}
 \newpage
+%- endif
 
 
+%- if motif_check
 %# -----------motif QC---------------
 \subsection{Motif QC measurement analysis}
 \begin{quotation}
-Sequence motifs are short, recurring patterns in DNA that are presumed to have a biological function. Often they indicate sequence-specific binding sites for proteins such as nucleases and transcription factors (TF). \\footnote{D'haeseleer P: What are DNA sequence motifs? nature biotechnology 2006, 24:423-425.}
+Sequence motifs are short, recurring patterns in DNA that are presumed to have a biological function. Often they indicate sequence-specific binding sites for proteins such as nucleases and transcription factors (TF). \footnote{ Patrik D'haeseleer. What are DNA sequence motifs. nature biotechnology 2006,24.}
 We scan the top 1000 peak regions found in MACS to detect the mighty factors' motifs. 
 Name: corresponding factor name for motif seqLogo.
 Hits: times the motif occurs in the top 1000 regions. More it occurs, more credibility.
@@ -289,10 +298,10 @@ We might find several motifs different from the antibody we use. For example, we
 In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. 
 We search in cistrome database and use denovo motif finding methods 
 to generate prediction of experiment factor's motifs. 
-In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. In addition, those credibile motif with Zscore under -15 were kept, So if none significant motif detected, motif table won't display in QC report.(Table ~\ref{motif})
+In order to avoid redundant motif prediction and motifs with too much similarity between denovo and past identified ones, we used a  function to merge the replicates and redundant. In addition, those credibile motif with Zscore under -15 were kept, So if none significant motif detected, motif table won't display in QC report.
+For TF we set a QC judgement, if the experiment transcription factor can be detected in the motif table, the dataset pass motif QC.   (Table ~\ref{motif})
 \end{quotation}
 
-%- if motif_check
 \begin{table}[h]
         \caption{Seqpos QC measurement} \label{motif}
         \newcolumntype{R}{>{\raggedleft\arraybackslash}X}

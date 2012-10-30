@@ -1,3 +1,6 @@
+"""
+run ChiLin automatically
+"""
 import os
 import time
 import sys
@@ -5,7 +8,8 @@ import logging
 import sqlite3
 import datetime
 import re
-
+# TODO, control background
+import multiprocessing
 from ConfigParser import ConfigParser
 from optparse import OptionParser
 from subprocess import call
@@ -17,6 +21,34 @@ adata = lambda d: d.rstrip('.txt')
 pabs = os.path.abspath
 path = lambda a, f: os.path.join(os.path.abspath(a), f)
 name = lambda n: adata(n) + '.conf'
+def transfer(dbname):
+    conn = sqlite3.connect(dbname)
+    curs = conn.cursor()
+    try:
+        curs.execute('''
+            create table tabletans (
+            datasetid  TEXT  primary key,
+            treatid TEXT,
+            controlid TEXT,
+            species TEXT,
+            factor TEXT,
+            datatype TEXT,
+            uploadtime TEXT,
+            sever3path TEXT,
+            sever3status TEXT,
+            dasiypath TEXT,
+            dasiystatus TEXT
+            
+            )'''
+                     )
+    except: # to avoid repeat establish queue table
+        conn.rollback()             
+        curs.execute("select * from sqlite_master where type=\"table\" and name=\"tabletans\"")
+        name=curs.fetchall()
+        print name
+        curs.close()
+        conn.close()
+
 def log(info):
     """logname : specify autodc_date.log
     info for warning or error message
@@ -34,12 +66,12 @@ def log(info):
 def is_server_available():
     cmd_df_usage = "df -h | grep /mnt/Storage | awk '{print int($5)}'" # for whole disk
     disk = float(os.popen(cmd_df_usage).read())
-    # use 10% cpu as cpu cutoff
-    cmd_CPU_usage = "top -bn 1 -u qinq | grep '^ *[1-9]' | awk '{if ($9>10) {cpuusage += 1}} END {print cpuusage}'" # for single user
+    cmd_CPU_usage = "top -bn 1 -u `whoami` | grep '^ *[1-9]' | awk '{if ($9>=5) cpuusage += 1} END {print cpuusage}'" # for single user
+    print os.popen(cmd_CPU_usage).read()
     cpu = int(os.popen(cmd_CPU_usage).read())
-    cmd_memory_usage = "top -bn 1 -u qinq | grep '^ *[1-9]'| awk '{memusage += $10} END {print memusage}'" # single user
+    cmd_memory_usage = "top -bn 1 -u `whoami` | grep '^ *[1-9]'| awk '{memusage += $10} END {print memusage}'" # single user
     memory = float(os.popen(cmd_memory_usage).read())
-    if disk < 90 and cpu < 15 and memory < 15:
+    if disk < 90 and cpu < 15 and memory < 20:
         return True
     else:
         return False
@@ -68,6 +100,7 @@ def read_queue(idfile, dbname, outputd, confp):
         )''')
     except: # to avoid repeat establish queue table
         conn.rollback()
+
     conf_c = []
     species = lambda s: "mm9" if s.lower()=='mus' else "hg19"
     def atype(t):
@@ -103,10 +136,10 @@ def read_queue(idfile, dbname, outputd, confp):
     conn.close()
     return adata(outputd)
 
-def conf(dbname, confp, idfile, outputd):
+def conf(dbname, confp, idfile, outputd, init = True):
     conn = sqlite3.connect(pabs(dbname))
     curs = conn.cursor()
-    sql_select = 'select * from queue where status = "" order by datasetid'
+    sql_select = 'select * from queue where status = "" OR status = "running" order by datasetid'
     curs.execute(sql_select)
     confs = curs.fetchall()
     print os.path.join(confp, name(os.path.basename(adata(idfile))))
@@ -115,28 +148,33 @@ def conf(dbname, confp, idfile, outputd):
     return confs
 
 def write_configs(conf, outputd, confp, idfile, datad):
+    """ idfile => queue folder files """
     cf = ConfigParser()
-    print conf
-    cmd = "ChiLin.py gen -s %s " % conf[3] # species, specific setting
-    log(cmd)
-    try:
-        call(cmd, shell=True)
-        cf.read('ChiLinjinja.conf')
-        fqpath = lambda f, suffix: path(datad, f + suffix)
-        setdata = lambda t: ','.join(map(fqpath, t.split(','), ['.fastq']*len(t.split(',')))) # TODO, add other suffix option 
-        cf.set('UserInfo', 'User', 'autodc')
-        cf.set('UserInfo', 'species', conf[3])
-        cf.set('UserInfo', 'factor', conf[4]) # factor
-        cf.set('UserInfo', 'datatype', conf[5])
-        cf.set('UserInfo', 'treatpath', setdata(conf[1]))
-        cf.set('UserInfo', 'controlpath', setdata(conf[2]))
-        cf.set('UserInfo', 'OutputDirectory', outputd)
-        cf.set('UserInfo', 'datasetid', conf[0])
-        print cf.sections()
-        cf.write(open(os.path.join(confp, name(os.path.basename(adata(idfile)))), 'w'))
-    except TypeError:
-        log("TypeError")
-        sys.exit(1)
+    if conf[9] == 'running':
+        print '%s data are running!' % conf[0]
+    elif conf[9] == '':
+        cmd = "ChiLin.py gen -s %s " % conf[3] # species, specific setting
+        log(cmd + 'for' + conf[0])
+        try:
+            call(cmd, shell=True)
+            cf.read('ChiLinjinja.conf')
+            fqpath = lambda f, suffix: path(datad, f + suffix)
+            setdata = lambda t: ','.join(map(fqpath, t.split(','), ['.fastq']*len(t.split(',')))) # TODO, add other suffix option
+            cf.set('UserInfo', 'User', 'autodc')
+            cf.set('UserInfo', 'species', conf[3])
+            cf.set('UserInfo', 'factor', conf[4]) # factor
+            cf.set('UserInfo', 'datatype', conf[5])
+            cf.set('UserInfo', 'treatpath', setdata(conf[1]))
+            cf.set('UserInfo', 'controlpath', setdata(conf[2]))
+            cf.set('UserInfo', 'OutputDirectory', outputd)
+            print outputd
+            cf.set('UserInfo', 'datasetid', conf[0])
+            print cf.sections()
+            cf.write(open(os.path.join(confp, name(os.path.basename(adata(idfile)))), 'w'))
+        except TypeError:
+            log("TypeError")
+    elif conf[9] == 'done':
+        log('%s data are done!' % conf[0])
 
 def write_queue(oldstatus, newstatus, id, dbname):
     conn = sqlite3.connect(dbname)
@@ -148,7 +186,7 @@ def write_queue(oldstatus, newstatus, id, dbname):
             conn.commit()
         except:
             conn.rollback()
-            log("auto dc has done the input data, restart after preparing other data")
+            log("auto dc has finished the input data, restart after preparing other data")
     sql_select = 'select * from queue'
     curs.execute(sql_select)
     confs = curs.fetchall()
@@ -161,17 +199,17 @@ def run_queue(queued, datad, outd):
         pass
     # cmd_run = lambda conf, type: call("ChiLin.py run -c {0} -t {1}".format(conf, type),
     #                               shell = True)
-    cmd_run = lambda conf, type: os.popen("ChiLin.py run -c {0} -t {1}".format(conf, type))
-
+    cmd_run = lambda conf, type, id: os.popen("nohup ChiLin.py run -c {0} -t {1} >> {2}.log &".format(conf, type, id))
     while 1:
+        time.sleep(2)
         queuefiles = os.listdir(pabs(queued)) # all pc files
         if len(queuefiles) == 0:
             log("No input data, please fetch from pc filling table, sleep~~~")
-            time.sleep(60)
+            time.sleep(120)
             continue
         d = datetime.datetime.now()
         conflist = d.strftime("%Y_%m_%d_confs")
-        confp = pabs(conflist)
+        confp = pabs(conflist)  # configs path list
         processed = confp + "_processed"
         if not all(map(os.path.exists, map(adata, queuefiles))):
             map(lambda f: call('mkdir %s' % f, shell=True), map(adata, queuefiles))
@@ -180,32 +218,43 @@ def run_queue(queued, datad, outd):
         if not os.path.exists(processed):
             call('mkdir %s' % processed, shell=True)
         dbname = pabs('autodc.db')
+        transfer(dbname)
+        # read in conflist => confp
         outputd = map(lambda f: read_queue(path(queued, f), dbname, path(outd, f), confp), queuefiles) # initialize db and read in
 
-        # mv queuefiles to a processed directory with status
+        # read in conf information from queue.db
         confs = map(lambda f: conf(dbname, confp, path(queued, f), outd), queuefiles)[0]  # parse the db into tuples in list
         log("all availble now conf listed below")
         log('\n'.join('\t'.join(t) for t in confs))
-        
+
+        # note sequence, sort
+        # write configs for ChiLin.py
+        confs.sort()
+        queuefiles.sort()
+        outputd.sort()
         map(lambda f, c, o: write_configs(c, o, confp, path(queued, f), datad), queuefiles, confs, outputd)
         log('write confs in %s' % confp)
         log('begin to run ')
-        if is_server_available():
-            log("server is available, begin to process data")
-            for c in confs:
-                if c[9] == '': # status change
-                    if not ('fail' or 'error') in cmd_run(c[6], c[5]).read():  # TODO, error extracting method
-                        write_queue(c[9], 'done', c[0], dbname) # id
-                        log("%s has done" % c[0])
-
+        for c in confs:
+            if is_server_available():
+                log("server is available, begin to process data")
+                if c[10] == '': # status change
+                    if not ('fail' or 'error') in cmd_run(c[6], c[5], c[0]).read():  # TODO, error extracting method
+                        # add error for reading dataset.log files
+                        # output directory
+                        write_queue(c[10], 'running', c[0], dbname) # id
+                        if exists(path(c[7], "dataset" + c[0])):
+                            write_queue(c[10], 'done', c[0], dbname) # id
+                            log("%s has done" % c[0])
                     else:
-                        write_queue(c[9], 'error', c[0], dbname)
+                        write_queue(c[10], 'error', c[0], dbname)
                         log("%s error" % c[0])
-                    call('mv %s %s' % (os.path.join(pabs(queued),c[0] + '.txt'), processed), shell=True) # may be change
-                time.sleep(3)
-        else:
-            log("Please wait server to get enough resources")
-
+                        # mv queuefiles to a processed directory with status
+                        call('cp %s %s' % (os.path.join(pabs(queued),c[0] + '.txt'), processed), shell=True) # keep original records cp
+                    time.sleep(5)
+            else:
+                log("Please wait server to get enough resources")
+                time.sleep(30)
 def main():
     usage = "usage: %prog -q <queue directory> -d <data directory> -o <output directory>"
     description = "ChIP-seq Auto Pipeline"
