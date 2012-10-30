@@ -53,7 +53,8 @@ def parse_args():
                         help = "specify peaks number for CEAS")
     pipe_parser.add_argument("--threads", dest = "max_threads", type = int, default = 1, choices = range(1,9),
                              help = "How many threads can be used")
-
+    pipe_parser.add_argument("-k", "--skip", dest="onlyqc", action="store_true", default=False,
+                             help="skip dc part")
     pipe_parser.add_argument("-d", dest = "step_end", type = int, default = 6,
                         help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
     pipe_parser.add_argument("--debug", help = "debug mode", action = "store_true", default = False)
@@ -72,16 +73,15 @@ def parse_args():
 
 def main():
     args = parse_args()
-    
+    print args.config
     pp = PipePreparation(args.config)
     log_func = pp.func_log()
-
     pp.check_conf()
 
     conf = pp.get_config()
     rule = pp.get_rule()
 
-    
+    print rule
     p = lambda func:partial(func, conf=conf, rule=rule, log=log_func, debug=args.debug,
                             texfile=pp.get_tex(),
                             datasummary = pp.get_summary(),
@@ -92,43 +92,48 @@ def main():
                             ArgsionMethod = args.cor_method,
                             threads = args.max_threads)
     print conf
-    groom = p(PipeGroom)()
-    groom.run()
+    if not args.onlyqc:
+    	groom = p(PipeGroom)()
+    	groom.run()
 
     rawqc = p(RawQC)()
     rawqc.run()
-
-    bowtie = p(PipeBowtie)()
-    bowtie.run()
+    if not args.onlyqc:
+        # TODO insert into dc module
+        bowtie = p(PipeBowtie)()
+        bowtie.run()
 
     mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
     mappingqc.run()
+    if not args.onlyqc:
+        macs2 = p(PipeMACS2)()
+        macs2.run()
 
-    macs2 = p(PipeMACS2)()
-    macs2.run()
+        pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
+        pipevenncor.run()
 
-    pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
-    pipevenncor.run()
+        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
+        peakcallingqc.run()
+    
+        pipeceas = p(PipeCEAS)()
+        pipeceas.run()
 
+        pipeconserv = p(PipeConserv)()
+        pipeconserv.run()
+
+        pipemotif = p(PipeMotif)()
+        pipemotif.run()
     peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
     peakcallingqc.run()
-    
-    pipeceas = p(PipeCEAS)()
-    pipeceas.run()
-
-    pipeconserv = p(PipeConserv)()
-    pipeconserv.run()
-
-    pipemotif = p(PipeMotif)()
-    pipemotif.run()
 
     annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck)
     annotationqc.run(args.atype)
 
 
     summaryqc = p(SummaryQC)()
-    summaryqc.run(annotationqc.summarycheck)
-    p(package)()
+    summaryqc.run(annotationqc.summarycheck,args.onlyqc)
+
+#    p(package)()
             
 
 

@@ -13,6 +13,7 @@ HELP
 }
 
 # options
+echo $1
 while [ -n "$1" ]; do
     case $1 in
         -h)help;shift 1;;
@@ -48,7 +49,7 @@ fi
 
 if [ $u = root ]; then
     echo "install for all users"
-else:
+else
     echo "Need root authority, please ask your administrator!"
     echo "Or try personal install"
     exit 1
