@@ -29,7 +29,6 @@ class ChiLinParser(argparse.ArgumentParser):
         self.print_help()
         sys.exit()
 
-
 def parse_args():
     description = "ChiLin : A clear ChIP-seq pipeline"
     parser = ChiLinParser(description = description)
@@ -55,6 +54,8 @@ def parse_args():
                              help = "How many threads can be used")
     pipe_parser.add_argument("-k", "--skip", dest="onlyqc", action="store_true", default=False,
                              help="skip dc part")
+    pipe_parser.add_argument("-a", "--absolid", dest="color", action="store_true", default=False,
+                             help="For special absolid color fastq")
     pipe_parser.add_argument("-d", dest = "step_end", type = int, default = 6,
                         help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
     pipe_parser.add_argument("--debug", help = "debug mode", action = "store_true", default = False)
@@ -73,7 +74,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    print args.config
+
     pp = PipePreparation(args.config)
     log_func = pp.func_log()
     pp.check_conf()
@@ -93,14 +94,13 @@ def main():
                             threads = args.max_threads)
     print conf
     if not args.onlyqc:
-    	groom = p(PipeGroom)()
-    	groom.run()
-
+        groom = p(PipeGroom)()
+        groom.run()
     rawqc = p(RawQC)()
     rawqc.run()
     if not args.onlyqc:
         # TODO insert into dc module
-        bowtie = p(PipeBowtie)()
+        bowtie = p(PipeBowtie)(color=args.color)
         bowtie.run()
 
     mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
@@ -114,7 +114,7 @@ def main():
 
         peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
         peakcallingqc.run()
-    
+        
         pipeceas = p(PipeCEAS)()
         pipeceas.run()
 

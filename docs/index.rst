@@ -24,11 +24,12 @@ Manual
    data_tool
    config_file
    output_temporary
+   running_test
 
 API Documentation
 -----------------
 
-Documentation for every chlin API.
+Documentation for every chilin API.
 
 .. toctree::
    :maxdepth: 2

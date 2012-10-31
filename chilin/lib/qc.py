@@ -13,6 +13,7 @@ from chilin.MotifParser import MotifParser
 
 exists = os.path.exists
 notzero = lambda x:os.path.exists(x) and os.path.getsize(x) > 0
+
 def _tospace(x):
     if type(x) == str:
         return x.replace("_"," ")
@@ -671,7 +672,7 @@ class PeakcallingQC(QC_Controller):
 
     def run(self):
         """ Run some PeakcallingQC function to get final result. 
-            input: peaks bed and excel file.
+        input: peaks bed and excel file.
         """
         self.log('Processing PeakcallingQC')
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
@@ -706,6 +707,7 @@ class AnnotationQC(QC_Controller):
         self.conservationFile = self.rule['conservresult']['conserv_png']
         self.conservationR = self.rule['conservresult']['conserv_r']
         print 'initialization of function qc'
+        
     def _ceas_info(self,peakxls,ceasCode):
         """ Describe peaks' distribution and relative position. """
         fhd = open( peakxls,"r" )
@@ -979,6 +981,7 @@ class SummaryQC(QC_Controller):
         self.run_cmd(cmd)       # the pdflatex command should be run twice!
         if onlyqc:
             self.packfile()
+
     def packfile(self):
         qcfolder = '%s_QCresult' %self.conf['userinfo']['datasetid']
         os.system('mkdir %s' %qcfolder)
@@ -994,7 +997,6 @@ class SummaryQC(QC_Controller):
                 print self.rule['qcresult'][iterm]
                 cmd = 'mv %s %s'%(self.rule['qcresult'][iterm], qcfolder)
                 self.run_cmd(cmd)
-
 
 
 

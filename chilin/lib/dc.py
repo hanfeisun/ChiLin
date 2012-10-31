@@ -276,6 +276,7 @@ class PipeController(object):
         ds_rendered = DA.render(self.rendercontent)
         with open(self.datasummary,"a") as df:
             df.write(ds_rendered)
+
 class PipeGroom(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, **args):
         """
@@ -314,13 +315,13 @@ class PipeGroom(PipeController):
 
 
 class PipeBowtie(PipeController):
-    def __init__(self, conf, rule, log, stepcontrol, **args):
-        """
-        pipeline bowtie part"""
+    def __init__(self, conf, rule, log, stepcontrol, color, **args):
+        """pipeline bowtie part"""
         super(PipeBowtie, self).__init__(conf, rule, log, **args)
         self.rendercontent = {}
         self.stepcontrol = stepcontrol
-        
+        self.color = color
+
     def _sam2bam(self, sam, bam):
         """
         using samtools
@@ -402,8 +403,11 @@ class PipeBowtie(PipeController):
 
     def run(self):
         self.rendercontent['sams'] = []
+        # color or not
+        cmdif = lambda c: '{0} -p {5} -S -C -m {1} {2} {3} {4} ' if c else \
+                        '{0} -p {5} -S -m {1} {2} {3} {4} '
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
-            cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
+            cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
                              self.conf['bowtie']['nbowtie_max_alignment'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
@@ -419,7 +423,7 @@ class PipeBowtie(PipeController):
 
 
         for control_rep in range(self.conf['userinfo']['controlnumber']):
-            cmd  = '{0} -p {5} -S -m {1} {2} {3} {4} '
+            cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
                              self.conf['bowtie']['nbowtie_max_alignment'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
@@ -447,7 +451,7 @@ class PipeMACS2(PipeController):
         MACS step, separately and merge for sorted bam
         shell example:
         macs2 callpeak -B -q 0.01 --keep-dup 1 \
-                --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
+        --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
         # modify as a hidden option in conf
@@ -534,15 +538,14 @@ class PipeMACS2(PipeController):
         testid_macs_summits.bed      # result
         testid_macs_treat_pileup.bdg # -> bw result
         shell example
-            build model
-            macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1             
-            specify shiftsize
-            macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 --nomodel --shiftsize=73 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1        
+        build model
+        macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1             
+        specify shiftsize
+        macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 --nomodel --shiftsize=73 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1        
         """
         rule = self.rule
         if self.stepcontrol < 2:
             sys.exit(1)
-            
         # Options
         if 'hg' in self.conf['userinfo']['species']:
             genome_option = ' -g hs '
@@ -550,10 +553,8 @@ class PipeMACS2(PipeController):
             genome_option = ' -g mm '
         else:
             genome_option = ' '
-
         model_option = " " if self.model else " --nomodel --shiftsize=%s " % self.shiftsize
         control_option = " " if self.conf['userinfo']['controlnumber'] == 0 else ' -c '+rule['bowtieresult']['bamcontrolmerge']
-
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
@@ -641,7 +642,6 @@ class PipeVennCor(PipeController):
     def _format(self, a_type):
         """
         input : peaks.bed
-
         get intersect regions between merge peaks bed and velcro, DHS sites
         """
         cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
@@ -660,8 +660,8 @@ class PipeVennCor(PipeController):
         else:
             self.run_cmd(cmd)
 
-    def extract(self, a_type):
-        """
+    def extract(self, a_type, species=True):
+        """ species indicate test velcro or not
         extract dhs overlap and velcro overlap information
         """
         self._format(a_type)
@@ -669,7 +669,8 @@ class PipeVennCor(PipeController):
         if a_type == 'dhs':
             lena_type = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
         elif a_type == 'velcro':
-            lena_type = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
+            if True:
+                lena_type = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
         self.ratio[a_type] = lena_type
         if lenall != 0:
             self.ratio[a_type + 'percentage'] = float(lena_type)/lenall
@@ -683,10 +684,9 @@ class PipeVennCor(PipeController):
         then replace the raw output of macs2
         for summits.bed and peaks.bed
         1.use awk '{if ($2 >= 0 && $2 < $3) print}' 6576_peaks.bed > 6576_peaks.bed.temp
-          to avoid negative peaks
+        to avoid negative peaks
         2. use bedClip to avoid chromosome out of range use ceas chr len
-          bedClip testid_1_peaks.bed /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len test.bed
-          
+        bedClip testid_1_peaks.bed /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len test.bed
         example:
         /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
         """
@@ -760,8 +760,9 @@ class PipeVennCor(PipeController):
 
         if self.stepcontrol < 3:
             sys.exit(1)
-        self.extract('dhs')
-        self.extract('velcro') # mouse velcro?
+        self.extract('dhs', True)
+        if self.conf['userinfo']['species'] == 'hg19':
+            self.extract('velcro', True) # mouse has no velcro
         for k, v in self.ratio.iteritems():
             self.rendercontent['ratios'][k] = v
         self._render()
@@ -775,7 +776,7 @@ class PipeVennCor(PipeController):
             cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             cmd = cmd.format(self.conf['venn']['venn_diagram_main'],
                                        ' '.join(self.rule['macsresult']['treatrep_peaks']),
-                                       ' '.join(map(lambda x: "-l replicate_" + str(x), 
+                                       ' '.join(map(lambda x: "-l replicate_" + str(x),
                                                     xrange(1, self.conf['userinfo']['treatnumber'] + 1)))
                                        )
             self.run_cmd(cmd)

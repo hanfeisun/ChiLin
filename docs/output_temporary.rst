@@ -136,3 +136,6 @@ Provide the overall report of the whole pipeline for viewing general result.
 
    root directory ; ${DatasetID}_ceas_combined.pdf  ; Cistron annotation ;  CEAS
    root directory ; ${DatasetID}_GSMID_QC.pdf ; All quality control measurements ; Main program
+
+.. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
+.. _pdfTex site: http://www.tug.org/applications/pdftex/
