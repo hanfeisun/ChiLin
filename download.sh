@@ -135,6 +135,8 @@ install() {
 
 # depend data
 # bowtie index
+# TODO
+# for ab solid colorspace alignment use color index hgc
 species="\
 mm9 \
 hg19 \
