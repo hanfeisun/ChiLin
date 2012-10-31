@@ -133,7 +133,7 @@ def main():
     summaryqc = p(SummaryQC)()
     summaryqc.run(annotationqc.summarycheck,args.onlyqc)
 
-#    p(package)()
+    p(package)()
             
 
 
