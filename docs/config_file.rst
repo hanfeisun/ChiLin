@@ -67,8 +67,8 @@ Simpest config
 Here is one of the simpest Cpipe workflow you can make.
 
 .. literalinclude:: demo/start_chilin.conf
-   :language: ini
-   :linenos:
+      :language: ini
+      :linenos:
 
 Use your own path of :ref:`Raw Data<Raw Data>` to replace the Line 6. And use the path of the directory used to store :ref:`External Data` to replace Line 9.
 

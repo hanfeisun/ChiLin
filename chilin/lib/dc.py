@@ -341,7 +341,7 @@ class PipeBowtie(PipeController):
 
     def _extract(self, cnt, files, control = False):
         """
-        inputfile : sam files(treat or control)
+        inputfile : sam files
         cnt : replicates number
         extract bowtie qc information
         sams = [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...] **args
@@ -459,7 +459,7 @@ class PipeMACS2(PipeController):
             self.model = True
         else:
             self.model = False
-       # self.model = args.get('Macs2Model', 0)
+        # self.model = args.get('Macs2Model', 0)
         self.macsinfo = {}
 
         self.stepcontrol = stepcontrol
@@ -471,10 +471,8 @@ class PipeMACS2(PipeController):
         filter bdg file and remove over-border coordinates
         convert bdg to bw
         shell example
-        /usr/local/bin/intersectBed -a 6523_rep1_treat.bdg \ 
-                -b /opt/bin/chr_limit/chr_limit_mm9.bed -wa -f 1.00 > 6523_rep1_treat.bdg.tm
-        /opt/bin/UCSCTools/bedGraphToBigWig 6523_control.bdg.tmp \
-                /mnt/Storage/data/Samtool/chromInfo_mm9.txt 6523_control.bw 
+        /usr/local/bin/intersectBed -a 6523_rep1_treat.bdg -b /opt/bin/chr_limit/chr_limit_mm9.bed -wa -f 1.00 > 6523_rep1_treat.bdg.tm
+        /opt/bin/UCSCTools/bedGraphToBigWig 6523_control.bdg.tmp /mnt/Storage/data/Samtool/chromInfo_mm9.txt 6523_control.bw 
         bedGraphTobw chrom len equal to samtools'
         """
         cmd = '{0} -a {1} -b {2} -wa -f 1.00 > {3}'  # bdg filter
@@ -929,7 +927,7 @@ class PipeConserv(PipeController):
         """
         conservation plot
         to control the region widths for assessing conservation:
-            -w 4000 histone, default for TF or Dnase
+        -w 4000 histone, default for TF or Dnase
         shell example:
         /usr/local/bin/conservation_plot.py -t Conservation_at_summits -d /mnt/Storage/data/sync_cistrome_lib/conservation/hg19/placentalMammals -l Peak_summits 6602_summits.bed {-w 4000}
         convert pdf to png
@@ -970,9 +968,9 @@ class PipeMotif(PipeController):
         """
         input: summits.bed
         macs result filtering again:
-            generate top n peaks from summits BED file according to p value
-            remove chrM from top n summits
-            default top 1000 summits.bed, may modify seqpos config
+        generate top n peaks from summits BED file according to p value
+        remove chrM from top n summits
+        default top 1000 summits.bed, may modify seqpos config
         """
         cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.rule['macsresult']['_summits'], self.conf['seqpos']['seqpos_top_peaks'], self.rule['motiftmp']['summits_p1000']) 
         self.run_cmd(cmd)
@@ -981,7 +979,7 @@ class PipeMotif(PipeController):
         """
         get the top 1000 peaks(default)
         shell example:
-            /usr/local/bin/MDSeqPos.py -d  -w 600  -p 0.001  -m cistrome.xml  -s hs top1000_summits.bed hg19
+        /usr/local/bin/MDSeqPos.py -d  -w 600  -p 0.001  -m cistrome.xml  -s hs top1000_summits.bed hg19
         """
         if self.stepcontrol < 6:
             sys.exit()
