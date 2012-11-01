@@ -33,10 +33,10 @@ jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
                         autoescape = False,
                         )                        
 class QC_Controller(object):
-    """
-    All the class in the module derives from this class
-    """
     def __init__(self, conf, rule, log, texfile, **args):
+        """
+        All the class in the module derives from this class
+        """
         self.env = jinja_env
         self.render = {}
         self.checker = []

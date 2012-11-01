@@ -29,6 +29,8 @@ Controllers of QC
 DC class design instructions
 --------------------------------
 
+.. automodule:: chilin.dc
+
 .. autoclass:: chilin.dc.LogWriter
      :members: record
 
