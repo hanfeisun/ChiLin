@@ -230,14 +230,29 @@ class RawQC(QC_Controller):
         f.write("cbind(sequence_quality_score,density)->fndd\n")
         f.write("fndd2<-fndd[order(fndd[,1]),]\n")
         f.write("pdf('%s')\n" % pdfName)
-        f.write("plot(fndd2,type='b',pch=18,col='blue',main='Sequence Quality Score Cumulative Percentage',ylab='cummulative density function of all public data')\n")
+        f.write("plot(fndd2[,1],smooth(fndd2[,2]),type='l',pch=18,col='blue',main='Sequence Quality Score Cumulative Percentage',xlab='sequence quality score',ylab='cummulative density function of all public data')\n")
+        f.write("xx=seq(0,25)\n")     
+        f.write("yy = c(0,smooth(fn(xx)),0)\n")
+        f.write("xx =c(0,xx,25)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+        f.write("xx=seq(25,35)\n")     
+        f.write("yy = c(0,smooth(fn(xx)),0)\n")
+        f.write("xx =c(25,xx,35)\n")
+        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
+         
+        f.write("xx=seq(35,max(sequence_quality_score))\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(35,xx,max(sequence_quality_score))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")
+
         j=0
         for p in npeakl:
-            f.write("points(%d,fn(%d),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
+            f.write("points(%d,jitter(fn(%d)),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write('abline(v=25,lty=2,col="red")\n')
-        f.write("text(26,0,'cutoff=25')\n")
+#        f.write('abline(v=25,lty=2,col="red")\n')
+#        f.write("text(26,0,'cutoff=25')\n")
         f.write("dev.off()\n")
         f.close()
         
@@ -357,9 +372,25 @@ class MappingQC(QC_Controller):
         f.write("map_ratio_data<-c(%s)\n" %historyData)
         f.write("fn<-ecdf(map_ratio_data)\n")
         f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue',pch='.',col.vert='black',main='Unique mapped rates',xlab='Unique mapped rates',ylab='Fn(Unique mapped rates)')"+"\n")
+        
+        f.write("xx=seq(0,0.5,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0,xx,0.5)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+        f.write("xx=seq(0.5,0.8,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.5,xx,0.8)\n")
+        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
+         
+        f.write("xx=seq(0.8,max(map_ratio_data),length = 100)\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.8,xx,max(map_ratio_data))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")        
+        
         j=0
         for p in ratioList:
-            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
+            f.write("points(%f,jitter(fn(%f)),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
@@ -428,9 +459,27 @@ class MappingQC(QC_Controller):
         f.write("redun_data<-c(%s)\n" % historyData)
         f.write("fn<-ecdf(redun_data)\n")
         f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Non-Redundant rate ',xlab='Non-Redundant ratio',ylab='Fn(Non-Redundant rate)')"+"\n")
+        
+        
+        f.write("xx=seq(0,0.8,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0,xx,0.8)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+        f.write("xx=seq(0.8,0.95,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.8,xx,0.95)\n")
+        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
+         
+        f.write("xx=seq(0.95,max(redun_data),length = 100)\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.95,xx,max(redun_data))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")        
+        
+        
         j=0
         for p in ratioList:
-            f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
+            f.write("points(%f,jitter(fn(%f)),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
             j=j+1
         f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
         f.write("dev.off()\n")
@@ -489,15 +538,18 @@ class PeakcallingQC(QC_Controller):
             d10 = [x for x in d if x >= 10]
             self.totalpeaks = len(d)+0.01
             self.fold_20 = len(d20)+0.01
-            self.fold_10 = len(d10)+0.01
-        
+            self.fold_10 = len(d10)       
         peaks_summary = ['%s'%name,'%s'%cutoff,'%d'%self.totalpeaks,'%d'%self.fold_10,'%s'%self.shiftsize]
-        self.checker.append({"desc":'Total peaks ',
+#        self.checker.append({"desc":'Total peaks ',
+#                             "data": name,
+#                             "value": int(self.totalpeaks),
+#                             "cutoff":1000})
+        self.checker.append({"desc":'Peaks number with fold change greater than 10X  ',
                              "data": name,
-                             "value": int(self.totalpeaks),
+                             "value": int(self.fold_10),
                              "cutoff":1000})
         return peaks_summary
-        
+        self.fold_10 = len(d10)+0.01
 
     def _high_confidentPeaks_info(self):
         """
@@ -506,7 +558,8 @@ class PeakcallingQC(QC_Controller):
         name = 'dataset'+self.conf['userinfo']['datasetid']
         self.db.execute("select peak_fc_10 from peak_calling_tb")
         highpeaks_history = self.db.fetchall()
-        historyData = [str(math.log(i[0]+0.001,10)) for i in highpeaks_history]
+#        historyData = [str(math.log(i[0]+0.001,10)) for i in highpeaks_history]
+        historyData = [str(math.log(i[0]+0.001,10)) for i in highpeaks_history if i[0] > 0]
 #        historyData = [i for i in historyData if i!='null']
         historyData = ','.join(historyData)
 
@@ -520,17 +573,34 @@ class PeakcallingQC(QC_Controller):
         f.write('density <- fn(peaks_fc)\n')
         f.write("pdf('%s')\n" %pdfName)
         f.write("plot(ecdf(peaks_fc),verticals=TRUE,col.hor='blue', col.vert='black',main='Fold 10 peaks Distribution',xlab='lg(number of fold_enrichment>10 peaks)',ylab='Cumulative density function of all public data')\n")
+        
+        f.write("xx=seq(0,3,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0,xx,3)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+        f.write("xx=seq(3,4.5,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(3,xx,4.5)\n")
+        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
+         
+        f.write("xx=seq(4.5,max(peaks_fc),length = 100)\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(4.5,xx,max(peaks_fc))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")        
+        
+        
         f.write("points(%f,fn(%f),pch=21,bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
-        f.write("legend('topleft',c('ratio of foldchange greater than 10 : %s'),pch=21)\n"%pointText)
-        f.write('abline(v=3,lty=2,col="red")\n')
-        f.write("text(3.5,0,'cutoff=3')\n")
+        f.write("legend('topleft',c('ratio of foldchange greater than 10 : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
+#        f.write('abline(v=3,lty=2,col="red")\n')
+#        f.write("text(3.5,0,'cutoff=3')\n")
         f.write('dev.off()\n')
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
-        self.checker.append({"desc":'Fold change ',
-                             "data":name,
-                             "value":lg_10,
-                             "cutoff":3})
+#        self.checker.append({"desc":'Fold change ',
+#                             "data":name,
+#                             "value":lg_10,
+#                             "cutoff":3})
         return pdfName
         
 
@@ -570,10 +640,22 @@ class PeakcallingQC(QC_Controller):
         f.write("rawdata<-c(%s)\n" % historyData)
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='Non-velro ratio',xlab='non-velcro ratio',ylab='Fn(non-velcro ratio)')\n")
+
+        f.write("xx=seq(0,0.9,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0,xx,0.9)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+         
+        f.write("xx=seq(0.9,max(rawdata),length = 100)\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.9,xx,max(rawdata))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")  
+
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(velcro_ratio,velcro_ratio,int(pch[0]),col[0]))
-        f.write('abline(v=0.9,lty=2,col="red")\n')
-        f.write("text(0.95,0,'cutoff=0.9')\n")
-        f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21)\n" %pointText)
+#        f.write('abline(v=0.9,lty=2,col="red")\n')
+#        f.write("text(0.95,0,'cutoff=0.9')\n")
+        f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21,pt.bg=c('#FFB5C5'))\n" %pointText)
         f.write("dev.off()\n")
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
@@ -585,7 +667,7 @@ class PeakcallingQC(QC_Controller):
         self.checker.append({"desc":'Overlap with non-velcro ',
                              "data":name,
                              "value":velcro_ratio,
-                             "cutoff":0.9})		
+                             "cutoff":0.9})     
         return pdfName
         
     def _DHS_ratio_info(self,peakbed):
@@ -622,10 +704,27 @@ class PeakcallingQC(QC_Controller):
         f.write("rawdata<-c(%s)\n" % historyData)
         f.write("fn<-ecdf(rawdata)\n")
         f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='overlapped_with_DHSs',xlab='overlapped_with_DHSs',ylab='Fn(overlapped_with_DHSs)')"+"\n")
+        
+        f.write("xx=seq(0,0.8,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0,xx,0.8)\n")
+        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        
+        f.write("xx=seq(0.8,0.9,length = 100)\n")     
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.8,xx,0.9)\n")
+        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
+         
+        f.write("xx=seq(0.9,max(rawdata),length = 100)\n")
+        f.write("yy = c(0,fn(xx),0)\n")
+        f.write("xx =c(0.9,xx,max(rawdata))\n")  
+        f.write("polygon(xx,yy, col = 'palegreen')\n")         
+        
+        
         f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(dhs_ratio,dhs_ratio,int(pch[0]),col[0]))
-        f.write('abline(v=0.8,lty=2,col="red")\n')
-        f.write("text(0.85,0,'cutoff=0.8')\n")
-        f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21)\n"%pointText)
+#        f.write('abline(v=0.8,lty=2,col="red")\n')
+#        f.write("text(0.85,0,'cutoff=0.8')\n")
+        f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
         f.write("dev.off()\n")
         f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
@@ -849,7 +948,8 @@ class AnnotationQC(QC_Controller):
         return conservationFile,pdfName
 
 
-    def get_seqpos(self):
+    def get_seqpos(self,cutoff):
+        cutoff = float(cutoff)
         with open(self.seqpos_out_path("mdseqpos_out.html")) as mf:
             data = mf.read()
         inf = data.split('\n')
@@ -867,7 +967,7 @@ class AnnotationQC(QC_Controller):
                 i['factors'] = ['denovo']
         mlist.sort(key=lambda x:x['zscore'])
         for i in mlist:
-            if i['zscore']<-15 and i['id'].find('observed')>0:
+            if i['zscore'] < cutoff and i['id'].find('observed')>0:
                 count += 1
                 output.append([('00000%d'%count)[-4:],'|'.join(i['factors']),
                                str(i['zscore']), '|'.join(i['species']),
@@ -877,6 +977,19 @@ class AnnotationQC(QC_Controller):
             of.write('\t'.join(['id','synonym', 'zscore', 'species', 'pssm','logoImg','hits']) + '\n')
             for i in output:
                 of.write('\t'.join(i)+'\n')
+    def motif_top(self):
+        p=MotifParser()
+        outdir = self.conf['userinfo']['outputdirectory']
+        p.ParserTable(self.seqpos_stats_out)
+        s2 = p.motifs.values()
+        s2.sort(key=lambda x:x['zscore'][0],reverse=True)
+        output = []
+        for con in range(5):
+             i = s2[con]
+             logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
+             tempt = {'motif':i['synonym'],'hits':str(i['hits'][0]),'Zscore':str(i['zscore'][0]),'logo':logor}
+             output.append(tempt)
+        return output
 
     def motif_info(self,atype):
         outdir = self.conf['userinfo']['outputdirectory']
@@ -918,15 +1031,15 @@ class AnnotationQC(QC_Controller):
             print output
         print '--------------------',logList
         
-        factor = self.conf['userinfo']['factor'].upper()
-        print factor
-        if atype == 'TF' or atype == 'Dnase':
-            if factor in logList:
-                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','pass']
-                self.summarycheck.append(temp)
-            else:
-                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','fail']
-                self.summarycheck.append(temp)
+#        factor = self.conf['userinfo']['factor'].upper()
+#        print factor
+#        if atype == 'TF' or atype == 'Dnase':
+#            if factor in logList:
+#                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','pass']
+#                self.summarycheck.append(temp)
+#            else:
+#                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','fail']
+#                self.summarycheck.append(temp)
         return output
 
 
@@ -947,13 +1060,20 @@ class AnnotationQC(QC_Controller):
         print self.seqpos_out_path("mdseqpos_out.html")
         print "MAI"
         if exists(self.seqpos_out_path("mdseqpos_out.html")):
-#            print "MAILA"
-            self.get_seqpos()
+            print "MAILA"
+            self.get_seqpos(-15)
             motifTable = self.motif_info(atype)
             print motifTable
             if len(motifTable)>0:
                 self.render['motif_table'] = motifTable
-                self.render['motif_check'] = True        
+                self.render['motif_check'] = True
+                print '#--------------1'
+            else:
+                self.get_seqpos(0)
+                print '#--------------2'
+                motifTable = self.motif_top()
+                self.render['motif_table'] = motifTable
+                self.render['motif_check'] = True
         self._render()
 
 
@@ -990,12 +1110,12 @@ class SummaryQC(QC_Controller):
             if isinstance(self.rule['qcresult'][iterm], list):
                 for subiterm in self.rule['qcresult'][iterm]:
                     if notzero(subiterm):
-                        cmd = 'mv %s %s'%(subiterm, qcfolder)
+                        cmd = 'cp -rf %s %s'%(subiterm, qcfolder)
                         self.run_cmd(cmd)
                         print subiterm
             elif notzero(self.rule['qcresult'][iterm]):
                 print self.rule['qcresult'][iterm]
-                cmd = 'mv %s %s'%(self.rule['qcresult'][iterm], qcfolder)
+                cmd = 'cp -rf %s %s'%(self.rule['qcresult'][iterm], qcfolder)
                 self.run_cmd(cmd)
 
 
