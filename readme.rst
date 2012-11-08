@@ -80,3 +80,25 @@ We created a bash shell script `download.sh` to prepare all the dependent data a
 -------------------
 In the terminal, change directory to the folder 
 #python setup.py install # need root
+
+Snippets
+==============
+queue.py
+
+Usage: queue.py -q <queue directory> -d <data directory> -o <output directory>
+
+ChIP-seq Auto Pipeline
+
+Options:
+  --version   show program's version number and exit
+  -h, --help  show this help message and exit
+  -q QUEUED   Please input pc files directory
+  -d DATAD    Please input raw data directory
+  -o OUTD     Please directory containing output
+
+
+TODO
+=========
+- add absolid bowtie support
+- solve stepcontrol
+- implement MVC model
