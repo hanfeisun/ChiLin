@@ -14,7 +14,7 @@ OutputDirectory =
 BAMTOFASTQ = /usr/local/bin/bamToFastq
 BOWTIE_MAIN = /usr/bin/bowtie
 BOWTIE_GENOME_INDEX_PATH = /data/CistromeAP/static_libraries/indexes/{{ species }}
-nBOWTIE_MAX_ALIGNMENT = 1
+n_BOWTIE_MAX_ALIGNMENT = 1
 
 [samtools]
 SAMTOOLS_MAIN = /usr/bin/samtools
