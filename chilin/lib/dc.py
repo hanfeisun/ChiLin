@@ -32,13 +32,9 @@ class LogWriter:
         return logcontent
 
 def gen_conf( species ):
-    env = Environment(loader = PackageLoader('chilin', 'template'))
-    try:
-        new_temp = "ChiLinjinja.conf.new"
-        temp = env.get_template(new_temp)
-    except:
-        new_temp = "ChiLinjinja.conf"
-        temp = env.get_template(new_temp)
+    env = Environment(loader = PackageLoader('chilin', 'conf'))
+    new_temp = "ChiLinjinja.conf"
+    temp = env.get_template(new_temp)
     if species == 'hg19':
         conf = temp.render(species = species,
                            filterdup_species = 'hs')
@@ -51,7 +47,7 @@ def gen_conf( species ):
 
 class PipePreparation:
     def __init__(self, ChiLinconfPath,
-                 NameConfPath = resource_filename("chilin", os.path.join("db", "NameRule.conf"))):
+                 NameConfPath = resource_filename("chilin", os.path.join("conf", "NameRule.conf"))):
         """
         Parse the Name Rule and 
         Customer filled Chilinconf
@@ -95,7 +91,7 @@ class PipePreparation:
         
     def _read_rule(self, rule_path):
         """
-        Read in the conf of NameRule.Conf with replacement of %(DatasetID), %(treat_rep) and %(control_rep)
+        Read in the conf of NameRule.Conf with replacement of %(DatasetID)s, %(treat_rep)s and %(control_rep)s
         """
 
         cf = SafeConfigParser()
@@ -409,7 +405,7 @@ class PipeBowtie(PipeController):
         for treat_rep in range(self.conf['userinfo']['treatnumber']):
             cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['nbowtie_max_alignment'],
+                             self.conf['bowtie']['n_bowtie_max_alignment'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
                              self.conf['userinfo']['treatpath'][treat_rep],
                              self.rule['bowtietmp']['treat_sam'][treat_rep],
@@ -425,7 +421,7 @@ class PipeBowtie(PipeController):
         for control_rep in range(self.conf['userinfo']['controlnumber']):
             cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['nbowtie_max_alignment'],
+                             self.conf['bowtie']['n_bowtie_max_alignment'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
                              self.conf['userinfo']['controlpath'][control_rep],
                              self.rule['bowtietmp']['control_sam'][control_rep],
