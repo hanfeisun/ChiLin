@@ -345,36 +345,14 @@ class PipeBowtie(PipeController):
         sams = {'sams': [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...]} *arg
         use awk to speed up a little
         """
+        print "working on extracting"
         for sam_rep in range(cnt):
-            bowtie_tmp = "%s.bowtie.tmp"%files[sam_rep]
-            cmd = '''
-            time awk -F \'\\t\' '
-            BEGIN{total=0; map=0; a=0;b=0} {
-            if (/^[^@]/){
-                total+=1 
-                if ($2!="4") {
-                    map+=1 
-                    ur[$1] += 1
-                    ul[$2":"$3":"$4] += 1
-                }
-            }
-            }
-            END {
-            for (urr in ur)
-                a+=1
-            for (ull in ul)
-                b+=1
-            print total
-            print map
-            print a
-            print b
-            }' %s > %s
-            ''' % ( files[sam_rep],bowtie_tmp)
+            cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' % (resource_filename("chilin", "awk/bowtie_stats.awk"), files[sam_rep])
             if self.debug:
-                self.ifnot_runcmd(bowtie_tmp, cmd)
+                self.ifnot_runcmd('bowtie.tmp', cmd)
             else:
                 self.run_cmd(cmd)
-            with open(bowtie_tmp) as f:
+            with open('bowtie.tmp') as f:
                 con = f.readlines()
                 total_reads = con[0]
                 mapped_reads = con[1]
