@@ -236,14 +236,16 @@ class RawQC(QC_Controller):
         f.write("xx =c(0,xx,25)\n")
         f.write("polygon(xx,yy, col = 'lightpink')\n")
         
-        f.write("xx=seq(25,35)\n")     
+        f.write("mid = quantile(sequence_quality_score,0.5)\n")
+        
+        f.write("xx=seq(25,mid)\n")     
         f.write("yy = c(0,smooth(fn(xx)),0)\n")
-        f.write("xx =c(25,xx,35)\n")
+        f.write("xx =c(25,xx,mid)\n")
         f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
          
-        f.write("xx=seq(35,max(sequence_quality_score))\n")
+        f.write("xx=seq(mid,max(sequence_quality_score))\n")
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(35,xx,max(sequence_quality_score))\n")  
+        f.write("xx =c(mid,xx,max(sequence_quality_score))\n")  
         f.write("polygon(xx,yy, col = 'palegreen')\n")
 
         j=0
@@ -378,14 +380,16 @@ class MappingQC(QC_Controller):
         f.write("xx =c(0,xx,0.5)\n")
         f.write("polygon(xx,yy, col = 'lightpink')\n")
         
-        f.write("xx=seq(0.5,0.8,length = 100)\n")     
+        f.write("mid = quantile(map_ratio_data,0.5)\n")
+        
+        f.write("xx=seq(0.5,mid,length = 100)\n")     
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.5,xx,0.8)\n")
+        f.write("xx =c(0.5,xx,mid)\n")
         f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
          
-        f.write("xx=seq(0.8,max(map_ratio_data),length = 100)\n")
+        f.write("xx=seq(mid,max(map_ratio_data),length = 100)\n")
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.8,xx,max(map_ratio_data))\n")  
+        f.write("xx =c(mid,xx,max(map_ratio_data))\n")  
         f.write("polygon(xx,yy, col = 'palegreen')\n")        
         
         j=0
@@ -466,14 +470,16 @@ class MappingQC(QC_Controller):
         f.write("xx =c(0,xx,0.8)\n")
         f.write("polygon(xx,yy, col = 'lightpink')\n")
         
-        f.write("xx=seq(0.8,0.95,length = 100)\n")     
+        f.write("mid = quantile(redun_data,0.5)\n")
+        
+        f.write("xx=seq(0.8,mid,length = 100)\n")     
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.8,xx,0.95)\n")
+        f.write("xx =c(0.8,xx,mid)\n")
         f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
          
-        f.write("xx=seq(0.95,max(redun_data),length = 100)\n")
+        f.write("xx=seq(mid,max(redun_data),length = 100)\n")
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.95,xx,max(redun_data))\n")  
+        f.write("xx =c(mid,xx,max(redun_data))\n")  
         f.write("polygon(xx,yy, col = 'palegreen')\n")        
         
         
@@ -579,14 +585,16 @@ class PeakcallingQC(QC_Controller):
         f.write("xx =c(0,xx,3)\n")
         f.write("polygon(xx,yy, col = 'lightpink')\n")
         
-        f.write("xx=seq(3,4.5,length = 100)\n")     
+        f.write("mid = quantile(peaks_fc,0.5)\n")
+        
+        f.write("xx=seq(3,mid,length = 100)\n")     
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(3,xx,4.5)\n")
+        f.write("xx =c(3,xx,mid)\n")
         f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
          
-        f.write("xx=seq(4.5,max(peaks_fc),length = 100)\n")
+        f.write("xx=seq(mid,max(peaks_fc),length = 100)\n")
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(4.5,xx,max(peaks_fc))\n")  
+        f.write("xx =c(mid,xx,max(peaks_fc))\n")  
         f.write("polygon(xx,yy, col = 'palegreen')\n")        
         
         
@@ -710,14 +718,16 @@ class PeakcallingQC(QC_Controller):
         f.write("xx =c(0,xx,0.8)\n")
         f.write("polygon(xx,yy, col = 'lightpink')\n")
         
-        f.write("xx=seq(0.8,0.9,length = 100)\n")     
+        f.write("mid = quantile(rawdata,0.5)\n")
+        
+        f.write("xx=seq(0.8,mid,length = 100)\n")     
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.8,xx,0.9)\n")
+        f.write("xx =c(0.8,xx,mid)\n")
         f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
          
-        f.write("xx=seq(0.9,max(rawdata),length = 100)\n")
+        f.write("xx=seq(mid,max(rawdata),length = 100)\n")
         f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.9,xx,max(rawdata))\n")  
+        f.write("xx =c(mid,xx,max(rawdata))\n")  
         f.write("polygon(xx,yy, col = 'palegreen')\n")         
         
         
@@ -846,8 +856,8 @@ class AnnotationQC(QC_Controller):
             f.write('ma <- max(fdd1[,1])\n')
             f.write('mi <- min(fdd1[,1])\n')
             f.write("plot(fdd2,type='p',col='blue',pch=18,main='Peaks distribution',xlab='Fold change of peaks',ylab='Fn(fold change of peaks)')\n")
-            f.write('abline(v=10,lty=2,col="red")\n')
-            f.write("text(11,0,'cutoff=10')\n")
+#            f.write('abline(v=10,lty=2,col="red")\n')
+#            f.write("text(11,0,'cutoff=10')\n")
             f.write(piescript)
             f.write('dev.off()\n')
             f.write('# the secend graph \n\n')
