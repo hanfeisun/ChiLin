@@ -597,7 +597,7 @@ class PipeMACS2(PipeController):
         if len(rule['bowtieresult']['bam_treat']) > 1:
             callpeak(rule['bowtieresult']['bamtreatmerge'],
                      rule['macstmp']['macs_init_mergename'],
-                     all([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'), \
+                     all([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'),
                           exists(rule['macstmp']['treat_bdg'])]))
             
             # convert macs default name to NameRule
@@ -654,22 +654,26 @@ class PipeVennCor(PipeController):
         else:
             self.run_cmd(cmd)
 
-    def extract(self, a_type, species=True):
-        """ species indicate test velcro or not
-        extract dhs overlap and velcro overlap information
+    def extract(self, region_type):
+        """ when species is not hg19, velcro step is skipped
+        extract dhs overlap or velcro overlap information
         """
-        self._format(a_type)
-        lenall = len(open(self.rule['macsresult']['treat_peaks'], 'rU').readlines())
-        if a_type == 'dhs':
-            lena_type = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
-        elif a_type == 'velcro':
-            if True:
-                lena_type = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
-        self.ratio[a_type] = lena_type
-        if lenall != 0:
-            self.ratio[a_type + 'percentage'] = float(lena_type)/lenall
+        self._format(region_type)
+
+        if region_type == 'dhs':
+            len_intersect = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
+        elif region_type == 'velcro':
+            if self.conf['userinfo']['species'] == "hg19":
+                len_intersect = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
+            else:
+                return
+
+        len_all = len(open(self.rule['macsresult']['treat_peaks'], 'rU').readlines())
+        self.ratio[region_type] = len_intersect
+        if len_all != 0:
+            self.ratio[region_type + 'percentage'] = float(len_intersect)/len_all
         else:
-            self.ratio[a_type + 'percentage'] = 0.0001
+            self.ratio[region_type + 'percentage'] = 0.0001
 
 
     def run(self):
@@ -754,9 +758,8 @@ class PipeVennCor(PipeController):
 
         if self.stepcontrol < 3:
             sys.exit(1)
-        self.extract('dhs', True)
-        if self.conf['userinfo']['species'] == 'hg19':
-            self.extract('velcro', True) # mouse has no velcro
+        self.extract('dhs')
+        self.extract('velcro')
         for k, v in self.ratio.iteritems():
             self.rendercontent['ratios'][k] = v
         self._render()

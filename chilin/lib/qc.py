@@ -1,20 +1,19 @@
 import os
 import sys
-import zipfile
 import math
 import re
 import sqlite3
-import subprocess
 from subprocess import call
-from jinja2 import Environment, FileSystemLoader,PackageLoader
+from jinja2 import Environment,PackageLoader
 from pkg_resources import resource_filename
 from chilin.format import digit_format, percent_format
-from chilin.MotifParser import MotifParser
+from chilin.motif import MotifParser
+from os.path import exists
 
-exists = os.path.exists
-notzero = lambda x:os.path.exists(x) and os.path.getsize(x) > 0
 
-def _tospace(x):
+has_content = lambda x:os.path.exists(x) and os.path.getsize(x) > 0
+
+def underline_to_space(x):
     if type(x) == str:
         return x.replace("_"," ")
     return x
@@ -56,7 +55,7 @@ class QC_Controller(object):
 
     def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
         """
-        univeral call shell and judge
+        universal call shell and judge
         """
         self.log("Run command:\t"+cmd)
         if call(cmd, shell = True):
@@ -115,7 +114,7 @@ class QC_Controller(object):
         with open(self.texfile, mode) as f:
             f.write(content)
 
-    def _enddoc(self, test = lambda : True):
+    def _end(self, test = lambda : True):
         def add():
             return '\\end{document}'
         return add()
@@ -205,7 +204,7 @@ class RawQC(QC_Controller):
         fastqc_summary = []    #fasqtQC summary
         rCode = self.rule['qcresult']['fastqc_pdf_r']
         pdfName = self.rule['qcresult']['fastqc_pdf']
-        names = map(_tospace, names)
+        names = map(underline_to_space, names)
         for j in range(len(npeakl)):
             temp = ['%s' % names[j],'%s' % str(nseqlen[j]),'%s' % str(npeakl[j])]
             fastqc_summary.append(temp)
@@ -243,7 +242,7 @@ class RawQC(QC_Controller):
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
-        self.render['prefix_datasetid'] = _tospace(self.conf['userinfo']['datasetid'])
+        self.render['prefix_datasetid'] = underline_to_space(self.conf['userinfo']['datasetid'])
         if len(self.conf['userinfo']['controlpath']) ==0:
             rawdata = self.conf['userinfo']['treatpath']
             names = self.rule['qcresult']['treat_data']
@@ -305,7 +304,7 @@ class MappingQC(QC_Controller):
                 redundant.append(score)
                 
         # formating
-        name_sp = map(_tospace, names)
+        name_sp = map(underline_to_space, names)
         digit_tex = lambda x:digit_format(x,sep="\,") # comma in Tex file should be "/,"
         for i in range(len(name_sp)):
             self.checker.append({"desc": 'Unique mappable reads',
@@ -371,7 +370,7 @@ class MappingQC(QC_Controller):
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
         print names
         ratioList = []# store ratio for plot
-        if notzero(self.rule['qcresult']['filterdup']) and self.debug:    
+        if has_content(self.rule['qcresult']['filterdup']) and self.debug:
             self.log("filterdup is skipped because %s exists" % self.rule['qcresult']['filterdup'])
         else:
             with open(self.rule['qcresult']['filterdup'],'w') as fph:
@@ -403,7 +402,7 @@ class MappingQC(QC_Controller):
             for line in fph:
                 score = round(float(line.strip().split('=')[1]),3)
                 ratioList.append(score)
-        name_sp = map(_tospace, names)
+        name_sp = map(underline_to_space, names)
         for i in range(len(name_sp)):
             self.checker.append({"desc": 'Non-Redundant ratio',
                                  "data": name_sp[i],
@@ -503,6 +502,7 @@ class PeakcallingQC(QC_Controller):
 
         self.fold_10 = len(d10)+0.01
         return peaks_summary
+
 
     def _high_confidentPeaks_info(self):
         """
@@ -686,7 +686,7 @@ class PeakcallingQC(QC_Controller):
         peaksxls,peaksbed,vennGraph,correlationPlot,correlationR = self.peaksxls,self.peaksbed,self.vennGraph,self.corrPlot,self.corrR
         self.render['PeakcallingQC_check'] = True
         if exists(peaksxls):
-            self.render['peak_summary_table'] = map(_tospace, self._peak_summary_info(peaksxls))
+            self.render['peak_summary_table'] = map(underline_to_space, self._peak_summary_info(peaksxls))
             self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
         if exists(peaksbed):
             self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
@@ -1007,7 +1007,7 @@ class SummaryQC(QC_Controller):
                     return x[7:]
             return x
 
-        self.render['summary_table'] = map(lambda x: map(lambda x:_prune_id(_tospace(x)), x), checkList)
+        self.render['summary_table'] = map(lambda x: map(lambda x:_prune_id(underline_to_space(x)), x), checkList)
         self._render()
 
         cmd = "pdflatex {0}".format(self.texfile)
@@ -1023,11 +1023,11 @@ class SummaryQC(QC_Controller):
             print self.rule['qcresult'][iterm]
             if isinstance(self.rule['qcresult'][iterm], list):
                 for subiterm in self.rule['qcresult'][iterm]:
-                    if notzero(subiterm):
+                    if has_content(subiterm):
                         cmd = 'cp -rf %s %s'%(subiterm, qcfolder)
                         self.run_cmd(cmd)
                         print subiterm
-            elif notzero(self.rule['qcresult'][iterm]):
+            elif has_content(self.rule['qcresult'][iterm]):
                 print self.rule['qcresult'][iterm]
                 cmd = 'cp -rf %s %s'%(self.rule['qcresult'][iterm], qcfolder)
                 self.run_cmd(cmd)

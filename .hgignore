@@ -2,6 +2,9 @@ syntax: glob
 
 dist
 build
+.idea
+.idea/*
+.idea/libraries
 docs/_build
 chilin.egg-info
 chilin/lib/template/ChiLinjinja.conf
