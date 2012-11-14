@@ -182,7 +182,7 @@ class RawQC(QC_Controller):
             cmd = '{0} {1} --extract -t {3} -o {2}'
             cmd = cmd.format(self.conf['qc']['fastqc_main'],
                              d,
-                             self.conf['userinfo']['outputdirectory'],
+                             self.conf['meta']['output_dir'],
                              self.threads)
 
             if self.debug:
@@ -242,12 +242,12 @@ class RawQC(QC_Controller):
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
-        self.render['prefix_datasetid'] = underline_to_space(self.conf['userinfo']['datasetid'])
-        if len(self.conf['userinfo']['controlpath']) ==0:
-            rawdata = self.conf['userinfo']['treatpath']
+        self.render['prefix_dataset_id'] = underline_to_space(self.conf['meta']['dataset_id'])
+        if len(self.conf['meta']['controls']) ==0:
+            rawdata = self.conf['meta']['treatments']
             names = self.rule['qcresult']['treat_data']
         else:
-            rawdata = self.conf['userinfo']['treatpath'] +self.conf['userinfo']['controlpath']
+            rawdata = self.conf['meta']['treatments'] +self.conf['meta']['controls']
             names = self.rule['qcresult']['treat_data']+self.rule['qcresult']['control_data']
         suffix = lambda x: x.endswith(".bed") or x.endswith(".bam") or x.endswith(".fastq")
         for i in range(len(rawdata)-1,-1,-1):
@@ -472,7 +472,7 @@ class PeakcallingQC(QC_Controller):
         
     def _peak_summary_info(self,peaksxls):
         """Basic statistic of peak calling result."""
-        name = 'dataset'+self.conf['userinfo']['datasetid']
+        name = 'dataset'+self.conf['meta']['dataset_id']
         with open(peaksxls,"rU" ) as fhd:
             float_fc = []
             cutoff = "unknown"
@@ -508,7 +508,7 @@ class PeakcallingQC(QC_Controller):
         """
         cummulative percentage of peaks foldchange great than 10
         """
-        name = 'dataset'+self.conf['userinfo']['datasetid']
+        name = 'dataset'+self.conf['meta']['dataset_id']
         self.db.execute("select peak_fc_10 from peak_calling_tb")
         highpeaks_history = self.db.fetchall()
 #        historyData = [str(math.log(i[0]+0.001,10)) for i in highpeaks_history]
@@ -544,7 +544,7 @@ class PeakcallingQC(QC_Controller):
     def _velcro_ratio_info(self,peakbed):
         """verlcro ratio is used to describe whether the peak is credible , The lower the result is more convenience.
          The cumulative percentage plot can reflect the particularly dataset's verlcro ratio quality of all historic data."""
-        name = 'dataset'+self.conf['userinfo']['datasetid']
+        name = 'dataset'+self.conf['meta']['dataset_id']
         historyFile = self.conf['venn']['velcro_path']
         overlapped_bed_file = "overlapped_bed_file" # temp
         cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
@@ -599,7 +599,7 @@ class PeakcallingQC(QC_Controller):
         """ DHS ratio indicate the percentage of peaks overlap with DHSs site.
         The function can describe  the particularly dataset's DHS ratio quality of all historic data.
         """
-        name = 'dataset'+self.conf['userinfo']['datasetid']
+        name = 'dataset'+self.conf['meta']['dataset_id']
         historyFile = self.conf['venn']['dhs_bed_path']
         overlapped_bed_file = "overlapped_dhs"
         cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
@@ -690,10 +690,10 @@ class PeakcallingQC(QC_Controller):
             self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
         if exists(peaksbed):
             self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
-        if self.conf['userinfo']['species']=='hg19':
+        if self.conf['meta']['species']=='hg19':
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
-        if len(self.conf['userinfo']['treatpath']) >= 2 :
+        if len(self.conf['meta']['treatments']) >= 2 :
             vennGraph = os.path.abspath(self.rule['represult']['ven_png'])
             correlationPlot = os.path.abspath(self.rule['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
@@ -832,7 +832,7 @@ class AnnotationQC(QC_Controller):
             judge = 'pass'
         else:
             judge = 'fail'
-        temp = ['Conservation QC','dataset%s'%self.conf['userinfo']['datasetid'],'%f'%round(min(scoreList),3),' ','%s'%judge]
+        temp = ['Conservation QC','dataset%s'%self.conf['meta']['dataset_id'],'%f'%round(min(scoreList),3),' ','%s'%judge]
         self.summarycheck.append(temp)
 #        print historyData[mindist]
 #        print value
@@ -890,7 +890,7 @@ class AnnotationQC(QC_Controller):
                 of.write('\t'.join(i)+'\n')
     def motif_top(self):
         p=MotifParser()
-        outdir = self.conf['userinfo']['outputdirectory']
+        outdir = self.conf['meta']['output_dir']
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
         s2.sort(key=lambda x:x['zscore'][0],reverse=True)
@@ -903,7 +903,7 @@ class AnnotationQC(QC_Controller):
         return output
 
     def motif_info(self,atype):
-        outdir = self.conf['userinfo']['outputdirectory']
+        outdir = self.conf['meta']['output_dir']
         p=MotifParser()
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
@@ -942,14 +942,14 @@ class AnnotationQC(QC_Controller):
             print output
         print '--------------------',logList
         
-#        factor = self.conf['userinfo']['factor'].upper()
+#        factor = self.conf['meta']['factor'].upper()
 #        print factor
 #        if atype == 'TF' or atype == 'Dnase':
 #            if factor in logList:
-#                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','pass']
+#                temp = ['Motif QC','dataset%s'%self.conf['meta']['dataset_id'],factor,' ','pass']
 #                self.summarycheck.append(temp)
 #            else:
-#                temp = ['Motif QC','dataset%s'%self.conf['userinfo']['datasetid'],factor,' ','fail']
+#                temp = ['Motif QC','dataset%s'%self.conf['meta']['dataset_id'],factor,' ','fail']
 #                self.summarycheck.append(temp)
         return output
 
@@ -1017,7 +1017,7 @@ class SummaryQC(QC_Controller):
             self.packfile()
 
     def packfile(self):
-        qcfolder = '%s_QCresult' %self.conf['userinfo']['datasetid']
+        qcfolder = '%s_QCresult' %self.conf['meta']['dataset_id']
         os.system('mkdir %s' %qcfolder)
         for iterm in self.rule['qcresult']:
             print self.rule['qcresult'][iterm]

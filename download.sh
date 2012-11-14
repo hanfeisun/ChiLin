@@ -55,7 +55,7 @@ else
     exit 1
 fi
 
-# Users could customize executive bin path
+# users could customize executive bin path
 read -p "choose where the bin is " bin
 read -p "choose where the data is" data
 if [ ! -n $bin ];then
@@ -264,14 +264,14 @@ for s in $species;do
 done
 
 echo "\
-[UserInfo]
-User = 
-datasetID = 
+[meta]
+user =
+dataset_id =
 species = {{ species }}
 factor = 
-treatpath = 
-controlpath = 
-OutputDirectory = 
+treatments =
+controls =
+output_dir =
 # should add fastq or bam suffix
 [bowtie]
 #BAMTOFASTQ = $bin/bam2fastx

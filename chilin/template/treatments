@@ -1,12 +1,12 @@
-[UserInfo]
-User = 
-datasetID = 
+[meta]
+user =
+dataset_id =
 species = {{ species }}
 factor = 
-treatpath = 
-controlpath =
+treatments =
+controls =
 # Files must has fastq or sam as suffix
-OutputDirectory = 
+output_dir =
 
 [bowtie]
 #BAMTOFASTQ = /usr/local/bin/bam2fastx
@@ -14,7 +14,7 @@ OutputDirectory =
 BAMTOFASTQ = /usr/local/bin/bamToFastq
 BOWTIE_MAIN = /usr/bin/bowtie
 BOWTIE_GENOME_INDEX_PATH = /data/CistromeAP/static_libraries/indexes/{{ species }}
-n_BOWTIE_MAX_ALIGNMENT = 1
+BOWTIE_MAX_ALIGNMENT = 1
 
 [samtools]
 SAMTOOLS_MAIN = /usr/bin/samtools

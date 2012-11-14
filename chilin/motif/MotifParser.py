@@ -98,7 +98,7 @@ class MotifParser:
         self.attr_list = [self.keyName,'edition']
         self.tag_list = ['source', 'sourcefile', 'status', 'numseqs', 'pmid', 'dbd', \
         'description', 'species', 'cellline', 'entrez', 'symbol', 'synonym', 'refseq', 'comment1', \
-        'comment2', 'comment3', 'comment4', 'comment5', 'datasetid', 'zscore', 'seqfactors', \
+        'comment2', 'comment3', 'comment4', 'comment5', 'dataset_id', 'zscore', 'seqfactors', \
         'seqdbds', 'nmotifs','logoImg','hits']
         self.special_list = ['pssm'] # if you add a element here, need to edit code below -,-
         self.all_list = self.attr_list + self.tag_list + self.special_list
