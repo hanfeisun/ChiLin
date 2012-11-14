@@ -19,7 +19,7 @@ def main():
           description="QC report pipline",
           author='Shenglin Mei, Qian Qin, Hanfei Sun',
           author_email='samleomei@gmail.com',
-          packages = ["chilin"],
+          packages = ["chilin","chilin.motif"],
           package_dir={'chilin' : 'chilin/lib'},
           install_requires=['jinja2', 'argparse'],
           package_data = {'chilin':['db/*','template/*', 'conf/*']},

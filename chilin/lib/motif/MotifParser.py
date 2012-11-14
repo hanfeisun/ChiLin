@@ -1,9 +1,9 @@
 #! /usr/bin/env python
 from xml.etree.ElementTree import *
 import xml.dom.minidom as minidom
-import os, sys
-import mdseqpos.bayesian_motif_comp as bayesian_motif_comp
-#import mdseqpos.motif as motif
+import os
+from chilin.motif import bayesian_motif_comp
+
 
 SEP = "|"
 def Info(string):
