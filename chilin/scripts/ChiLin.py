@@ -103,7 +103,7 @@ def main():
         bowtie = p(PipeBowtie)(color=args.color)
         bowtie.run()
 
-    mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck)
+    mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck,summaryRender = rawqc.summaryRender )
     mappingqc.run()
     if not args.onlyqc:
         macs2 = p(PipeMACS2)()
@@ -111,9 +111,6 @@ def main():
 
         pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
         pipevenncor.run()
-
-        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
-        peakcallingqc.run()
         
         pipeceas = p(PipeCEAS)()
         pipeceas.run()
@@ -123,15 +120,15 @@ def main():
 
         pipemotif = p(PipeMotif)()
         pipemotif.run()
-    peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
+    peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck,summaryRender = mappingqc.summaryRender)
     peakcallingqc.run()
 
-    annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck)
+    annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck,summaryRender = peakcallingqc.summaryRender)
     annotationqc.run(args.atype)
 
 
     summaryqc = p(SummaryQC)()
-    summaryqc.run(annotationqc.summarycheck,args.onlyqc)
+    summaryqc.run(annotationqc.summarycheck,annotationqc.summaryRender,args.onlyqc)
 
     p(package)()
             

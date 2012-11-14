@@ -40,7 +40,8 @@ class QC_Controller(object):
         self.env = jinja_env
         self.render = {}
         self.checker = []
-        self.summaryCheck = {}
+        self.summaryCheck = []
+        self.summaryRender = {}
         self.conf = conf
         self.rule = rule
         self.texfile = texfile
@@ -48,6 +49,7 @@ class QC_Controller(object):
         self.debug = args.get("debug", False)
         self.threads = args.get("threads", 1)  
         self.template = self.env.get_template('template.tex')
+        self.Rtemplate = self.env.get_template('Rtemplate.r')
         self.db = sqlite3.connect(resource_filename('chilin', 'db/QC_based_infomation.db')).cursor()
         self.shiftsize = args.get("shiftsize", "")
 
@@ -124,10 +126,10 @@ class RawQC(QC_Controller):
     """  
     RawQC aims to perform some simple quality control checks to ensure that the raw data looks good and there are no problems or biases in your data.
     """
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = [],log = '', **args):
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = [],summaryRender = {},log = '', **args):
         super(RawQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
-        
+        self.summaryRender = summaryRender
     def _infile_parse(self,dataname): # extract information from fastqc result file 
         """ Extract information from fastqc result file. """
         with open(dataname) as fph:
@@ -184,8 +186,6 @@ class RawQC(QC_Controller):
                              self.conf['userinfo']['outputdirectory'],
                              self.threads)
 
-            print changed_name
-            print fastqc_out
             if self.debug:
                 self.if_runcmd(not exists(changed_name) and not exists(fastqc_out),
                                cmd)
@@ -214,50 +214,28 @@ class RawQC(QC_Controller):
                                  "value":npeakl[j],
                                  "cutoff":25})
 
-
         self.db.execute("select peak_number from fastqc_info_tb")
         fastqc_history = self.db.fetchall()
         historyData = [str(i[0]) for i in fastqc_history]
         historyData = ','.join(historyData)
+        rnames = str(names)[1:-1]
+        npeakl = [str(i) for i in npeakl]
+        rnpeakl = ','.join(npeakl)
+        print rnpeakl,rnames
+        Rrender = {'histroyData':historyData,
+                    'value':rnpeakl,
+                    'name':rnames,
+                    'cutoff':25,
+                    'pdfName':pdfName,
+                    'main':'Sequence Quality Score Cumulative Percentage',
+                    'xlab':'sequence quality score',
+                    'ylab':'fn(sequence quality score)',
+                    'fastqcCheck':True}
+        
+        content = self.Rtemplate.render(Rrender)
+        with open(rCode, 'w') as f:
+            f.write(content)        
 
-        f=open(rCode,'w')
-        f.write("setwd('%s')\n" %self.conf['userinfo']['outputdirectory'])
-        f.write("sequence_quality_score<-c(%s)\n" % historyData)
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("ecdf(sequence_quality_score)->fn\n")
-        f.write("fn(sequence_quality_score)->density\n")
-        f.write("cbind(sequence_quality_score,density)->fndd\n")
-        f.write("fndd2<-fndd[order(fndd[,1]),]\n")
-        f.write("pdf('%s')\n" % pdfName)
-        f.write("plot(fndd2[,1],smooth(fndd2[,2]),type='l',pch=18,col='blue',main='Sequence Quality Score Cumulative Percentage',xlab='sequence quality score',ylab='cummulative density function of all public data')\n")
-        f.write("xx=seq(0,25)\n")     
-        f.write("yy = c(0,smooth(fn(xx)),0)\n")
-        f.write("xx =c(0,xx,25)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
-        
-        f.write("mid = quantile(sequence_quality_score,0.5)\n")
-        
-        f.write("xx=seq(25,mid)\n")     
-        f.write("yy = c(0,smooth(fn(xx)),0)\n")
-        f.write("xx =c(25,xx,mid)\n")
-        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
-         
-        f.write("xx=seq(mid,max(sequence_quality_score))\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(mid,xx,max(sequence_quality_score))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")
-
-        j=0
-        for p in npeakl:
-            f.write("points(%d,jitter(fn(%d)),pch=%d,bg='%s')\n" %(int(p),int(p),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-#        f.write('abline(v=25,lty=2,col="red")\n')
-#        f.write("text(26,0,'cutoff=25')\n")
-        f.write("dev.off()\n")
-        f.close()
-        
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
 
@@ -284,16 +262,17 @@ class RawQC(QC_Controller):
             self.render['fastqc_check'] = True
         else:
             self.render['fastqc_check'] = False
-        self._render("w")
+#        self._render("w")
         self._check()
-
+        self.summaryRender = dict(self.summaryRender.items()+self.render.items())
          
         
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',summaryRender = {},log = '', **args):
         super(MappingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
+        self.summaryRender = summaryRender
         self.bowtiesummary = self.rule['root']['data_summary']
         self.log("Preparing mapping QC")
 
@@ -364,43 +343,26 @@ class MappingQC(QC_Controller):
         mappratio_history = self.db.fetchall()
         historyData = [str(i[0]) for i in mappratio_history]
         historyData = ','.join(historyData)
-
         rCode = self.rule['qcresult']['mappable_ratio_r']
-        pdfName = self.rule['qcresult']['mappable_ratio']
-        f=open("%s"% rCode,"w")
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
-        f.write("map_ratio_data<-c(%s)\n" %historyData)
-        f.write("fn<-ecdf(map_ratio_data)\n")
-        f.write("plot(ecdf(map_ratio_data), verticals=TRUE,col.hor='blue',pch='.',col.vert='black',main='Unique mapped rates',xlab='Unique mapped rates',ylab='Fn(Unique mapped rates)')"+"\n")
+        pdfName = self.rule['qcresult']['mappable_ratio']        
+        rnames = str(names)[1:-1]
+        ratioList = [str(i) for i in ratioList]
+        rratioList = ','.join(ratioList)
+        Rrender = {'histroyData':historyData,
+                    'value':rratioList,
+                    'name':rnames,
+                    'cutoff':0.5,
+                    'pdfName':pdfName,
+                    'main':'Unique mapped rates',
+                    'xlab':'Unique mapped rates',
+                    'ylab':'fn(Unique mapped rates)',
+                    'other':True}
         
-        f.write("xx=seq(0,0.5,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0,xx,0.5)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
-        
-        f.write("mid = quantile(map_ratio_data,0.5)\n")
-        
-        f.write("xx=seq(0.5,mid,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.5,xx,mid)\n")
-        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
-         
-        f.write("xx=seq(mid,max(map_ratio_data),length = 100)\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(mid,xx,max(map_ratio_data))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")        
-        
-        j=0
-        for p in ratioList:
-            f.write("points(%f,jitter(fn(%f)),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write("dev.off()\n")
-        f.close()
-        cmd = 'Rscript %s'%rCode
-        self.run_cmd(cmd)
+        content = self.Rtemplate.render(Rrender).replace('%','\\%')
+        with open(rCode, 'w') as f:
+            f.write(content)        
+
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return pdfName
 
     def _redundant_ratio_info(self,bamList):
@@ -456,42 +418,24 @@ class MappingQC(QC_Controller):
         historyData = [str(i[0]) for i in redundant_history]
         historyData = [str(1-float(i)) for i in historyData if i!='null']
         historyData = ','.join(historyData)
-        f=open("%s"%rCode,"w")
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n" %pdfName)
-        f.write("redun_data<-c(%s)\n" % historyData)
-        f.write("fn<-ecdf(redun_data)\n")
-        f.write("plot(ecdf(redun_data), verticals=TRUE,pch='.',main='Non-Redundant rate ',xlab='Non-Redundant ratio',ylab='Fn(Non-Redundant rate)')"+"\n")
+        rnames = str(names)[1:-1]
+        ratioList = [str(i) for i in ratioList]
+        rratioList = ','.join(ratioList)
+        Rrender = {'histroyData':historyData,
+                    'value':rratioList,
+                    'name':rnames,
+                    'cutoff':0.8,
+                    'pdfName':pdfName,
+                    'main':'Non-Redundant rate',
+                    'xlab':'Non-Redundant rate',
+                    'ylab':'fn(Non-Redundant rate)',
+                    'other':True}
         
-        
-        f.write("xx=seq(0,0.8,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0,xx,0.8)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
-        
-        f.write("mid = quantile(redun_data,0.5)\n")
-        
-        f.write("xx=seq(0.8,mid,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.8,xx,mid)\n")
-        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
-         
-        f.write("xx=seq(mid,max(redun_data),length = 100)\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(mid,xx,max(redun_data))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")        
-        
-        
-        j=0
-        for p in ratioList:
-            f.write("points(%f,jitter(fn(%f)),pch=%d,bg='%s')\n" %(round(p,3),round(p,3),int(pch[j]),col[j]))
-            j=j+1
-        f.write("legend('topleft',c(%s),pch=c(%s),pt.bg=c(%s))\n" %(str(names)[1:-1],str(pch[:len(names)])[1:-1],str(col[:len(names)])[1:-1]))
-        f.write("dev.off()\n")
-        f.close()
-        cmd = 'Rscript %s'% rCode
-        self.run_cmd(cmd)
+        content = self.Rtemplate.render(Rrender).replace('%','\\%')
+        with open(rCode, 'w') as f:
+            f.write(content)        
+
+        self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return pdfName
         
     def run(self):
@@ -511,14 +455,16 @@ class MappingQC(QC_Controller):
             self.render['basic_map_table'], names,mappedRatio= self._basic_mapping_statistics_info(bowtiesummary)
             self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
 
-            self._render()
+#            self._render()
             self._check()
+            self.summaryRender = dict(self.summaryRender.items()+self.render.items())
 
 class PeakcallingQC(QC_Controller):
     """ PeakcallingQC aims to describe the quality of peak calling result."""
-    def __init__(self,conf = '',rule = '',texfile = '',summarycheck = '',log = '', **args):
+    def __init__(self,conf = '',rule = '',texfile = '',summarycheck = '',summaryRender = {},log = '', **args):
         super(PeakcallingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
+        self.summaryRender = summaryRender
         self.peaksxls = self.rule['macsresult']['peaks_xls']
         self.peaksbed = self.rule['macsresult']['treat_peaks']
         self.vennGraph = self.rule['represult']['ven_png']
@@ -554,8 +500,9 @@ class PeakcallingQC(QC_Controller):
                              "data": name,
                              "value": int(self.fold_10),
                              "cutoff":1000})
-        return peaks_summary
+
         self.fold_10 = len(d10)+0.01
+        return peaks_summary
 
     def _high_confidentPeaks_info(self):
         """
@@ -572,38 +519,20 @@ class PeakcallingQC(QC_Controller):
         pdfName = self.rule['qcresult']['fold_ratio']
         rCode = self.rule['qcresult']['fold_ratio_r']
         lg_10 = round(math.log(self.fold_10,10),3)
-        pointText = str(lg_10)
-        f = open(rCode,'w')
-        f.write('peaks_fc <- c(%s)\n' %historyData)
-        f.write('fn <- ecdf(peaks_fc)\n')
-        f.write('density <- fn(peaks_fc)\n')
-        f.write("pdf('%s')\n" %pdfName)
-        f.write("plot(ecdf(peaks_fc),verticals=TRUE,col.hor='blue', col.vert='black',main='Fold 10 peaks Distribution',xlab='lg(number of fold_enrichment>10 peaks)',ylab='Cumulative density function of all public data')\n")
+
+        Rrender = {'histroyData':historyData,
+                    'value':lg_10,
+                    'name':"'ratio of fold change upper than 10'",
+                    'cutoff':3,
+                    'pdfName':pdfName,
+                    'main':'High confidence peaks distribution',
+                    'xlab':'log(Number of Peaks fold upper than 10)',
+                    'ylab':'fn(log(Number of Peaks fold upper than 10))',
+                    'other':True}
         
-        f.write("xx=seq(0,3,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0,xx,3)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
-        
-        f.write("mid = quantile(peaks_fc,0.5)\n")
-        
-        f.write("xx=seq(3,mid,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(3,xx,mid)\n")
-        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
-         
-        f.write("xx=seq(mid,max(peaks_fc),length = 100)\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(mid,xx,max(peaks_fc))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")        
-        
-        
-        f.write("points(%f,fn(%f),pch=21,bg=c('#FFB5C5'))\n" % (lg_10,lg_10))
-        f.write("legend('topleft',c('ratio of foldchange greater than 10 : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
-#        f.write('abline(v=3,lty=2,col="red")\n')
-#        f.write("text(3.5,0,'cutoff=3')\n")
-        f.write('dev.off()\n')
-        f.close()
+        content = self.Rtemplate.render(Rrender).replace('%','\\%')
+        with open(rCode, 'w') as f:
+            f.write(content)        
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
 #        self.checker.append({"desc":'Fold change ',
 #                             "data":name,
@@ -641,31 +570,19 @@ class PeakcallingQC(QC_Controller):
 
 
         pointText = str(velcro_ratio*100)+'%'
-        f = open(rCode,'w')
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n"% pdfName)
-        f.write("rawdata<-c(%s)\n" % historyData)
-        f.write("fn<-ecdf(rawdata)\n")
-        f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='Non-velro ratio',xlab='non-velcro ratio',ylab='Fn(non-velcro ratio)')\n")
-
-        f.write("xx=seq(0,0.9,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0,xx,0.9)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        Rrender = {'histroyData':historyData,
+                    'value':velcro_ratio,
+                    'name':"'ratio overlap with non-verlcro:%s'"%pointText ,
+                    'cutoff':0.8,
+                    'pdfName':pdfName,
+                    'main':'non-velcro ratio',
+                    'xlab':'non-velcro ratio',
+                    'ylab':'fn(non-velcro ratio)',
+                    'other':True}
         
-         
-        f.write("xx=seq(0.9,max(rawdata),length = 100)\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.9,xx,max(rawdata))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")  
-
-        f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(velcro_ratio,velcro_ratio,int(pch[0]),col[0]))
-#        f.write('abline(v=0.9,lty=2,col="red")\n')
-#        f.write("text(0.95,0,'cutoff=0.9')\n")
-        f.write("legend('topleft',c('ratio overlap with verlcro : %s'),pch=21,pt.bg=c('#FFB5C5'))\n" %pointText)
-        f.write("dev.off()\n")
-        f.close()
+        content = self.Rtemplate.render(Rrender)
+        with open(rCode, 'w') as f:
+            f.write(content)                
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
 #        if velcro_ratio >= 0.1:
 #            judge = 'Fail'
@@ -701,42 +618,24 @@ class PeakcallingQC(QC_Controller):
         historyData = [i for i in historyData if i!='null']
         historyData = ','.join(historyData)
 
-
         pointText = str(dhs_ratio*100)+'%'
         rCode = self.rule['qcresult']['dhs_ratio_r']
         pdfName = self.rule['qcresult']['dhs_ratio']
-        f = open(rCode,'w')
-        col=['#FFB5C5','#5CACEE','#7CFC00','#FFD700','#8B475D','#8E388E','#FF6347','#FF83FA','#EEB422','#CD7054']
-        pch=[21,22,24,25,21,22,24,25,21,22,24,25,21,22,24,25]
-        f.write("pdf('%s',height=8.5,width=8.5)\n" % pdfName)
-        f.write("rawdata<-c(%s)\n" % historyData)
-        f.write("fn<-ecdf(rawdata)\n")
-        f.write("plot(ecdf(rawdata), verticals=TRUE,col.hor='blue', col.vert='black',main='overlapped_with_DHSs',xlab='overlapped_with_DHSs',ylab='Fn(overlapped_with_DHSs)')"+"\n")
         
-        f.write("xx=seq(0,0.8,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0,xx,0.8)\n")
-        f.write("polygon(xx,yy, col = 'lightpink')\n")
+        Rrender = {'histroyData':historyData,
+                    'value':dhs_ratio,
+                    'name':"'ratio overlap with DHSs:%s'"%pointText ,
+                    'cutoff':0.8,
+                    'pdfName':pdfName,
+                    'main':'Overlapped_with_DHSs',
+                    'xlab':'Overlapped_with_DHSs',
+                    'ylab':'fn(Overlapped_with_DHSs)',
+                    'other':True}
         
-        f.write("mid = quantile(rawdata,0.5)\n")
+        content = self.Rtemplate.render(Rrender)
+        with open(rCode, 'w') as f:
+            f.write(content)                
         
-        f.write("xx=seq(0.8,mid,length = 100)\n")     
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(0.8,xx,mid)\n")
-        f.write("polygon(xx,yy, col = 'lightgoldenrod1')\n")
-         
-        f.write("xx=seq(mid,max(rawdata),length = 100)\n")
-        f.write("yy = c(0,fn(xx),0)\n")
-        f.write("xx =c(mid,xx,max(rawdata))\n")  
-        f.write("polygon(xx,yy, col = 'palegreen')\n")         
-        
-        
-        f.write("points(%f,fn(%f),pch=%d,bg='%s')\n" %(dhs_ratio,dhs_ratio,int(pch[0]),col[0]))
-#        f.write('abline(v=0.8,lty=2,col="red")\n')
-#        f.write("text(0.85,0,'cutoff=0.8')\n")
-        f.write("legend('topleft',c('ratio overlap with DHSs : %s'),pch=21,pt.bg=c('#FFB5C5'))\n"%pointText)
-        f.write("dev.off()\n")
-        f.close()
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         self.checker.append({"desc":'Overlap with DHSs  ',
                              "data":'%s'%name,
@@ -799,16 +698,18 @@ class PeakcallingQC(QC_Controller):
             correlationPlot = os.path.abspath(self.rule['represult']['cor_pdf'])
             self._replicate_info(vennGraph,correlationPlot,correlationR)
             print vennGraph,correlationPlot
-        self._render()
+#        self._render()
         self._check()
+        self.summaryRender = dict(self.summaryRender.items()+self.render.items())
         
 
         
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
-    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',log = '', **args):
+    def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',summaryRender = {},log = '', **args):
         super(AnnotationQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
+        self.summaryRender = summaryRender
         self.peaksxls = self.rule['macsresult']['peaks_xls']
         self.ceasCode = self.rule['ceasresult']['ceasr']
         self.seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
@@ -1084,7 +985,8 @@ class AnnotationQC(QC_Controller):
                 motifTable = self.motif_top()
                 self.render['motif_table'] = motifTable
                 self.render['motif_check'] = True
-        self._render()
+#        self._render()
+        self.summaryRender = dict(self.summaryRender.items()+self.render.items())
 
 
 class SummaryQC(QC_Controller):
@@ -1094,9 +996,11 @@ class SummaryQC(QC_Controller):
         self.conf = conf
         self.rule = rule
 
-    def run(self,checkList,onlyqc):
+    def run(self,checkList,summaryRender,onlyqc):
         self.render['SummaryQC_check'] = True
-        
+        self.render['ending'] = True
+        self.render = dict(summaryRender.items()+self.render.items())
+        print self.render
         def _prune_id(x):
             if type(x) == str:
                 if x.startswith("dataset"):
