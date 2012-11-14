@@ -1,10 +1,11 @@
-About ChiLin
-============
+=========================
+README for ChiLin (1.0.0)
+=========================
 
-ChiLin is the Chinese Unicorn. It is sometimes called the dragon horse, a mythical creature that has a lot of legends and stories associated to it.
 
-We use ChiLin for the name of our project as it has similar alphabet combination with **ChI**\ P-seq pipe\ **lin**\ e.
-Details please see in the http://docsmei.readthedocs.org/
+ChiLin is a pipeline written in pure Python. It provides workflow of mapping(Bowtie),
+peak calling(MACS2) and motif finding(MDSeqpos). Moreover, it provides quality
+control tools for reads, replication and peaks.
 
 Usage of ChiLin
 ===============
@@ -58,25 +59,26 @@ optional arguments:
   
   --species SPECIES   select a specie
 
-3 steps to install ChiLin
-===========================
-1. R packages
--------------
+Installation
+============
+
+R packages
+----------
 
 install R, recommended the newest version
 in R session
 > install.packages('gplots')
 > install.packages('RColorBrewer')
 
-2.External program
--------------------
+External tools
+--------------
 Before you run, please modify ChiLinjinja.conf.sample to up to your dependency.
 or run download.sh to automatically config as ChiLinjinja.conf.new
 We created a bash shell script `download.sh` to prepare all the dependent data and program for you.
 # cd path_to_chilin
-# sudo bash install.sh -p downloaddatapath # should mkdir under the chilin directory
+# sudo bash install.sh -p download_data_path # should mkdir under the chilin directory
 
-3.Install ChiLin
--------------------
+ChiLin
+------
 In the terminal, change directory to the folder 
 #python setup.py install # need root
