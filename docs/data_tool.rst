@@ -3,7 +3,7 @@ This page is intended for:
 
 **Developers**: in order to make sure they're using the right format of data and right version of tool to test
 
-**Users**: in order to know where they should go to download these data and tools
+**users**: in order to know where they should go to download these data and tools
 
 
 ====

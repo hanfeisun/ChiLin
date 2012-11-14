@@ -2,6 +2,7 @@
 """
 Main program of DC pipeline
 """
+
 import sys
 import argparse
 from functools import partial
@@ -108,7 +109,6 @@ def main():
     if not args.onlyqc:
         macs2 = p(PipeMACS2)()
         macs2.run()
-
         pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
         pipevenncor.run()
         
@@ -138,5 +138,5 @@ if __name__ == "__main__":
     try: 
         main()
     except KeyboardInterrupt:
-        sys.stderr.write("User interupt~Bye")
+        sys.stderr.write("user interupt~Bye")
         sys.exit(0)

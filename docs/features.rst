@@ -5,7 +5,7 @@ This page is intended for:
 
 **Developers**: in order to be sure they are developing the right project that fulfills requirements provided in this document.
 
-**Users**: in order to get familiar with the idea of the project and suggest other features that would make it even more functional. 
+**users**: in order to get familiar with the idea of the project and suggest other features that would make it even more functional.
 
 
 Cpipe should include the following features.

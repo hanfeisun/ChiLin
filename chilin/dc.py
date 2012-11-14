@@ -41,9 +41,7 @@ def gen_conf( species ):
     elif species == 'mm9':
         conf = temp.render(species = species,
                            filterdup_species = 'mm')
-    with open(new_temp, 'w') as f:
-        f.write(conf)
-    f.close()
+    print conf
 
 class PipePreparation:
     def __init__(self, ChiLinconfPath,
@@ -59,13 +57,13 @@ class PipePreparation:
         self.checked = False
         self._read_conf(self.ChiLinconfPath)
         parseinput = lambda x: [i for i in x.strip().split(',') if i]
-        self._conf['userinfo']['treatpath'] = parseinput(self._conf['userinfo']['treatpath'])
-        self._conf['userinfo']['controlpath'] = parseinput(self._conf['userinfo']['controlpath'])
-        print self._conf["userinfo"]
-        self._conf['userinfo']['treatnumber'] = len(self._conf['userinfo']['treatpath'])
-        self._conf['userinfo']['controlnumber'] = len(self._conf['userinfo']['controlpath'])
-        print self._conf['userinfo']['controlnumber']
-        os.chdir(self._conf['userinfo']['outputdirectory'])
+        self._conf['meta']['treatments'] = parseinput(self._conf['meta']['treatments'])
+        self._conf['meta']['controls'] = parseinput(self._conf['meta']['controls'])
+        print self._conf["meta"]
+        self._conf['meta']['treatnumber'] = len(self._conf['meta']['treatments'])
+        self._conf['meta']['controlnumber'] = len(self._conf['meta']['controls'])
+        print self._conf['meta']['controlnumber']
+        os.chdir(self._conf['meta']['output_dir'])
 
         self._read_rule(self.NameConfPath)
         self.log = LogWriter(self._rule['root']['log']).record
@@ -91,13 +89,13 @@ class PipePreparation:
         
     def _read_rule(self, rule_path):
         """
-        Read in the conf of NameRule.Conf with replacement of %(DatasetID)s, %(treat_rep)s and %(control_rep)s
+        Read in the conf of NameRule.Conf with replacement of %(dataset_id)s, %(treat_rep)s and %(control_rep)s
         """
 
         cf = SafeConfigParser()
         cf.read(rule_path)
         cf.set('DEFAULT',
-               'DatasetID', self._conf['userinfo']['datasetid'])
+               'dataset_id', self._conf['meta']['dataset_id'])
         uni = lambda str: str.strip().lower()
         
         for sec in cf.sections():
@@ -108,10 +106,10 @@ class PipePreparation:
                                                               range(rep_cnt))
                 if '(treat_rep)' in get_raw(opt):
                     return get_rep_expand("treat_rep",
-                                          self._conf['userinfo']['treatnumber'])
+                                          self._conf['meta']['treatnumber'])
                 elif '(control_rep)' in get_raw(opt):
                     return get_rep_expand("control_rep",
-                                          self._conf['userinfo']['controlnumber'])
+                                          self._conf['meta']['controlnumber'])
                 else:
                     return get_expand(opt)
                     
@@ -156,30 +154,30 @@ class PipePreparation:
 
         check_list = lambda check_funcs: (f() for f in check_funcs)
         c = []
-        c.append(fatal(is_null(self._conf['userinfo']['treatpath']),
+        c.append(fatal(is_null(self._conf['meta']['treatments']),
                        'No treat file path'))
-        c.append(danger(is_null(self._conf['userinfo']['controlpath']),
+        c.append(danger(is_null(self._conf['meta']['controls']),
                         'No control file path'))
-        c.append(fatal(is_null(self._conf['userinfo']['datasetid']),
-                       'No datasetID'))
-        c.append(fatal(is_null(self._conf['userinfo']['factor']),
+        c.append(fatal(is_null(self._conf['meta']['dataset_id']),
+                       'No dataset_id'))
+        c.append(fatal(is_null(self._conf['meta']['factor']),
                        'No factor'))
         
-        c.append(fatal(not os.path.isdir(self._conf['userinfo']['outputdirectory']),
+        c.append(fatal(not os.path.isdir(self._conf['meta']['output_dir']),
                        'check output directory name'))
-        c.append(fatal(self._conf['userinfo']['species'] not in ['hg19', 'mm9'],
-                       'No species or current species %s not supported'%self._conf['userinfo']['species']))
-        c.append(fatal(all(map(os.path.isfile, self._conf['userinfo']['treatpath'])),
+        c.append(fatal(self._conf['meta']['species'] not in ['hg19', 'mm9'],
+                       'No species or current species %s not supported'%self._conf['meta']['species']))
+        c.append(fatal(all(map(os.path.isfile, self._conf['meta']['treatments'])),
                        'check your treat file, one of them is not a file'))
-        c.append(fatal(all(map(os.path.isfile, self._conf['userinfo']['controlpath'])),
+        c.append(fatal(all(map(os.path.isfile, self._conf['meta']['controls'])),
                        'check your control file, one of them is not a file'))
         c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
                        'fastqc not exists'))
         c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
-                               self._conf['userinfo']['treatpath'])),
+                               self._conf['meta']['treatments'])),
                        'check your treat file, one of them is not ended with .fastq or .bam'))
         c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
-                               self._conf['userinfo']['controlpath'])),
+                               self._conf['meta']['controls'])),
                        'check your control file, one of them is not ended with .fastq or .bam'))                               
         c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
                        "bowtie program dependency has problem"))
@@ -287,26 +285,26 @@ class PipeGroom(PipeController):
         groom_path = lambda x:x.replace(".bam", ".fastq")
         need_groom = lambda x:".bam" in x
         n_cmd = '{0} -i {1} -fq {2}'
-        for treat_rep in range(self.conf['userinfo']['treatnumber']):
-            if need_groom(self.conf['userinfo']['treatpath'][treat_rep]):
+        for treat_rep in range(self.conf['meta']['treatnumber']):
+            if need_groom(self.conf['meta']['treatments'][treat_rep]):
                 # cmd  = '{0} -q {1} > {2} '
                 cmd = n_cmd
                 cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
-                                 self.conf['userinfo']['treatpath'][treat_rep],
-                                 groom_path(self.conf['userinfo']['treatpath'][treat_rep]))
-                self.log("bam2fastq is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
+                                 self.conf['meta']['treatments'][treat_rep],
+                                 groom_path(self.conf['meta']['treatments'][treat_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf['meta']['treatments'][treat_rep]))
                 self.run_cmd(cmd)
-                self.conf['userinfo']['treatpath'][treat_rep] = groom_path(self.conf['userinfo']['treatpath'][treat_rep])
-        for control_rep in range(self.conf['userinfo']['controlnumber']):
-            if need_groom(self.conf['userinfo']['controlpath'][control_rep]):
+                self.conf['meta']['treatments'][treat_rep] = groom_path(self.conf['meta']['treatments'][treat_rep])
+        for control_rep in range(self.conf['meta']['controlnumber']):
+            if need_groom(self.conf['meta']['controls'][control_rep]):
                 # cmd  = '{0} -q {1} > {2}'
                 cmd = n_cmd
                 cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
-                                 self.conf['userinfo']['controlpath'][control_rep],
-                                 groom_path(self.conf['userinfo']['controlpath'][control_rep]))
-                self.log("bam2fastq is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
+                                 self.conf['meta']['controls'][control_rep],
+                                 groom_path(self.conf['meta']['controls'][control_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf['meta']['controls'][control_rep]))
                 self.run_cmd(cmd)
-                self.conf['userinfo']['controlpath'][control_rep] = groom_path(self.conf['userinfo']['controlpath'][control_rep])
+                self.conf['meta']['controls'][control_rep] = groom_path(self.conf['meta']['controls'][control_rep])
         
 
 
@@ -402,15 +400,15 @@ class PipeBowtie(PipeController):
         # color or not
         cmdif = lambda c: '{0} -p {5} -S -C -m {1} {2} {3} {4} ' if c else \
                         '{0} -p {5} -S -m {1} {2} {3} {4} '
-        for treat_rep in range(self.conf['userinfo']['treatnumber']):
+        for treat_rep in range(self.conf['meta']['treatnumber']):
             cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['n_bowtie_max_alignment'],
+                             self.conf['bowtie']['BOWTIE_MAX_ALIGNMENT'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['userinfo']['treatpath'][treat_rep],
+                             self.conf['meta']['treatments'][treat_rep],
                              self.rule['bowtietmp']['treat_sam'][treat_rep],
                              self.threads)
-            self.log("bowtie is processing %s" % (self.conf['userinfo']['treatpath'][treat_rep]))
+            self.log("bowtie is processing %s" % (self.conf['meta']['treatments'][treat_rep]))
             if self.debug:
                 self.ifnot_runcmd(self.rule['bowtietmp']['treat_sam'][treat_rep], cmd)
             else:
@@ -418,15 +416,15 @@ class PipeBowtie(PipeController):
             self._sam2bam(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
 
 
-        for control_rep in range(self.conf['userinfo']['controlnumber']):
+        for control_rep in range(self.conf['meta']['controlnumber']):
             cmd  = cmdif(self.color)
             cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['n_bowtie_max_alignment'],
+                             self.conf['bowtie']['BOWTIE_MAX_ALIGNMENT'],
                              self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['userinfo']['controlpath'][control_rep],
+                             self.conf['meta']['controls'][control_rep],
                              self.rule['bowtietmp']['control_sam'][control_rep],
                              self.threads)
-            self.log("bowtie is processing %s" % (self.conf['userinfo']['controlpath'][control_rep]))
+            self.log("bowtie is processing %s" % (self.conf['meta']['controls'][control_rep]))
             if self.debug:
                 self.ifnot_runcmd(self.rule['bowtietmp']['control_sam'][control_rep], cmd)
             else:
@@ -436,8 +434,8 @@ class PipeBowtie(PipeController):
             print "skip rendering"
             pass
         else:
-            self._extract(self.conf['userinfo']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
-            self._extract(self.conf['userinfo']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
+            self._extract(self.conf['meta']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
+            self._extract(self.conf['meta']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
             self._render()
         self.log("bowtie run successfully")
 
@@ -447,7 +445,7 @@ class PipeMACS2(PipeController):
         MACS step, separately and merge for sorted bam
         shell example:
         macs2 callpeak -B -q 0.01 --keep-dup 1 \
-        --shiftsize=73 --nomodel  -t /Users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
+        --shiftsize=73 --nomodel  -t /users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
         # modify as a hidden option in conf
@@ -541,14 +539,14 @@ class PipeMACS2(PipeController):
         if self.stepcontrol < 2:
             sys.exit(1)
         # Options
-        if 'hg' in self.conf['userinfo']['species']:
+        if 'hg' in self.conf['meta']['species']:
             genome_option = ' -g hs '
-        elif 'mm' in self.conf['userinfo']['species']:
+        elif 'mm' in self.conf['meta']['species']:
             genome_option = ' -g mm '
         else:
             genome_option = ' '
         model_option = " " if self.model else " --nomodel --shiftsize=%s " % self.shiftsize
-        control_option = " " if self.conf['userinfo']['controlnumber'] == 0 else ' -c '+rule['bowtieresult']['bamcontrolmerge']
+        control_option = " " if self.conf['meta']['controlnumber'] == 0 else ' -c '+rule['bowtieresult']['bamcontrolmerge']
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
@@ -575,7 +573,7 @@ class PipeMACS2(PipeController):
         merge(rule['bowtieresult']['bam_treat'], rule['bowtieresult']['bamtreatmerge'])
         merge(rule['bowtieresult']['bam_control'], rule['bowtieresult']['bamcontrolmerge'])
 
-        for repn in range(self.conf['userinfo']['treatnumber']):
+        for repn in range(self.conf['meta']['treatnumber']):
             print rule['bowtieresult']['bam_treat'][repn]
             print rule['macstmp']['macs_initrep_name'][repn]
             callpeak(rule['bowtieresult']['bam_treat'][repn],
@@ -663,7 +661,7 @@ class PipeVennCor(PipeController):
         if region_type == 'dhs':
             len_intersect = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
         elif region_type == 'velcro':
-            if self.conf['userinfo']['species'] == "hg19":
+            if self.conf['meta']['species'] == "hg19":
                 len_intersect = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
             else:
                 return
@@ -706,7 +704,7 @@ class PipeVennCor(PipeController):
             else:
                 self.run_cmd(cmd)
 
-        for rep in range(self.conf['userinfo']['treatnumber']):
+        for rep in range(self.conf['meta']['treatnumber']):
             cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s"
             
             cmd = cmd % (self.rule['macsresult']['treatrep_peaks'][rep],\
@@ -724,7 +722,7 @@ class PipeVennCor(PipeController):
                 self.ifnot_runcmd(self.rule['macsresult']['treatrep_peaks'][rep], cmd)
             else:
                 self.run_cmd(cmd)
-        for rep in range(self.conf['userinfo']['treatnumber']):
+        for rep in range(self.conf['meta']['treatnumber']):
             cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
                          (self.rule['macsresult']['rep_summits'][rep],
                           self.rule['macstmp']['rep_summits'][rep])
@@ -764,17 +762,17 @@ class PipeVennCor(PipeController):
             self.rendercontent['ratios'][k] = v
         self._render()
 
-        if self.conf['userinfo']['treatnumber'] < 2:
+        if self.conf['meta']['treatnumber'] < 2:
             self.log('No replicates, pass the venn diagram and correlation steps')
         else:
             # venn diagram
-            if self.conf['userinfo']['treatnumber'] > 3:
+            if self.conf['meta']['treatnumber'] > 3:
                 warn('venn diagram support 3 replicates not well')
             cmd = '{0} -t Overlap_of_Replicates {1} {2}'
             cmd = cmd.format(self.conf['venn']['venn_diagram_main'],
                                        ' '.join(self.rule['macsresult']['treatrep_peaks']),
                                        ' '.join(map(lambda x: "-l replicate_" + str(x),
-                                                    xrange(1, self.conf['userinfo']['treatnumber'] + 1)))
+                                                    xrange(1, self.conf['meta']['treatnumber'] + 1)))
                                        )
             self.run_cmd(cmd)
             self.run_cmd('mv venn_diagram.png %s'%self.rule['represult']['ven_png'])
@@ -782,13 +780,13 @@ class PipeVennCor(PipeController):
             # correlation plot
             cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7}'
             cmd = cmd.format(self.conf['correlation']['wig_correlation_main'],
-                             self.conf['userinfo']['species'],
+                             self.conf['meta']['species'],
                                        self.conf['correlation']['wig_correlation_step'],
                                        self.conf['correlation']['wig_correlation_min'],
                                        self.conf['correlation']['wig_correlation_max'],
                                        self.rule['represult']['cor_r'],
                                        ' '.join(self.rule['macsresult']['treatrep_bw']),
-                                       ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf['userinfo']['treatnumber'] + 1))), )
+                                       ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf['meta']['treatnumber'] + 1))), )
             self.run_cmd(cmd)
             self.run_cmd('mv %s.pdf %s' %(self.rule['represult']['cor_r'],self.rule['represult']['cor_pdf']))
             self.log('correlation plot succeed')
@@ -995,11 +993,11 @@ class PipeMotif(PipeController):
             seqpos_db_option = ' -m ' +  self.conf['seqpos']['seqpos_motif_db_selection']
         else:
             seqpos_db_option = ' -m transfac.xml,pbm.xml,jaspar.xml,cistrome.xls '
-        if self.conf['userinfo']['species'] == 'hg19':
+        if self.conf['meta']['species'] == 'hg19':
             seqpos_species_option = ' -s hs '
-        elif self.conf['userinfo']['species'] == 'mm9':
+        elif self.conf['meta']['species'] == 'mm9':
             seqpos_species_option = ' -s mm '
-        elif self.conf['userinfo']['species'] == 'dm4':
+        elif self.conf['meta']['species'] == 'dm4':
             seqpos_species_option = ' -s dm '
         else:
             self.log("MDseqpos not support the species")
@@ -1011,7 +1009,7 @@ class PipeMotif(PipeController):
                                    seqpos_db_option,
                                    seqpos_species_option,
                                    self.rule['motiftmp']['summits_p1000'],
-                                   self.conf['userinfo']['species'] )
+                                   self.conf['meta']['species'] )
         if self.debug:
             seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
             self.ifnot_runcmd(seqpos_out_path("mdseqpos_out.html"),
@@ -1037,7 +1035,7 @@ class PipeMotif(PipeController):
 #
 def package(conf, rule, log, **args):
     """
-    package all the results in datasetid folder
+    package all the results in dataset_id folder
     """
     bams = glob('*.bam')
     xls = glob('*.xls')
@@ -1053,7 +1051,7 @@ def package(conf, rule, log, **args):
     qc = glob('*.tex')
     qcp = glob('*QC.pdf')
     fls = [bams, xls, summits, peaks, bw, png, pdf, r, m, cor, su, qc, qcp]
-    folder = 'dataset' + conf['userinfo']['datasetid']
+    folder = 'dataset' + conf['meta']['dataset_id']
     call('mkdir %s' % folder, shell = True)
     for fs in fls:
         for f in fs:

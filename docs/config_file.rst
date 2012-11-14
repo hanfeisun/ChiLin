@@ -12,7 +12,7 @@ Synopsis
 
     .. envvar:: dataset.ID
 
-        The name for the dataset, which will be the value of :envvar:`${DatasetID}`
+        The name for the dataset, which will be the value of :envvar:`${dataset_id}`
 	
 	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
 
@@ -102,16 +102,16 @@ Then you can write the :envvar:`[meta]` section like this:
 
 .. code-block:: ini
    :linenos:
-    [UserInfo]
-    User = testuser
-    datasetID = testid
+    [meta]
+    user = testuser
+    dataset_id = testid
     species = hg19
     factor = testfactor
-    treatpath = /mnt/Storage/home/qinq/treat1.fastq,/mnt/Storage/home/qinq/treat2.fastq
-    controlpath = /mnt/Storage/home/qinq/control1test.fastq
-    OutputDirectory = /mnt/Storage/home/qinq/testchilin3
+    treatments = /mnt/Storage/home/qinq/treat1.fastq,/mnt/Storage/home/qinq/treat2.fastq
+    controls = /mnt/Storage/home/qinq/control1test.fastq
+    output_dir = /mnt/Storage/home/qinq/testchilin3
     ...
 
 Replace the commented in Line 2, Line 3 and Line 4 and complete other sections. Then load it with Cpipe.
 
-For the notation of output files, the :envvar:`${DatasetID}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
+For the notation of output files, the :envvar:`${dataset_id}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
