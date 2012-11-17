@@ -47,7 +47,8 @@ if [ $name = global ]; then
     u=`whoami`
 fi
 
-if [ $u = root ]; then
+if [[ $u = root ]]
+then
     echo "install for all users"
 else
     echo "Need root authority, please ask your administrator!"
