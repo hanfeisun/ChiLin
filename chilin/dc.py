@@ -1,282 +1,19 @@
-import os
-import re
-import logging
-import sys
-from subprocess import call
-from ConfigParser import SafeConfigParser
-from glob import glob
+"""
+Data Analysis Workflow
+"""
+from controller import PipeController
 from pkg_resources import resource_filename
-from jinja2 import Environment, PackageLoader
+from subprocess import call
+import os, sys, re
 
 exists = os.path.exists
-error = logging.error
-warn = logging.warning
-
-class LogWriter:
-    def __init__(self, logfile = 'log'):
-        """
-        Universal log format
-        time + incidence
-        """
-        self.logger = logging.getLogger()
-        self.logfile = logfile
-        handler = logging.FileHandler(logfile)
-        formatter = logging.Formatter('%(asctime)s %(levelname)s : %(message)s ;  ')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.NOTSET)
-
-    def record(self, logcontent):
-        print logcontent
-        self.logger.info(logcontent)
-        return logcontent
-
-def gen_conf( species ):
-    env = Environment(loader = PackageLoader('chilin', 'conf'))
-    new_temp = "ChiLinjinja.conf"
-    temp = env.get_template(new_temp)
-    if species == 'hg19':
-        conf = temp.render(species = species,
-                           filterdup_species = 'hs')
-    elif species == 'mm9':
-        conf = temp.render(species = species,
-                           filterdup_species = 'mm')
-    print conf
-
-class PipePreparation:
-    def __init__(self, ChiLinconfPath,
-                 NameConfPath = resource_filename("chilin", os.path.join("conf", "NameRule.conf"))):
-        """
-        Parse the Name Rule and 
-        Customer filled Chilinconf
-        """
-        self.ChiLinconfPath = ChiLinconfPath
-        self.NameConfPath = NameConfPath
-        self._rule = {}
-        self._conf = {}
-        self.checked = False
-        self._read_conf(self.ChiLinconfPath)
-        parseinput = lambda x: [i for i in x.strip().split(',') if i]
-        self._conf['meta']['treatments'] = parseinput(self._conf['meta']['treatments'])
-        self._conf['meta']['controls'] = parseinput(self._conf['meta']['controls'])
-        print self._conf["meta"]
-        self._conf['meta']['treatnumber'] = len(self._conf['meta']['treatments'])
-        self._conf['meta']['controlnumber'] = len(self._conf['meta']['controls'])
-        print self._conf['meta']['controlnumber']
-        os.chdir(self._conf['meta']['output_dir'])
-
-        self._read_rule(self.NameConfPath)
-        self.log = LogWriter(self._rule['root']['log']).record
-
-    def get_config(self):
-        if self.checked == False:
-            self.check_conf()
-        return self._conf
-        
-    def get_rule(self):
-        if self.checked == False:
-            self.check_conf()
-        return self._rule
-        
-    def get_tex(self):
-        return self._rule["qcresult"]["qctex"]
-
-    def get_summary(self):
-        return self._rule['root']['data_summary']
-        
-    def func_log(self):
-        return self.log
-        
-    def _read_rule(self, rule_path):
-        """
-        Read in the conf of NameRule.Conf with replacement of %(dataset_id)s, %(treat_rep)s and %(control_rep)s
-        """
-
-        cf = SafeConfigParser()
-        cf.read(rule_path)
-        cf.set('DEFAULT',
-               'dataset_id', self._conf['meta']['dataset_id'])
-        uni = lambda str: str.strip().lower()
-        
-        for sec in cf.sections():
-            get_raw = lambda opt: cf.get(sec, opt, 1)
-            get_expand = lambda opt: cf.get(sec, opt, 0)
-            def get_fmt(opt):
-                get_rep_expand = lambda raw_str, rep_cnt: map(lambda x:cf.get(sec, opt, 0, {raw_str: str(x+1)}),
-                                                              range(rep_cnt))
-                if '(treat_rep)' in get_raw(opt):
-                    return get_rep_expand("treat_rep",
-                                          self._conf['meta']['treatnumber'])
-                elif '(control_rep)' in get_raw(opt):
-                    return get_rep_expand("control_rep",
-                                          self._conf['meta']['controlnumber'])
-                else:
-                    return get_expand(opt)
-                    
-            self._rule[uni(sec)] = dict((uni(opt), get_fmt(opt)) for opt in cf.options(sec))
-        
-    def _read_conf(self, conf_path):
-        """
-        Read in ChiLin.conf without replacement
-        """
-        cf = SafeConfigParser() 
-        cf.read(conf_path)
-        uni = lambda str: str.strip().lower()
-        for sec in cf.sections():
-            get_raw = lambda opt: cf.get(sec, opt, 1)
-            self._conf[uni(sec)] = dict((uni(opt), get_raw(opt)) for opt in cf.options(sec))
-
-
-    def check_conf(self):
-        """
-        Check the Meta configuration
-        if up to our definition
-        """
-
-        # Convert treat, control in to list
-        # get replicates number
-        is_null = lambda a_list: len(a_list) > 0
-
-        def fatal(prediction, error_info,
-                  side_effect=lambda : True):
-            def check():
-                if prediction:
-                    error(error_info)
-                    sys.exit(1)
-                else:
-                    side_effect()
-            return check
-        def danger(prediction, warn_info):
-            def check():
-                if prediction:
-                    warn(warn_info)
-            return check
-
-        check_list = lambda check_funcs: (f() for f in check_funcs)
-        c = []
-        c.append(fatal(is_null(self._conf['meta']['treatments']),
-                       'No treat file path'))
-        c.append(danger(is_null(self._conf['meta']['controls']),
-                        'No control file path'))
-        c.append(fatal(is_null(self._conf['meta']['dataset_id']),
-                       'No dataset_id'))
-        c.append(fatal(is_null(self._conf['meta']['factor']),
-                       'No factor'))
-        
-        c.append(fatal(not os.path.isdir(self._conf['meta']['output_dir']),
-                       'check output directory name'))
-        c.append(fatal(self._conf['meta']['species'] not in ['hg19', 'mm9'],
-                       'No species or current species %s not supported'%self._conf['meta']['species']))
-        c.append(fatal(all(map(os.path.isfile, self._conf['meta']['treatments'])),
-                       'check your treat file, one of them is not a file'))
-        c.append(fatal(all(map(os.path.isfile, self._conf['meta']['controls'])),
-                       'check your control file, one of them is not a file'))
-        c.append(fatal(not exists(self._conf['qc']['fastqc_main']),
-                       'fastqc not exists'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
-                               self._conf['meta']['treatments'])),
-                       'check your treat file, one of them is not ended with .fastq or .bam'))
-        c.append(fatal(any(map(lambda x:x.endswith(".fastq") or x.endswith(".bam") or x.endswith(".bed"),
-                               self._conf['meta']['controls'])),
-                       'check your control file, one of them is not ended with .fastq or .bam'))                               
-        c.append(fatal(not exists(self._conf['bowtie']['bowtie_main']),
-                       "bowtie program dependency has problem"))
-        c.append(fatal(not exists(self._conf['samtools']['samtools_main']),
-                       "samtools dependency has problem"))
-        c.append(fatal(not exists(self._conf['macs']['macs_main']),
-                       "macs2 program dependency has probelm"))
-        c.append(fatal(not exists(self._conf['bedtools']['intersectbed_main']),
-                       "bedtools program dependency has problem"))
-        c.append(fatal(not exists(self._conf['conservation']['conserv_plot_main']),
-                       "conservation_plot dependency has problem"))
-        c.append(fatal(not exists(self._conf['correlation']['wig_correlation_main']),
-                       "correlation plot dependency has problem"))
-        c.append(fatal(not exists(self._conf['venn']['venn_diagram_main']),
-                       "venn plot dependency has problem"),)
-
-        check_list(c)
-        self.log('ChiLin config parse success, and dependency check has passed!')        
-        self.checked = True
-
-
-class PipeController(object):
-    def __init__(self, conf, rule, log, **args):
-        """
-        read in Options from command line
-        Get template and conf information
-        """
-        self.cmd = ''
-        self.shellextract = 0
-        self.env = Environment(loader=PackageLoader('chilin', 'template'))
-        self.conf = conf
-        self.rule = rule
-        self.log = log
-        self.debug = args.get("debug", False)
-        self.threads = args.get("threads", 1)
-        self.datasummary = args.get("datasummary", 1)
-
-    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :False):
-        """
-        univeral call shell and judge
-        """
-        self.log("Run command:\t"+cmd)
-        if call(cmd, shell = True):
-            # if encounters error
-            result = error_handler()
-            if exit_:
-                print "`"+cmd+"`"+" failed, exit"
-                sys.exit(0)
-            else:
-                return result
-        else:
-            return True
-
-    def ifnot_runcmd(self, test, cmd, exit_ = True, else_handler = lambda :True, size_check=True):
-        """
-        if the test is string and the file path of it exists, skip this cmd
-        else if the test is NOT string and it's True, skip this cmd
-        else execute the cmd
-        """
-        not_null = lambda x: os.path.isfile(x) and os.path.getsize(x) >0
-
-        if type(test) == str:
-            self.log("checking file " + test)
-            if not exists(test):
-                test = False     
-            else:
-                if not_null(test) and size_check:
-                    test = True
-                else:
-                    test = False
-        if not test:
-            return self.run_cmd(cmd, exit_)
-        else:
-            else_handler()
-            return self.log(cmd+" is skipped")
-
-    def smart_run(self, cmd, can_skip = False, can_exit = True):
-        if self.debug:
-            self.ifnot_runcmd(can_skip, cmd, can_exit)
-        else: self.run_cmd(cmd, can_exit)
-        
-    def cp(self, orig, new):
-        return 'cp -rf %s %s' % (orig, new)
-        
-    def _render(self):
-        """
-        write into the DA.txt template
-        """
-        DA = self.env.get_template('DA.txt')
-        ds_rendered = DA.render(self.rendercontent)
-        with open(self.datasummary,"a") as df:
-            df.write(ds_rendered)
 
 class PipeGroom(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, **args):
-        """
-        pipeline bowtie part"""
+        """ pipeline bam2fastq part"""
         super(PipeGroom, self).__init__(conf, rule, log, **args)
         self.stepcontrol = stepcontrol
+
     def run(self):
         """use bedtools bamToFastq to replace tophat bamtofastx
         TODO server no such program
@@ -284,29 +21,27 @@ class PipeGroom(PipeController):
         """
         groom_path = lambda x:x.replace(".bam", ".fastq")
         need_groom = lambda x:".bam" in x
-        n_cmd = '{0} -i {1} -fq {2}'
-        for treat_rep in range(self.conf['meta']['treatnumber']):
-            if need_groom(self.conf['meta']['treatments'][treat_rep]):
-                # cmd  = '{0} -q {1} > {2} '
-                cmd = n_cmd
-                cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
-                                 self.conf['meta']['treatments'][treat_rep],
-                                 groom_path(self.conf['meta']['treatments'][treat_rep]))
-                self.log("bam2fastq is processing %s" % (self.conf['meta']['treatments'][treat_rep]))
+        common_cmd = '{0} -i {1} -fq {2}'
+        for treat_rep in range(self.conf.basis.treatnumber):
+            if need_groom(self.conf.basis.treat[treat_rep]):
+                # cmd  = '{0} -q {1} > {2} ' # tophat bam2fastx
+                cmd = common_cmd
+                cmd = cmd.format(self.conf.bowtie.bam2fq,
+                                 self.conf.basis.treat[treat_rep],
+                                 groom_path(self.conf.basis.treat[treat_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf.basis.treat[treat_rep]))
                 self.run_cmd(cmd)
-                self.conf['meta']['treatments'][treat_rep] = groom_path(self.conf['meta']['treatments'][treat_rep])
-        for control_rep in range(self.conf['meta']['controlnumber']):
-            if need_groom(self.conf['meta']['controls'][control_rep]):
+                self.conf.basis.treat[treat_rep] = groom_path(self.conf.basis.treat[treat_rep])
+        for control_rep in range(self.conf.basis.controlnumber):
+            if need_groom(self.conf.basis.control[control_rep]):
                 # cmd  = '{0} -q {1} > {2}'
-                cmd = n_cmd
-                cmd = cmd.format(self.conf['bowtie']['bamtofastq'],
-                                 self.conf['meta']['controls'][control_rep],
-                                 groom_path(self.conf['meta']['controls'][control_rep]))
-                self.log("bam2fastq is processing %s" % (self.conf['meta']['controls'][control_rep]))
+                cmd = common_cmd
+                cmd = cmd.format(self.conf.bowtie.bam2fq,
+                                 self.conf.basis.control[control_rep],
+                                 groom_path(self.conf.basis.control[control_rep]))
+                self.log("bam2fastq is processing %s" % (self.conf.basis.control[control_rep]))
                 self.run_cmd(cmd)
-                self.conf['meta']['controls'][control_rep] = groom_path(self.conf['meta']['controls'][control_rep])
-        
-
+                self.conf.basis.control[control_rep] = groom_path(self.conf.basis.control[control_rep])
 
 class PipeBowtie(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, color, **args):
@@ -323,15 +58,13 @@ class PipeBowtie(PipeController):
         example: samtools view -bt chrom_len sam bam
         """
         cmd = '{0} view -bt {1} {2} -o {3}'
-        cmd = cmd.format(self.conf['samtools']['samtools_main'],                          
-                         self.conf['samtools']['samtools_chrom_len_path'], # chrom_len depends on species
+        cmd = cmd.format(self.conf.samtools.path,
+                         self.conf.samtools.chrlen, # chrom_len depends on species
                          sam, bam)
         if self.debug:
             self.ifnot_runcmd(bam, cmd)
         else:
             self.run_cmd(cmd)
-                           
-    
 
     def _extract(self, cnt, files, control = False):
         """
@@ -343,99 +76,72 @@ class PipeBowtie(PipeController):
         sams = {'sams': [{'name1':a, 'total1': 5...}, {'name2':c, 'total2': 3...}...]} *arg
         use awk to speed up a little
         """
+        print "working on extracting"
         for sam_rep in range(cnt):
-            bowtie_tmp = "%s.bowtie.tmp"%files[sam_rep]
-            cmd = '''
-            time awk -F \'\\t\' '
-            BEGIN{total=0; map=0; a=0;b=0} {
-            if (/^[^@]/){
-                total+=1 
-                if ($2!="4") {
-                    map+=1 
-                    ur[$1] += 1
-                    ul[$2":"$3":"$4] += 1
-                }
-            }
-            }
-            END {
-            for (urr in ur)
-                a+=1
-            for (ull in ul)
-                b+=1
-            print total
-            print map
-            print a
-            print b
-            }' %s > %s
-            ''' % ( files[sam_rep],bowtie_tmp)
+            cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' \
+                  % (resource_filename("chilin", os.path.join("awk", "bowtie_stats.awk")), files[sam_rep])
             if self.debug:
-                self.ifnot_runcmd(bowtie_tmp, cmd)
+                self.ifnot_runcmd('bowtie.tmp', cmd)
             else:
                 self.run_cmd(cmd)
-            with open(bowtie_tmp) as f:
+            with open('bowtie.tmp') as f:
                 con = f.readlines()
                 total_reads = con[0]
                 mapped_reads = con[1]
                 uniq_read = con[2].rstrip('\n')
                 uniq_location = con[3].rstrip('\n')
                 usable_percentage = float(con[2])/float(con[0])*100
-
-            self._sam2bam(self.rule['bowtietmp']['treat_sam'][sam_rep], self.rule['bowtieresult']['bam_treat'][sam_rep])
-
+            self._sam2bam(self.rule.bowtie.samtreat[sam_rep], self.rule.samtools.bamtreat[sam_rep])
             # uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
             # uniq_location = len(location_dict)
             # usable_percentage = float(uniq_read)/float(total_reads)*100
-
-            info = { 'name':self.rule['bowtietmp']['treat_sam'][sam_rep] if not control else self.rule['bowtietmp']['control_sam'][sam_rep],
+            info = { 'name':self.rule.bowtie.samtreat[sam_rep] if not control else self.rule.bowtie.samcontrol[sam_rep],
                      'total': total_reads,
                      'mapped': mapped_reads,
                      'unireads': uniq_read,
                      'uniloc': uniq_location,
                      'percentage' : str(usable_percentage) + '%'}
-
             self.rendercontent['sams'].append(info)
 
     def run(self):
         self.rendercontent['sams'] = []
-        # color or not
+        # color or not, absolid seq
         cmdif = lambda c: '{0} -p {5} -S -C -m {1} {2} {3} {4} ' if c else \
                         '{0} -p {5} -S -m {1} {2} {3} {4} '
-        for treat_rep in range(self.conf['meta']['treatnumber']):
+        for treat_rep in range(self.conf.basis.treatnumber):
             cmd  = cmdif(self.color)
-            cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['BOWTIE_MAX_ALIGNMENT'],
-                             self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['meta']['treatments'][treat_rep],
-                             self.rule['bowtietmp']['treat_sam'][treat_rep],
+            cmd = cmd.format(self.conf.bowtie.path,
+                             self.conf.bowtie.maxalign,
+                             self.conf.bowtie.index,
+                             self.conf.basis.treat[treat_rep],
+                             self.rule.bowtie.samtreat[treat_rep],
                              self.threads)
-            self.log("bowtie is processing %s" % (self.conf['meta']['treatments'][treat_rep]))
+            self.log("bowtie is processing %s" % (self.conf.basis.treat[treat_rep]))
             if self.debug:
-                self.ifnot_runcmd(self.rule['bowtietmp']['treat_sam'][treat_rep], cmd)
+                self.ifnot_runcmd(self.rule.bowtie.samtreat[treat_rep], cmd)
             else:
                 self.run_cmd(cmd)
-            self._sam2bam(self.rule['bowtietmp']['treat_sam'][treat_rep], self.rule['bowtieresult']['bam_treat'][treat_rep])
-
-
-        for control_rep in range(self.conf['meta']['controlnumber']):
+            self._sam2bam(self.rule.bowtie.samtreat[treat_rep], self.rule.samtools.bamtreat[treat_rep])
+        for control_rep in range(self.conf.basis.controlnumber):
             cmd  = cmdif(self.color)
-            cmd = cmd.format(self.conf['bowtie']['bowtie_main'],
-                             self.conf['bowtie']['BOWTIE_MAX_ALIGNMENT'],
-                             self.conf['bowtie']['bowtie_genome_index_path'],
-                             self.conf['meta']['controls'][control_rep],
-                             self.rule['bowtietmp']['control_sam'][control_rep],
+            cmd = cmd.format(self.conf.bowtie.path,
+                             self.conf.bowtie.maxalign,
+                             self.conf.bowtie.index,
+                             self.conf.basis.control[control_rep],
+                             self.rule.bowtie.samcontrol[control_rep],
                              self.threads)
-            self.log("bowtie is processing %s" % (self.conf['meta']['controls'][control_rep]))
+            self.log("bowtie is processing %s" % (self.conf.basis.control[control_rep]))
             if self.debug:
-                self.ifnot_runcmd(self.rule['bowtietmp']['control_sam'][control_rep], cmd)
+                self.ifnot_runcmd(self.rule.bowtie.samcontrol[control_rep], cmd)
             else:
                 self.run_cmd(cmd)
-            self._sam2bam(self.rule['bowtietmp']['control_sam'][control_rep], self.rule['bowtieresult']['bam_control'][control_rep])
+            self._sam2bam(self.rule.bowtie.samcontrol[control_rep], self.rule.samtools.bamcontrol[control_rep])
         if exists(self.datasummary) and self.debug:
             print "skip rendering"
             pass
         else:
-            self._extract(self.conf['meta']['treatnumber'], self.rule['bowtietmp']['treat_sam'], control = False)
-            self._extract(self.conf['meta']['controlnumber'], self.rule['bowtietmp']['control_sam'], control = True)
+            self._extract(self.conf.basis.treatnumber, self.rule.bowtie.samtreat, control = False)
+            self._extract(self.conf.basis.controlnumber, self.rule.bowtie.samcontrol, control = True)
             self._render()
         self.log("bowtie run successfully")
 
@@ -444,18 +150,20 @@ class PipeMACS2(PipeController):
         """
         MACS step, separately and merge for sorted bam
         shell example:
-        macs2 callpeak -B -q 0.01 --keep-dup 1 \
-        --shiftsize=73 --nomodel  -t /users/qianqin/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
+        macs2 callpeak -B -q 0.01 --keep-dup 1
+        --shiftsize=73 --nomodel  -t /Users/testuser/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
         # modify as a hidden option in conf
-        if conf['macs'].get('model', 'NO').lower() == 'yes':
-            self.model = True
-        else:
+        self.conf = conf
+        try:
+            if self.conf.macs.model.lower() == 'yes':
+                self.model = True
+            else:
+                self.model = False
+        except:
             self.model = False
-        # self.model = args.get('Macs2Model', 0)
         self.macsinfo = {}
-
         self.stepcontrol = stepcontrol
         self.shiftsize = shiftsize
         self.rendercontent = {}
@@ -469,20 +177,20 @@ class PipeMACS2(PipeController):
         /opt/bin/UCSCTools/bedGraphToBigWig 6523_control.bdg.tmp /mnt/Storage/data/Samtool/chromInfo_mm9.txt 6523_control.bw 
         bedGraphTobw chrom len equal to samtools'
         """
-        cmd = '{0} -a {1} -b {2} -wa -f 1.00 > {3}'  # bdg filter
-        cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
+        cmd = '{0} intersect -a {1} -b {2} -wa -f 1.00 > {3}'  # bdg filter
+        cmd = cmd.format(self.conf.bedtools.path,
                          bdg,
-                         self.conf['samtools']['chrom_len_bed_path'],
+                         self.conf.samtools.chrbed,
                          tmp)
         if self.debug:
             self.ifnot_runcmd(tmp, cmd)
         else:
             self.run_cmd(cmd)
         cmd = '{0} {1} {2} {3} ' # bedGraphTobigwiggle
-        cmd = cmd.format(self.conf['macs']['bedgraphtobigwig_main'],
+        cmd = cmd.format(self.conf.macs.bg2bw,
                          tmp,
-                         self.conf['samtools']['samtools_chrom_len_path'],
-                         bw )
+                         self.conf.samtools.chrlen,
+                         bw)
         if self.debug:
             self.ifnot_runcmd(bw, cmd)
         else:
@@ -495,7 +203,7 @@ class PipeMACS2(PipeController):
         add fc_10 and ratio
         macs2info = {'ratios': {'totalpeak':a, 'total1': 5...}..} *args
         """
-        fhd = open(self.rule['macsresult']['peaks_xls'],"r")
+        fhd = open(self.rule.macs.peaksxls,"r")
         total = 0
         fc20n = 0
         fc10n = 0
@@ -535,22 +243,21 @@ class PipeMACS2(PipeController):
         specify shiftsize
         macs2 callpeak -g hs -B -q 0.01 --keep-dup 1 --nomodel --shiftsize=73 -t GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed -c GSM486702_BI.CD34_Primary_Cells.Input.CD34_39661.bed  -n test1        
         """
-        rule = self.rule
         if self.stepcontrol < 2:
             sys.exit(1)
         # Options
-        if 'hg' in self.conf['meta']['species']:
+        if 'hg' in self.conf.basis.species:
             genome_option = ' -g hs '
-        elif 'mm' in self.conf['meta']['species']:
+        elif 'mm' in self.conf.basis.species:
             genome_option = ' -g mm '
         else:
             genome_option = ' '
         model_option = " " if self.model else " --nomodel --shiftsize=%s " % self.shiftsize
-        control_option = " " if self.conf['meta']['controlnumber'] == 0 else ' -c '+rule['bowtieresult']['bamcontrolmerge']
+        control_option = " " if self.conf.basis.controlnumber == 0 else ' -c '+ self.rule.samtools.bamcontrolmerge
         # Commands template
         def cmd_merge(input, output):
            if len(input) >1:
-               return '{0} merge -f {1}  {2}'.format(self.conf['samtools']['samtools_main'], output, ' '.join(input))
+               return '{0} merge -f {1}  {2}'.format(self.conf.samtools.path, output, ' '.join(input))
            elif len(input) == 0:
                return ""
            else:
@@ -558,7 +265,7 @@ class PipeMACS2(PipeController):
 
         def cmd_callpeak(input_bam, output):
             cmd = '{0} callpeak {1} -B -q 0.01 --keep-dup 1 {2} -t {3} {4} -n {5}'
-            return cmd.format(self.conf['macs']['macs_main'], genome_option,
+            return cmd.format(self.conf.macs.path, genome_option,
                               model_option, input_bam,
                               control_option, output)
 
@@ -568,53 +275,52 @@ class PipeMACS2(PipeController):
         callpeak = lambda orig, dest, test: self.smart_run(cmd_callpeak(orig, dest), test)
 #        def callpeak(orig, dest, test, exit): # TODO deal with model failure
 #            return self.smart_run(cmd_callpeak(orig, dest), test, exit)
-
         # Start processing
-        merge(rule['bowtieresult']['bam_treat'], rule['bowtieresult']['bamtreatmerge'])
-        merge(rule['bowtieresult']['bam_control'], rule['bowtieresult']['bamcontrolmerge'])
+        merge(self.rule.samtools.bamtreat, self.rule.samtools.bamtreatmerge)
+        merge(self.rule.samtools.bamcontrol, self.rule.samtools.bamcontrolmerge)
 
-        for repn in range(self.conf['meta']['treatnumber']):
-            print rule['bowtieresult']['bam_treat'][repn]
-            print rule['macstmp']['macs_initrep_name'][repn]
-            callpeak(rule['bowtieresult']['bam_treat'][repn],
-                     rule['macstmp']['macs_initrep_name'][repn],
-                     all([exists(rule['macstmp']['macs_initrep_name'][repn]+ '_treat_pileup.bdg'),
-                          exists(rule['macstmp']['treatrep_bdg'][repn])]))
-            
+        for repn in range(self.conf.basis.treatnumber):
+            callpeak(self.rule.samtools.bamtreat[repn],
+                     self.rule.macs.initrep[repn],
+                     all([exists(self.rule.macs.initrep[repn]+ '_treat_pileup.bdg'),
+                          exists(self.rule.macs.bdgtreatrep[repn])]))
+
             # convert macs default name to NameRule
-            cp(rule['macstmp']['macs_initrep_name'][repn]+ '_treat_pileup.bdg',
-               rule['macstmp']['treatrep_bdg'][repn])
-            cp(rule['macstmp']['macs_initrep_name'][repn] + '_control_lambda.bdg',
-               rule['macstmp']['controlrep_bdg'][repn])
-            self._format(rule['macstmp']['treatrep_bdg'][repn], 
-                         rule['macstmp']['treatrep_tmp_bdg'][repn], 
-                         rule['macsresult']['treatrep_bw'][repn])
-            self._format(rule['macstmp']['controlrep_bdg'][repn],
-                         rule['macstmp']['controlrep_tmp_bdg'][repn], 
-                         rule['macsresult']['controlrep_bw'][repn])
-        if len(rule['bowtieresult']['bam_treat']) > 1:
-            callpeak(rule['bowtieresult']['bamtreatmerge'],
-                     rule['macstmp']['macs_init_mergename'],
-                     all([exists(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg'),
-                          exists(rule['macstmp']['treat_bdg'])]))
-            
+            cp(self.rule.macs.initrep[repn]+ '_treat_pileup.bdg',
+               self.rule.macs.bdgtreatrep[repn])
+            cp(self.rule.macs.initrep[repn] + '_control_lambda.bdg',
+               self.rule.macs.bdgcontrolrep[repn])
+            self._format(self.rule.macs.bdgtreatrep[repn], 
+                         self.rule.macs.bdgtreatreptmp[repn], 
+                         self.rule.macs.treatrepbw[repn])
+            self._format(self.rule.macs.bdgcontrolrep[repn],
+                         self.rule.macs.bdgcontrolreptmp[repn], 
+                         self.rule.macs.controlrepbw[repn])
+        if self.conf.basis.treatnumber > 1:
+            callpeak(self.rule.samtools.bamtreatmerge,
+                     self.rule.macs.initmerge,
+                     all([exists(self.rule.macs.initmerge + '_treat_pileup.bdg'), \
+                          exists(self.rule.macs.bdgtreat)]))
+
             # convert macs default name to NameRule
-            cp(rule['macstmp']['macs_init_mergename'] + '_treat_pileup.bdg',
-               rule['macstmp']['treat_bdg'])
-            cp(rule['macstmp']['macs_init_mergename'] + '_control_lambda.bdg',
-               rule['macstmp']['control_bdg'])
-            self._format(rule['macstmp']['treat_bdg'], 
-                         rule['macstmp']['treat_bdgtmp'], 
-                         rule['macsresult']['treat_bw'])
-            self._format(rule['macstmp']['control_bdg'], 
-                         rule['macstmp']['control_tmp_bdg'], 
-                         rule['macsresult']['control_bw'])
-        else:                   # Only one replicate, copy the first element of rep list to destination
-            origs = ["peaksrep_xls", 'treatrep_peaks', 'rep_summits', 'treatrep_bw', 'controlrep_bw']
-            dests = map(lambda x: x.replace("rep_", "_"), origs)
-            macs_d = rule['macsresult']
-            map(lambda orig, dest: cp(macs_d[orig][0], macs_d[dest]),
-                origs, dests)   
+            cp(self.rule.macs.initmerge + '_treat_pileup.bdg',
+               self.rule.macs.bdgtreat)
+            cp(self.rule.macs.initmerge + '_control_lambda.bdg',
+               self.rule.macs.bdgcontrol)
+            self._format(self.rule.macs.bdgtreat,
+                         self.rule.macs.bdgtreattmp,
+                         self.rule.macs.treatbw)
+            self._format(self.rule.macs.bdgcontrol,
+                         self.rule.macs.bdgcontroltmp,
+                         self.rule.macs.controlbw)
+        else: # Only one replicate, copy the first element of rep list to destination
+            origs = [self.rule.macs.peaksrepxls, self.rule.macs.treatreppeaks,
+                     self.rule.macs.summitsrep, self.rule.macs.treatrepbw,
+                     self.rule.macs.controlrepbw]
+            dests = [self.rule.macs.peaksxls, self.rule.macs.treatpeaks,
+                    self.rule.macs.summits, self.rule.macs.treatbw, self.rule.macs.controlbw]
+            map(lambda orig, dest: cp(orig[0], dest),
+                origs, dests)
         self.extract()
 
 class PipeVennCor(PipeController):
@@ -636,43 +342,42 @@ class PipeVennCor(PipeController):
         input : peaks.bed
         get intersect regions between merge peaks bed and velcro, DHS sites
         """
-        cmd = '{0} -wa -u -a {1} -b {2} > {3}' # intersected
+        cmd = '{0} intersect -wa -u -a {1} -b {2} > {3}'
         if a_type == 'dhs':
-            cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
-                                       self.rule['macsresult']['treat_peaks'],
-                                       self.conf['venn']['dhs_bed_path'],
-                                       self.rule['bedtoolstmp']['dhs_bed'])
-        if a_type == 'velcro':
-            cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
-                                       self.rule['macsresult']['treat_peaks'],
-                                       self.conf['venn']['velcro_path'],
-                                       self.rule['bedtoolstmp']['velcro_bed'])
-        if self.debug:
-            self.ifnot_runcmd(self.rule['bedtoolstmp'][a_type+"_bed"], cmd)
-        else:
-            self.run_cmd(cmd)
-
-    def extract(self, region_type):
-        """ when species is not hg19, velcro step is skipped
-        extract dhs overlap or velcro overlap information
-        """
-        self._format(region_type)
-
-        if region_type == 'dhs':
-            len_intersect = len(open(self.rule['bedtoolstmp']['dhs_bed'], 'r').readlines())
-        elif region_type == 'velcro':
-            if self.conf['meta']['species'] == "hg19":
-                len_intersect = len(open(self.rule['bedtoolstmp']['velcro_bed'], 'r').readlines())
+            cmd = cmd.format(self.conf.bedtools.path,
+                             self.rule.macs.treatpeaks,
+                             self.conf.bedtools.dhs,
+                             self.rule.bedtools.dhs)
+            if self.debug:
+                self.ifnot_runcmd(self.rule.bedtools.dhs, cmd)
             else:
-                return
+                self.run_cmd(cmd)
+        if a_type == 'velcro':
+            cmd = cmd.format(self.conf.bedtools.path,
+                             self.rule.macs.treatpeaks,
+                             self.conf.bedtools.velcro,
+                             self.rule.bedtools.velcro)
+            if self.debug:
+                self.ifnot_runcmd(self.rule.bedtools.velcro, cmd)
+            else:
+                self.run_cmd(cmd)
 
-        len_all = len(open(self.rule['macsresult']['treat_peaks'], 'rU').readlines())
-        self.ratio[region_type] = len_intersect
-        if len_all != 0:
-            self.ratio[region_type + 'percentage'] = float(len_intersect)/len_all
+    def extract(self, a_type, species=True):
+        """ species indicate test velcro or not
+        extract dhs overlap and velcro overlap information
+        """
+        self._format(a_type)
+        lenall = len(open(self.rule.macs.treatpeaks, 'rU').readlines())
+        if a_type == 'dhs':
+            lena_type = len(open(self.rule.bedtools.dhs, 'r').readlines())
+        elif a_type == 'velcro':
+            if True:
+                lena_type = len(open(self.rule.bedtools.velcro, 'r').readlines())
+        self.ratio[a_type] = lena_type
+        if lenall != 0:
+            self.ratio[a_type + 'percentage'] = float(lena_type)/lenall
         else:
-            self.ratio[region_type + 'percentage'] = 0.0001
-
+            self.ratio[a_type + 'percentage'] = 0.0001
 
     def run(self):
         """
@@ -687,110 +392,78 @@ class PipeVennCor(PipeController):
         /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
         """
         # filter bed files
-        def filter(peaks_summits, tmp):
-            cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % (peaks_summits,
+        def filter(peaks, tmp):
+            cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % (peaks,
                                                                      tmp)
             if self.debug:
                 self.ifnot_runcmd(tmp, cmd)
             else:
                 self.run_cmd(cmd)
             cmd = "{0} {1} {2} {3}"
-            cmd = cmd.format(self.conf['macs']['bedclip'],
-                                       tmp,
-                                       self.conf['ceas']['chrom_len'],
-                                       peaks_summits)
+            cmd = cmd.format(self.conf.macs.bedclip,
+                             tmp,
+                             self.conf.ceas.chrlen,
+                             peaks)
             if self.debug:
-                self.ifnot_runcmd(peaks_summits, cmd)
+                self.ifnot_runcmd(peaks, cmd)
             else:
                 self.run_cmd(cmd)
 
-        for rep in range(self.conf['meta']['treatnumber']):
-            cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s"
-            
-            cmd = cmd % (self.rule['macsresult']['treatrep_peaks'][rep],\
-                             self.rule['macstmp']['treatrep_peaks'][rep])
-            if self.debug:
-                self.ifnot_runcmd(self.rule['macstmp']['treatrep_peaks'][rep], cmd)
-            else:
-                self.run_cmd(cmd)
-            cmd = "{0} {1} {2} {3}"
-            cmd = cmd.format(self.conf['macs']['bedclip'],
-                             self.rule['macstmp']['treatrep_peaks'][rep],
-                             self.conf['ceas']['chrom_len'],
-                             self.rule['macsresult']['treatrep_peaks'][rep])
-            if self.debug:
-                self.ifnot_runcmd(self.rule['macsresult']['treatrep_peaks'][rep], cmd)
-            else:
-                self.run_cmd(cmd)
-        for rep in range(self.conf['meta']['treatnumber']):
-            cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                         (self.rule['macsresult']['rep_summits'][rep],
-                          self.rule['macstmp']['rep_summits'][rep])
-            self.run_cmd(cmd)
-            cmd = "{0} {1} {2} {3}"
-            cmd = cmd.format(self.conf['macs']['bedclip'],
-                             self.rule['macstmp']['rep_summits'][rep],
-                             self.conf['ceas']['chrom_len'],
-                             self.rule['macsresult']['rep_summits'][rep])
-            self.run_cmd(cmd)
-        cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                     (self.rule['macsresult']['treat_peaks'],
-                      self.rule['macstmp']['treat_peaks'])
-        self.run_cmd(cmd)
-        cmd = "{0} {1} {2} {3}"
-        cmd = cmd.format(self.conf['macs']['bedclip'],
-                                   self.rule['macstmp']['treat_peaks'],
-                                   self.conf['ceas']['chrom_len'],
-                                   self.rule['macsresult']['treat_peaks'])
-        self.run_cmd(cmd)
-        cmd = "awk '{if ($2 >= 0 && $2 < $3) print}' %s > %s" % \
-                     (self.rule['macsresult']['_summits'],
-                      self.rule['macstmp']['summits'])
-        self.run_cmd(cmd)
-        cmd = "{0} {1} {2} {3}"
-        cmd = cmd.format(self.conf['macs']['bedclip'],
-                                   self.rule['macstmp']['summits'],
-                                   self.conf['ceas']['chrom_len'],
-                                   self.rule['macsresult']['_summits'])
-        self.run_cmd(cmd)
+        for rep in range(self.conf.basis.treatnumber):
+            filter(self.rule.macs.treatreppeaks[rep],
+                   self.rule.macs.peaksreptmp[rep])
+            filter(self.rule.macs.summitsrep[rep],
+                   self.rule.macs.summitsreptmp[rep])
+        filter(self.rule.macs.treatpeaks,
+               self.rule.macs.peakstmp)
+        filter(self.rule.macs.summits,
+               self.rule.macs.summitstmp)
 
         if self.stepcontrol < 3:
             sys.exit(1)
-        self.extract('dhs')
-        self.extract('velcro')
+        self.extract('dhs', True)
+        if self.conf.basis.species == 'hg19':
+            self.extract('velcro', True) # mouse has no velcro
         for k, v in self.ratio.iteritems():
             self.rendercontent['ratios'][k] = v
         self._render()
-
-        if self.conf['meta']['treatnumber'] < 2:
+        if self.conf.basis.treatnumber < 2:
             self.log('No replicates, pass the venn diagram and correlation steps')
         else:
             # venn diagram
-            if self.conf['meta']['treatnumber'] > 3:
+            if self.conf.basis.treatnumber > 3:
                 warn('venn diagram support 3 replicates not well')
-            cmd = '{0} -t Overlap_of_Replicates {1} {2}'
-            cmd = cmd.format(self.conf['venn']['venn_diagram_main'],
-                                       ' '.join(self.rule['macsresult']['treatrep_peaks']),
-                                       ' '.join(map(lambda x: "-l replicate_" + str(x),
-                                                    xrange(1, self.conf['meta']['treatnumber'] + 1)))
-                                       )
-            self.run_cmd(cmd)
-            self.run_cmd('mv venn_diagram.png %s'%self.rule['represult']['ven_png'])
+            cmd = '{0} -t Overlap_of_Replicates {1} {2} && mv {3} {4}'
+            cmd = cmd.format(self.conf.venn.path,
+                             ' '.join(self.rule.macs.treatreppeaks),
+                             ' '.join(map(lambda x: "-l replicate_" + str(x),
+                                          xrange(1, self.conf.basis.treatnumber + 1))),
+                             'venn_diagram.png',
+                             self.rule.corven.venpng
+                            )
+            if self.debug:
+                self.ifnot_runcmd(self.rule.corven.venpng, cmd)
+            else:
+                self.run_cmd(cmd)
             self.log('venn diagram succeed')
             # correlation plot
-            cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7}'
-            cmd = cmd.format(self.conf['correlation']['wig_correlation_main'],
-                             self.conf['meta']['species'],
-                                       self.conf['correlation']['wig_correlation_step'],
-                                       self.conf['correlation']['wig_correlation_min'],
-                                       self.conf['correlation']['wig_correlation_max'],
-                                       self.rule['represult']['cor_r'],
-                                       ' '.join(self.rule['macsresult']['treatrep_bw']),
-                                       ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf['meta']['treatnumber'] + 1))), )
-            self.run_cmd(cmd)
-            self.run_cmd('mv %s.pdf %s' %(self.rule['represult']['cor_r'],self.rule['represult']['cor_pdf']))
+            cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7} && mv {8}.pdf {9}'
+            cmd = cmd.format(self.conf.correlation.path,
+                             self.conf.basis.species,
+                             self.conf.correlation.wig_correlation_step,
+                             self.conf.correlation.wig_correlation_min,
+                             self.conf.correlation.wig_correlation_max,
+                             self.rule.corven.corR,
+                             ' '.join(self.rule.macs.treatrepbw),
+                             ' '.join(map(lambda x: ' -l replicate_' + str(x), xrange(1, self.conf.basis.treatnumber + 1))),
+                             self.rule.corven.corR,
+                             self.rule.corven.corpdf
+                             )
+            if self.debug:
+                self.ifnot_runcmd(self.rule.corven.corR, cmd)
+            else:
+                self.run_cmd(cmd)
             self.log('correlation plot succeed')
-
 
 class PipeCEAS(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, peaksnumber = 5000, **args):
@@ -808,8 +481,8 @@ class PipeCEAS(PipeController):
         # default top 5000 peaks for ceas
         TODO: filter peaks.xls
         """
-        xls = self.rule['macsresult']['peaks_xls']
-        bedge = open(self.rule['ceastmp']['ceasge10_bed'], 'w')
+        xls = self.rule.macs.peaksxls
+        bedge = open(self.rule.ceas.ge10bed, 'w')
         peaksnum = 0
         # fold change
         for line in open(xls, 'rU'):
@@ -822,13 +495,13 @@ class PipeCEAS(PipeController):
                         "macs_peaks_" + str(peaksnum) + '\t' + line[8] + '\n'
                     bedge.write(bed_line)
         bedge.close()
-        cmd = 'sort -r -g -k 5 %s > %s' % (self.rule['macsresult']['treat_peaks'], self.rule['macstmp']['sortedbed'])
+        cmd = 'sort -r -g -k 5 %s > %s' % (self.rule.macs.treatpeaks, self.rule.macs.sortedbed)
         self.run_cmd(cmd)
-        
+
         if self.type == "Dnase": # for Dnase, use all peaks for ceas
-            cmd = 'mv %s %s' % (self.rule['macstmp']['sortedbed'], self.rule['ceastmp']['ceasptop'])
-        else:
-            cmd = 'head -n %s %s > %s' % (self.peaks, self.rule['macstmp']['sortedbed'],  self.rule['ceastmp']['ceasptop'])
+            cmd = 'mv %s %s' % (self.rule.macs.sortedbed, self.rule.ceas.peakstop)
+        else:   # customized peaks number or default
+            cmd = 'head -n %s %s > %s' % (self.peaks, self.rule.macs.sortedbed,  self.rule.ceas.peakstop)
         self.run_cmd(cmd)
 
     def extract(self):
@@ -843,7 +516,6 @@ class PipeCEAS(PipeController):
         #                            self.rule['ceasresult']['ceasci']
         #                            )
         # abandon ceas-ex in the future
-        
         # cmd = "cp {0} {1}"
         # cmd = cmd.format(self.rule['root']['ceas_pdf'], self.rule['ceasresult']['ceaspdf'])
         # self.run_cmd(cmd)
@@ -862,32 +534,31 @@ class PipeCEAS(PipeController):
         self._format()
         self.log('ceas top n peaks extract done')
         null_unless = lambda trigger, alter :" " if not trigger else alter
-        
-        sizes_option = null_unless(self.conf['ceas']['ceas_promoter_sizes'],
-                                   ' --sizes %s ' % self.conf['ceas']['ceas_promoter_sizes'])
-        bisizes_option = null_unless(self.conf['ceas']['ceas_bipromoter_sizes'],
-                                     ' --bisizes %s ' % self.conf['ceas']['ceas_bipromoter_sizes'])
-        rel_option = null_unless(self.conf['ceas']['ceas_rel_dist'],
-                                 ' --rel-dist %s ' % self.conf['ceas']['ceas_rel_dist'])
-        gt_option = null_unless(self.conf['ceas']['ceas_genetable_path'],
-                                ' -g %s ' % (self.conf['ceas']['ceas_genetable_path']))
-        len_option = null_unless(self.conf["ceas"]['chrom_len'],
-                                 ' -l %s ' % (self.conf['ceas']['chrom_len']))
-        
+
+        sizes_option = null_unless(self.conf.ceas.promoter_sizes,
+                                   ' --sizes %s ' % self.conf.ceas.promoter_sizes)
+        bisizes_option = null_unless(self.conf.ceas.bipromoter_sizes,
+                                     ' --bisizes %s ' % self.conf.ceas.bipromoter_sizes)
+        rel_option = null_unless(self.conf.ceas.rel_dist,
+                                 ' --rel-dist %s ' % self.conf.ceas.rel_dist)
+        gt_option = null_unless(self.conf.ceas.refgene,
+                                ' -g %s ' % (self.conf.ceas.refgene))
+        len_option = null_unless(self.conf.ceas.chrlen,
+                                 ' -l %s ' % (self.conf.ceas.chrlen))
+
         cmd = '{0} --name {1} {2} -b {3} -w {4} {5}'
-        cmd = cmd.format(self.conf['ceas']["ceas_main"],
-                         self.rule['ceastmp']['ceasname'],
+        cmd = cmd.format(self.conf.ceas.path,
+                         self.rule.ceas.name,
                          gt_option + sizes_option + bisizes_option + rel_option,
-                         self.rule['ceastmp']['ceasptop'],
-                         self.rule['macsresult']['treat_bw'],
+                         self.rule.ceas.peakstop,
+                         self.rule.macs.treatbw,
                          len_option)
         if self.debug:
-            self.ifnot_runcmd(self.rule['ceastmp']['ceasname']+".pdf", cmd)
+            self.ifnot_runcmd(self.rule.ceas.name+".pdf", cmd)
         else:
             self.run_cmd(cmd)
         self.extract()
         self.log('ceas succeed')
-
 
 class PipeConserv(PipeController):
     def __init__(self, conf, rule, a_type, log, stepcontrol, **args):
@@ -903,12 +574,12 @@ class PipeConserv(PipeController):
         input: summits bed (filtered by VennCor._format)
         *todo*:get the top n significant peaks for conservation plot
         """
-        cmd = 'convert -resize 500x500 -density 50  tmp.pdf {0} | mv {1} {2} '
-        cmd = cmd.format(self.rule['conservresult']['conserv_png'],
+        cmd = 'convert -resize 500x500 -density 50  tmp.pdf {0} && mv {1} {2} '
+        cmd = cmd.format(self.rule.conservation.conservpng,
                          'tmp.R',
-                         self.rule['conservresult']['conserv_r'])
+                         self.rule.conservation.conservR)
         if self.debug:
-            self.ifnot_runcmd(self.rule['conservresult']['conserv_r'], cmd)                           
+            self.ifnot_runcmd(self.rule.conservation.conservR, cmd)
         else:
             self.run_cmd(cmd)
 
@@ -917,7 +588,8 @@ class PipeConserv(PipeController):
         get top n summits from macs2 summits.bed according to ChiLin config
         default 3000 summits
         """
-        cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.rule['macsresult']['_summits'], self.conf['conservation']['peaks_num'], self.rule['conservationtmp']['conserv_topn_summits'])
+        cmd = 'sort -r -g -k 5 %s | head -n %s > %s ' % (self.rule.macs.summits, self.conf.conservation.peaks,
+                                                         self.rule.conservation.conservtopsummits)
         self.run_cmd(cmd)
 
     def run(self):
@@ -939,17 +611,16 @@ class PipeConserv(PipeController):
             width_option = ' -w 4000'   # for histone using width 4000
         else:
             self.log("conservation plot may not support, use default")
-        cmd = cmd.format(self.conf['conservation']['conserv_plot_main'],
-                                   self.conf['conservation']['conserv_plot_phast_path'],
-                                   self.rule['conservationtmp']['conserv_topn_summits'],
-                                   width_option)
+        cmd = cmd.format(self.conf.conservation.path,
+                         self.conf.conservation.phast,
+                         self.rule.conservation.conservtopsummits,
+                         width_option)
         if self.debug:
-            self.ifnot_runcmd(self.rule['conservresult']['conserv_png'], cmd)
+            self.ifnot_runcmd(self.rule.conservation.conservpng, cmd)
         else:
             self.run_cmd(cmd)
         self._format()
         self.log("conservation plot succeed!")
-
 
 class PipeMotif(PipeController):
     def __init__(self, conf, rule, log, stepcontrol, **args):
@@ -958,7 +629,7 @@ class PipeMotif(PipeController):
         self.stepcontrol = stepcontrol
 
     def _format(self):
-        cmd = 'zip -r -q %s results/' % self.rule['motifresult']['seqpos']
+        cmd = 'zip -r -q %s results/' % self.rule.motif.seqpos
         self.run_cmd(cmd)
 
     def extract(self):
@@ -969,7 +640,9 @@ class PipeMotif(PipeController):
         remove chrM from top n summits
         default top 1000 summits.bed, may modify seqpos config
         """
-        cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % (self.rule['macsresult']['_summits'], self.conf['seqpos']['seqpos_top_peaks'], self.rule['motiftmp']['summits_p1000']) 
+        cmd = 'awk "/^chr[1-22XY]/" %s |sort -r -g -k 5|head -n %s > %s ' % \
+              (self.rule.macs.summits,
+               self.conf.seqpos.summitsnumber, self.rule.motif.summitspeaks1000) 
         self.run_cmd(cmd)
 
     def run(self):
@@ -981,35 +654,35 @@ class PipeMotif(PipeController):
         if self.stepcontrol < 6:
             sys.exit()
         self.extract()
-        if self.conf['seqpos']['seqpos_width']:
-            seqpos_width_option = ' -w  ' +  self.conf['seqpos']['seqpos_width']
+        if self.conf.seqpos.seqpos_width:
+            seqpos_width_option = ' -w  ' +  self.conf.seqpos.seqpos_width
         else:
             seqpos_width_option = ' -w 600 '
-        if self.conf['seqpos']['seqpos_pvalue_cutoff']:
-            seqpos_pvalue_option = ' -p  ' +  self.conf['seqpos']['seqpos_pvalue_cutoff']
+        if self.conf.seqpos.seqpos_pvalue_cutoff:
+            seqpos_pvalue_option = ' -p  ' +  self.conf.seqpos.seqpos_pvalue_cutoff
         else:
             seqpos_pvalue_option = ' -p 0.001 '
-        if self.conf['seqpos']['seqpos_motif_db_selection']:
-            seqpos_db_option = ' -m ' +  self.conf['seqpos']['seqpos_motif_db_selection']
+        if self.conf.seqpos.db:
+            seqpos_db_option = ' -m ' +  self.conf.seqpos.db
         else:
             seqpos_db_option = ' -m transfac.xml,pbm.xml,jaspar.xml,cistrome.xls '
-        if self.conf['meta']['species'] == 'hg19':
+        if self.conf.basis.species == 'hg19':
             seqpos_species_option = ' -s hs '
-        elif self.conf['meta']['species'] == 'mm9':
+        elif self.conf.basis.species == 'mm9':
             seqpos_species_option = ' -s mm '
-        elif self.conf['meta']['species'] == 'dm4':
+        elif self.conf.basis.species == 'dm4':
             seqpos_species_option = ' -s dm '
         else:
             self.log("MDseqpos not support the species")
 
         cmd = '{0} -d {1} {2}  {3} {4} {5} {6}'
-        cmd = cmd.format(self.conf['seqpos']['seqpos_main'],
-                                   seqpos_width_option,
-                                   seqpos_pvalue_option,
-                                   seqpos_db_option,
-                                   seqpos_species_option,
-                                   self.rule['motiftmp']['summits_p1000'],
-                                   self.conf['meta']['species'] )
+        cmd = cmd.format(self.conf.seqpos.path,
+                         seqpos_width_option,
+                         seqpos_pvalue_option,
+                         seqpos_db_option,
+                         seqpos_species_option,
+                         self.rule.motif.summitspeaks1000,
+                         self.conf.basis.species)
         if self.debug:
             seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
             self.ifnot_runcmd(seqpos_out_path("mdseqpos_out.html"),
@@ -1032,11 +705,12 @@ class PipeMotif(PipeController):
 #        pass
 #    def run(self):
 #        pass
-#
+
 def package(conf, rule, log, **args):
     """
-    package all the results in dataset_id folder
+    package all the results in datasetid folder
     """
+    from glob import glob
     bams = glob('*.bam')
     xls = glob('*.xls')
     summits = glob('*_summits.bed')
@@ -1051,7 +725,7 @@ def package(conf, rule, log, **args):
     qc = glob('*.tex')
     qcp = glob('*QC.pdf')
     fls = [bams, xls, summits, peaks, bw, png, pdf, r, m, cor, su, qc, qcp]
-    folder = 'dataset' + conf['meta']['dataset_id']
+    folder = 'dataset' + conf.basis.id
     call('mkdir %s' % folder, shell = True)
     for fs in fls:
         for f in fs:

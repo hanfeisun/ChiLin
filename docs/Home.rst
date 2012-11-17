@@ -1,8 +1,8 @@
 =================
-About the project
+Home
 =================
 
-Purpose
+Project Purpose
 ===================
 
 * ChIP-seq experiment has been a mature and wide-spread technique for detecting the TF and histone modification distribution from the genome scale.
@@ -10,7 +10,7 @@ Purpose
 * For bioinformaticians, you may find this may be the most extensible and flexible ChIP-seq integrated python packages ever. It provides various genomic data format support and high-rated analysis toolbox. Any bug report is welcome.
 
 
-Goal
+Project Goal
 ==================
 There are two main command for the pipeline.
 The one `merge_DC` is for previous reservation version for constructing Cistrome Secondary Database;

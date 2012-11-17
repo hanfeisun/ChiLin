@@ -2,21 +2,23 @@
 """
 Main program of DC pipeline
 """
-
 import sys
 import argparse
+
 from functools import partial
-from chilin.dc import (gen_conf,
-                       PipeGroom,
-                       PipePreparation,
+
+
+from chilin.model import (gen_conf,
+                          PipePreparation)
+
+from chilin.dc import (PipeGroom,
                        PipeBowtie,
                        PipeMACS2,
                        PipeVennCor,
                        PipeCEAS,
                        PipeConserv,
                        PipeMotif,
-                       package
-		       )
+                       package)
 
 from chilin.qc import (RawQC,
                        MappingQC,
@@ -35,10 +37,18 @@ def parse_args():
     parser = ChiLinParser(description = description)
     sub_parsers = parser.add_subparsers(help = "sub-command help", dest = "sub_command")
 
+    # TODO, improve test system
+    test_parser = sub_parsers.add_parser("test",  help = "test ChiLin using test data and config",
+                                         description = " A simple test on ChiLin installation ")
+    test_parser.add_argument("-s", "--species", choices = ("hg19", "mm9"), required= True)
+    test_parser.add_argument("-t", "--TF", default=False, help="TF test or Histone test")
+
+    # ChiLinjinja.conf
     template_parser = sub_parsers.add_parser("gen",  help = "generate a template of config file",
                                              description = "ChiLin-gen: A config template generator for ChiLin")
     template_parser.add_argument("-s","--species", choices = ("hg19", "mm9"), required = True)
 
+    # Run
     pipe_parser = sub_parsers.add_parser("run", help = "run pipeline using a config file",
                                          description = "ChiLin-run: Run ChiLin pipeline using a config file")
     pipe_parser.add_argument("-c","--config", required = True,
@@ -47,8 +57,6 @@ def parse_args():
                         help = "the most important option for ChiLin specify the analysis type and the shiftsize {Dnase: 50, Histone and TF:73} of MACS2")
     pipe_parser.add_argument("-m", dest = "cor_method", default = "mean",choices = ("mean",),
                         help = "specify method for correlation plot")
-    #    pipe_parser.add_argument("-e", dest = "model", action = "store_true", default = False,
-    #                         help = "MACS2 establish model or not, use default shift-size if failed.")
     pipe_parser.add_argument("-p", dest = "top_peaks", type = int, default = 5000,
                         help = "specify peaks number for CEAS")
     pipe_parser.add_argument("--threads", dest = "max_threads", type = int, default = 1, choices = range(1,9),
@@ -58,11 +66,10 @@ def parse_args():
     pipe_parser.add_argument("-a", "--absolid", dest="color", action="store_true", default=False,
                              help="For special absolid color fastq")
     pipe_parser.add_argument("-d", dest = "step_end", type = int, default = 6,
-                        help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
+                             help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
     pipe_parser.add_argument("--debug", help = "debug mode", action = "store_true", default = False)
     
     args = parser.parse_args()
-
 
     if args.sub_command == "gen":
         gen_conf(args.species)
@@ -75,16 +82,12 @@ def parse_args():
 
 def main():
     args = parse_args()
-
     pp = PipePreparation(args.config)
-    log_func = pp.func_log()
-    pp.check_conf()
+    cf = pp.get_config()
+    rl = pp.get_rule()
+    log_func = pp.log
 
-    conf = pp.get_config()
-    rule = pp.get_rule()
-
-    print rule
-    p = lambda func:partial(func, conf=conf, rule=rule, log=log_func, debug=args.debug,
+    p = lambda func:partial(func, conf=cf, rule=rl, log=log_func, debug=args.debug,
                             texfile=pp.get_tex(),
                             datasummary = pp.get_summary(),
                             stepcontrol=args.step_end,
@@ -93,7 +96,6 @@ def main():
                             peaksnumber = args.top_peaks,
                             ArgsionMethod = args.cor_method,
                             threads = args.max_threads)
-    print conf
     if not args.onlyqc:
         groom = p(PipeGroom)()
         groom.run()
@@ -109,8 +111,12 @@ def main():
     if not args.onlyqc:
         macs2 = p(PipeMACS2)()
         macs2.run()
+
         pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
         pipevenncor.run()
+
+        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
+        peakcallingqc.run()
         
         pipeceas = p(PipeCEAS)()
         pipeceas.run()
@@ -131,12 +137,10 @@ def main():
     summaryqc.run(annotationqc.summarycheck,annotationqc.summaryRender,args.onlyqc)
 
     p(package)()
-            
-
 
 if __name__ == "__main__":
     try: 
         main()
     except KeyboardInterrupt:
-        sys.stderr.write("user interupt~Bye")
+        sys.stderr.write("User interupt~Bye")
         sys.exit(0)

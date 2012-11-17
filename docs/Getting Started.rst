@@ -1,8 +1,35 @@
-=============
+============
+Get_started
+============
+
+
+Setting up ChiLin
+===================
+
+
+install quick-start
+----------------------
+In order to make installation easier, we write a script, download.sh, run with help instruction
+
+
+test installation
+---------------------
+we sample down 1000 reads for testing the ChiLin installation state
+the test files are in the *tests* folder
+
  Config file
-=============
+
+ To run the tests, you need simply need to run::
+
+    Chilin.py gen -s hg19
+
+ then, replace the *ChiLinjinja.conf basis* section with test.conf
+    *basis* section, run::
+    ChiLin.py run -c ChiLinjinja.conf -t TF
+
+
 Synopsis
-========
+--------------
 
 .. envvar:: [meta]
 
@@ -12,7 +39,7 @@ Synopsis
 
     .. envvar:: dataset.ID
 
-        The name for the dataset, which will be the value of :envvar:`${dataset_id}`
+        The name for the dataset, which will be the value of :envvar:`${DatasetID}`
 	
 	Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
 
@@ -58,11 +85,12 @@ Synopsis
 
     meta
 
+See :ref:`simpest_config` for a quick view of how to use this pipeline.
 
 .. _simpest_config:
 
 Simpest config
-==============
+-----------------
 
 Here is one of the simpest Cpipe workflow you can make.
 
@@ -102,16 +130,42 @@ Then you can write the :envvar:`[meta]` section like this:
 
 .. code-block:: ini
    :linenos:
-    [meta]
-    user = testuser
-    dataset_id = testid
+    [UserInfo]
+    User = testuser
+    datasetID = testid
     species = hg19
     factor = testfactor
-    treatments = /mnt/Storage/home/qinq/treat1.fastq,/mnt/Storage/home/qinq/treat2.fastq
-    controls = /mnt/Storage/home/qinq/control1test.fastq
-    output_dir = /mnt/Storage/home/qinq/testchilin3
+    treatpath = /mnt/Storage/home/qinq/treat1.fastq,/mnt/Storage/home/qinq/treat2.fastq
+    controlpath = /mnt/Storage/home/qinq/control1test.fastq
+    OutputDirectory = /mnt/Storage/home/qinq/testchilin3
     ...
 
 Replace the commented in Line 2, Line 3 and Line 4 and complete other sections. Then load it with Cpipe.
 
-For the notation of output files, the :envvar:`${dataset_id}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
+For the notation of output files, the :envvar:`${DatasetID}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
+
+Common usage of ChiLin modules
+===============================
+Analysis Pipeline
+-------------------
+
+Quality Control Pipeline
+-------------------------
+
+Analyzing single datasets
+---------------------------
+
+
+Analyzing datasets in batch
+-------------------------------
+
+
+
+
+
+*Getting help*
+------------------
+Any question on installation or runnning is appreciated, please mail
+to qinqianhappy@gmail.com.
+
+
