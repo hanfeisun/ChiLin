@@ -7,7 +7,9 @@ from subprocess import call
 from jinja2 import Environment,PackageLoader
 from pkg_resources import resource_filename
 from chilin.format import digit_format, percent_format
-from chilin.motif import MotifParser
+
+from chilin.controller import QC_Controller
+from chilin.motif.MotifParser import MotifParser
 from os.path import exists
 
 
@@ -17,108 +19,6 @@ def underline_to_space(x):
     if type(x) == str:
         return x.replace("_"," ")
     return x
-
-
-jinja_env = Environment(loader = PackageLoader('chilin', 'template'),
-                        block_start_string = '\BLOCK{',
-                        block_end_string = '}',
-                        variable_start_string = '\VAR{',
-                        variable_end_string = '}',
-                        comment_start_string = '\#{',
-                        comment_end_string = '}',
-                        line_statement_prefix = '%-',
-                        line_comment_prefix = '%#',
-                        trim_blocks = True,
-                        autoescape = False,
-                        )                        
-class QC_Controller(object):
-    def __init__(self, conf, rule, log, texfile, **args):
-        """
-        All the class in the module derives from this class
-        """
-        self.env = jinja_env
-        self.render = {}
-        self.checker = []
-        self.summaryCheck = []
-        self.summaryRender = {}
-        self.conf = conf
-        self.rule = rule
-        self.texfile = texfile
-        self.log = log
-        self.debug = args.get("debug", False)
-        self.threads = args.get("threads", 1)  
-        self.template = self.env.get_template('template.tex')
-        self.Rtemplate = self.env.get_template('Rtemplate.r')
-        self.db = sqlite3.connect(resource_filename('chilin', 'db/QC_based_infomation.db')).cursor()
-        self.shiftsize = args.get("shiftsize", "")
-
-
-    def run_cmd(self, cmd, exit_ = True, error_handler = lambda :True):
-        """
-        universal call shell and judge
-        """
-        self.log("Run command:\t"+cmd)
-        if call(cmd, shell = True):
-            # If running command encounters error,
-            # call() returns a non-zero value
-
-            result = error_handler()
-            if exit_:
-                raise
-                sys.exit(0)
-            else:
-                return result
-        else:
-            return True
-
-    def if_runcmd(self, condition, cmd, else_handler = lambda :True, size_check = True):
-        """
-        run a command conditionally
-        """
-        
-        if type(condition) == str:
-            self.log("checking file "+condition)
-            if not exists(condition):
-                condition = True
-            else:
-                if os.path.isfile(condition) and os.path.getsize(condition) <=0 and size_check:
-                    condition = True
-                else:
-                    condition = False
-                    
-        if condition:
-            return self.run_cmd(cmd)
-        else:
-            else_handler()
-            return self.log(cmd+" is skipped")
-        
-    
-    def _check(self):
-        """ Check whether the quality of the dataset is ok.
-        vcb is the callback function for value"""
-        ord = lambda x:[x["desc"], x["data"], x["value"], x["cutoff"], x["test"]]
-        if len(self.checker)!=0:
-            for i in self.checker:
-                value = round(float(i["value"]),3)
-                cutoff = round(float(i["cutoff"]),3)
-                if value >= cutoff:
-                    i["test"] = 'Pass'
-                    self.summarycheck.append(ord(i))
-                else:
-                    i["test"] = 'Fail'
-                    self.summarycheck.append(ord(i))
-
-    def _render(self, mode="a"):
-        """ Generate the latex code for current section. """
-        content = self.template.render(self.render).replace('%','\\%')
-        with open(self.texfile, mode) as f:
-            f.write(content)
-
-    def _end(self, test = lambda : True):
-        def add():
-            return '\\end{document}'
-        return add()
-
 
 
 class RawQC(QC_Controller):
@@ -180,9 +80,9 @@ class RawQC(QC_Controller):
             changed_name = names[i]
             
             cmd = '{0} {1} --extract -t {3} -o {2}'
-            cmd = cmd.format(self.conf['qc']['fastqc_main'],
+            cmd = cmd.format(self.conf.qc.path,
                              d,
-                             self.conf['meta']['output_dir'],
+                             self.conf.basis.output,
                              self.threads)
 
             if self.debug:
@@ -202,8 +102,8 @@ class RawQC(QC_Controller):
             npeakl.append(peak)
             nseqlen.append(seqlen)
         fastqc_summary = []    #fasqtQC summary
-        rCode = self.rule['qcresult']['fastqc_pdf_r']
-        pdfName = self.rule['qcresult']['fastqc_pdf']
+        rCode = self.rule.qc.fastqc_r
+        pdfName = self.rule.qc.fastqc_pdf
         names = map(underline_to_space, names)
         for j in range(len(npeakl)):
             temp = ['%s' % names[j],'%s' % str(nseqlen[j]),'%s' % str(npeakl[j])]
@@ -230,10 +130,10 @@ class RawQC(QC_Controller):
                     'xlab':'sequence quality score',
                     'ylab':'fn(sequence quality score)',
                     'fastqcCheck':True}
-        
+
         content = self.Rtemplate.render(Rrender)
         with open(rCode, 'w') as f:
-            f.write(content)        
+            f.write(content)
 
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return fastqc_summary, pdfName
@@ -242,13 +142,14 @@ class RawQC(QC_Controller):
     def run(self):
         """ Run some RawQC functions to get final result."""
         self.render['RawQC_check'] = True
-        self.render['prefix_dataset_id'] = underline_to_space(self.conf['meta']['dataset_id'])
-        if len(self.conf['meta']['controls']) ==0:
-            rawdata = self.conf['meta']['treatments']
-            names = self.rule['qcresult']['treat_data']
+        self.render['prefix_dataset_id'] = underline_to_space(self.conf.basis.id)
+        if len(self.conf.basis.control) ==0:
+            rawdata = self.conf.basis.treat
+            names = self.rule.qc.treat_data
         else:
-            rawdata = self.conf['meta']['treatments'] +self.conf['meta']['controls']
-            names = self.rule['qcresult']['treat_data']+self.rule['qcresult']['control_data']
+            rawdata = self.conf.basis.treat +self.conf.basis.control
+            names = self.rule.qc.treat_data + self.rule.qc.control_data
+
         suffix = lambda x: x.endswith(".bed") or x.endswith(".bam") or x.endswith(".fastq")
         for i in range(len(rawdata)-1,-1,-1):
             if suffix(rawdata[i]):
@@ -264,20 +165,18 @@ class RawQC(QC_Controller):
 #        self._render("w")
         self._check()
         self.summaryRender = dict(self.summaryRender.items()+self.render.items())
-         
-        
+
 class MappingQC(QC_Controller):
     """ MappingQC aims to describe the mapping quality of the sequence alignment. """
     def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',summaryRender = {},log = '', **args):
         super(MappingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.summaryRender = summaryRender
-        self.bowtiesummary = self.rule['root']['data_summary']
+        self.bowtiesummary = self.rule.summary.datasummary
         self.log("Preparing mapping QC")
 
     def _basic_mapping_statistics_info(self,bowtiesummary = ''):
         """ Stastic summary of mapping result for each sample. """
-        
         summary = []
         names, totalReads,mappedReads,uniqueReads,uniqueLocation,mapRatio =[],[],[],[],[],[]
         redundant = []
@@ -298,11 +197,11 @@ class MappingQC(QC_Controller):
                     uniqueLocation.append(line.split('=')[1].strip())
                     mapRatio.append(round(float(mapped)/float(total),3))
 
-        with open(self.rule['qcresult']['filterdup']) as frddt:
+        with open(self.rule.qc.filterdup) as frddt:
             for line in frddt:
                 score = round(float(line.strip().split('=')[1]),3)
                 redundant.append(score)
-                
+
         # formating
         name_sp = map(underline_to_space, names)
         digit_tex = lambda x:digit_format(x,sep="\,") # comma in Tex file should be "/,"
@@ -311,21 +210,16 @@ class MappingQC(QC_Controller):
                                  "data": name_sp[i],
                                  "value": mappedReads[i],
                                  "cutoff": 5000000})
-            print name_sp
-            print redundant
-            print totalReads
-            print mappedReads
-            print mapRatio
-            print uniqueLocation
-            print i
-            
-            summary.append([name_sp[i],
-                            digit_tex(totalReads[i]),
-                            digit_tex(mappedReads[i]),
-                            percent_format(mapRatio[i]),
-                            digit_tex(uniqueLocation[i]),
-                            percent_format(redundant[i])])
-            
+            # index problem
+            try:
+                summary.append([name_sp[i],
+                                digit_tex(totalReads[i]),
+                                digit_tex(mappedReads[i]),
+                                percent_format(mapRatio[i]),
+                                digit_tex(uniqueLocation[i]),
+                                percent_format(redundant[i])])
+            except:
+                pass
         for i in range(len(name_sp)):
             self.checker.append({"desc": 'Unique location',
                                  "data": name_sp[i],
@@ -342,8 +236,8 @@ class MappingQC(QC_Controller):
         mappratio_history = self.db.fetchall()
         historyData = [str(i[0]) for i in mappratio_history]
         historyData = ','.join(historyData)
-        rCode = self.rule['qcresult']['mappable_ratio_r']
-        pdfName = self.rule['qcresult']['mappable_ratio']        
+        rCode = self.rule.qc.mappable_ratio_r
+        pdfName = self.rule.qc.mappable_ratio
         rnames = str(names)[1:-1]
         ratioList = [str(i) for i in ratioList]
         rratioList = ','.join(ratioList)
@@ -370,10 +264,10 @@ class MappingQC(QC_Controller):
         names = [os.path.splitext(os.path.split(i)[1])[0] for i in bamList]
         print names
         ratioList = []# store ratio for plot
-        if has_content(self.rule['qcresult']['filterdup']) and self.debug:
-            self.log("filterdup is skipped because %s exists" % self.rule['qcresult']['filterdup'])
+        if has_content(self.rule.qc.filterdup) and self.debug:
+            self.log("filterdup is skipped because %s exists" % self.rule.qc.filterdup)
         else:
-            with open(self.rule['qcresult']['filterdup'],'w') as fph:
+            with open(self.rule.qc.filterdup,'w') as fph:
                 for i in range(len(bamList)):
                     bamfile = bamList[i]
                     temp = bamfile+".filterdup.temp"
@@ -381,7 +275,7 @@ class MappingQC(QC_Controller):
                     cmd = 'macs2 filterdup --keep-dup=1 -t {0} -g {1} -o {2} 2>&1 >/dev/null |tee -a {3}'
                     # print stderr both to screen and file, abandon stdout
                     cmd = cmd.format(bamfile,
-                                     self.conf['qc']['filterdup_species'],
+                                     self.conf.qc.species,
                                      temp_out,
                                      temp)
                     if self.debug:
@@ -397,8 +291,7 @@ class MappingQC(QC_Controller):
                             score = 1-round(float(score),3)
                             fph.write('%s=%f\n'%(names[i],score))
 
-                  
-        with open(self.rule['qcresult']['filterdup']) as fph:
+        with open(self.rule.qc.filterdup) as fph:
             for line in fph:
                 score = round(float(line.strip().split('=')[1]),3)
                 ratioList.append(score)
@@ -407,10 +300,10 @@ class MappingQC(QC_Controller):
             self.checker.append({"desc": 'Non-Redundant ratio',
                                  "data": name_sp[i],
                                  "value": ratioList[i],
-                                 "cutoff": 0.8})         
+                                 "cutoff": 0.8})
 
-        pdfName = self.rule['qcresult']['redundant_ratio']
-        rCode = self.rule['qcresult']['redundant_ratio_r']
+        pdfName = self.rule.qc.redundant_ratio
+        rCode = self.rule.qc.redundant_ratio_r
 
         self.db.execute("select redundant_rate from peak_calling_tb")
         redundant_history = self.db.fetchall()
@@ -429,27 +322,26 @@ class MappingQC(QC_Controller):
                     'xlab':'Non-Redundant rate',
                     'ylab':'fn(Non-Redundant rate)',
                     'other':True}
-        
+
         content = self.Rtemplate.render(Rrender).replace('%','\\%')
         with open(rCode, 'w') as f:
             f.write(content)        
 
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         return pdfName
-        
+
     def run(self):
         """ Run some MappingQC function to get final result.
             input: mapping result and path of bam file.  
         """
         print 'mapping qc'
-        print self.rule['bowtieresult']['bam_treat']
-        if not any(map(lambda x: x.endswith(".bed"), self.rule['bowtieresult']['bam_treat'])):
+        print self.rule.samtools.bamtreat
+        if not any(map(lambda x: x.endswith(".bed"), self.rule.samtools.bamtreat)):
             bowtiesummary = self.bowtiesummary
             self.render['MappingQC_check'] = True
             self.render['Bowtie_check'] = True
-            bamList = self.rule['bowtieresult']['bam_treat']+self.rule['bowtieresult']['bam_control']
+            bamList = self.rule.samtools.bamtreat + self.rule.samtools.bamcontrol
             self.render['redundant_ratio_graph'] = self._redundant_ratio_info(bamList)
-
 
             self.render['basic_map_table'], names,mappedRatio= self._basic_mapping_statistics_info(bowtiesummary)
             self.render['mappable_ratio_graph'] = self._mappable_ratio_info(mappedRatio,names)
@@ -464,15 +356,15 @@ class PeakcallingQC(QC_Controller):
         super(PeakcallingQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.summaryRender = summaryRender
-        self.peaksxls = self.rule['macsresult']['peaks_xls']
-        self.peaksbed = self.rule['macsresult']['treat_peaks']
-        self.vennGraph = self.rule['represult']['ven_png']
-        self.corrPlot = self.rule['represult']['cor_pdf']
-        self.corrR = self.rule['represult']['cor_r']
-        
+        self.peaksxls = self.rule.macs.peaksxls
+        self.peaksbed = self.rule.macs.treatpeaks
+        self.vennGraph = self.rule.corven.venpng
+        self.corrPlot = self.rule.corven.corpdf
+        self.corrR = self.rule.corven.corR
+
     def _peak_summary_info(self,peaksxls):
         """Basic statistic of peak calling result."""
-        name = 'dataset'+self.conf['meta']['dataset_id']
+        name = 'dataset'+self.conf.basis.id
         with open(peaksxls,"rU" ) as fhd:
             float_fc = []
             cutoff = "unknown"
@@ -503,12 +395,11 @@ class PeakcallingQC(QC_Controller):
         self.fold_10 = len(d10)+0.01
         return peaks_summary
 
-
     def _high_confidentPeaks_info(self):
         """
         cummulative percentage of peaks foldchange great than 10
         """
-        name = 'dataset'+self.conf['meta']['dataset_id']
+        name = 'dataset'+self.conf.basis.id
         self.db.execute("select peak_fc_10 from peak_calling_tb")
         highpeaks_history = self.db.fetchall()
 #        historyData = [str(math.log(i[0]+0.001,10)) for i in highpeaks_history]
@@ -516,8 +407,8 @@ class PeakcallingQC(QC_Controller):
 #        historyData = [i for i in historyData if i!='null']
         historyData = ','.join(historyData)
 
-        pdfName = self.rule['qcresult']['fold_ratio']
-        rCode = self.rule['qcresult']['fold_ratio_r']
+        pdfName = self.rule.qc.fold_ratio
+        rCode = self.rule.qc.fold_ratio_r
         lg_10 = round(math.log(self.fold_10,10),3)
 
         Rrender = {'histroyData':historyData,
@@ -532,7 +423,7 @@ class PeakcallingQC(QC_Controller):
         
         content = self.Rtemplate.render(Rrender).replace('%','\\%')
         with open(rCode, 'w') as f:
-            f.write(content)        
+            f.write(content)
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
 #        self.checker.append({"desc":'Fold change ',
 #                             "data":name,
@@ -544,23 +435,23 @@ class PeakcallingQC(QC_Controller):
     def _velcro_ratio_info(self,peakbed):
         """verlcro ratio is used to describe whether the peak is credible , The lower the result is more convenience.
          The cumulative percentage plot can reflect the particularly dataset's verlcro ratio quality of all historic data."""
-        name = 'dataset'+self.conf['meta']['dataset_id']
-        historyFile = self.conf['venn']['velcro_path']
+        name = 'dataset'+self.conf.basis.id
+        historyFile = self.conf.bedtools.velcro
         overlapped_bed_file = "overlapped_bed_file" # temp
-        cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
-        cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
-                peakbed,
-                historyFile,
-                overlapped_bed_file
-                )
+        cmd = '{0} intersect -wa -u -a {1} -b  {2} > {3}'
+        cmd = cmd.format(self.conf.bedtools.path,
+                         peakbed,
+                         historyFile,
+                         overlapped_bed_file
+                         )
         self.run_cmd(cmd)
         fhd = open(overlapped_bed_file,"r")
         num_overlapped_peaks = len(fhd.readlines())
         fhd.close()
 
         velcro_ratio = round(1-float(num_overlapped_peaks)/self.totalpeaks,3)
-        rCode = self.rule['qcresult']['velcro_ratio_r']
-        pdfName = self.rule['qcresult']['velcro_ratio']
+        rCode = self.rule.qc.velcro_ratio_r
+        pdfName = self.rule.qc.velcro_ratio
 
         self.db.execute("select velcro_rate from peak_calling_tb")
         velcro_history = self.db.fetchall()
@@ -579,10 +470,10 @@ class PeakcallingQC(QC_Controller):
                     'xlab':'non-velcro ratio',
                     'ylab':'fn(non-velcro ratio)',
                     'other':True}
-        
+
         content = self.Rtemplate.render(Rrender)
         with open(rCode, 'w') as f:
-            f.write(content)                
+            f.write(content)
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
 #        if velcro_ratio >= 0.1:
 #            judge = 'Fail'
@@ -592,18 +483,18 @@ class PeakcallingQC(QC_Controller):
         self.checker.append({"desc":'Overlap with non-velcro ',
                              "data":name,
                              "value":velcro_ratio,
-                             "cutoff":0.9})     
+                             "cutoff":0.9})
         return pdfName
-        
+
     def _DHS_ratio_info(self,peakbed):
         """ DHS ratio indicate the percentage of peaks overlap with DHSs site.
         The function can describe  the particularly dataset's DHS ratio quality of all historic data.
         """
-        name = 'dataset'+self.conf['meta']['dataset_id']
-        historyFile = self.conf['venn']['dhs_bed_path']
-        overlapped_bed_file = "overlapped_dhs"
-        cmd = '{0} -wa -u -a {1} -b  {2} > {3}'
-        cmd = cmd.format(self.conf['bedtools']['intersectbed_main'],
+        name = 'dataset'+self.conf.basis.id
+        historyFile = self.conf.bedtools.dhs
+        overlapped_bed_file = "overlapped_dhs" # tmp
+        cmd = '{0} intersect -wa -u -a {1} -b  {2} > {3}'
+        cmd = cmd.format(self.conf.bedtools.path,
                         peakbed,
                         historyFile,
                         overlapped_bed_file
@@ -619,9 +510,9 @@ class PeakcallingQC(QC_Controller):
         historyData = ','.join(historyData)
 
         pointText = str(dhs_ratio*100)+'%'
-        rCode = self.rule['qcresult']['dhs_ratio_r']
-        pdfName = self.rule['qcresult']['dhs_ratio']
-        
+        rCode = self.rule.qc.DHS_ratio_r
+        pdfName = self.rule.qc.DHS_ratio
+
         Rrender = {'histroyData':historyData,
                     'value':dhs_ratio,
                     'name':"'ratio overlap with DHSs:%s'"%pointText ,
@@ -631,18 +522,18 @@ class PeakcallingQC(QC_Controller):
                     'xlab':'Overlapped_with_DHSs',
                     'ylab':'fn(Overlapped_with_DHSs)',
                     'other':True}
-        
+
         content = self.Rtemplate.render(Rrender)
         with open(rCode, 'w') as f:
             f.write(content)                
-        
+
         self.run_cmd('Rscript %s' % rCode, exit_ = False)
         self.checker.append({"desc":'Overlap with DHSs  ',
                              "data":'%s'%name,
                              "value":'%f'%dhs_ratio,
                              "cutoff":0.8})
         return pdfName
-        
+
     def _replicate_info(self,vennGraph = '',correlationPlot = '',correlationR = ''):
         """ ReplicateQC aims to describe the similarity of replicate experiment. Venn diagram and correlation plot will be used."""
         self.render['replicate_check'] = True
@@ -690,34 +581,33 @@ class PeakcallingQC(QC_Controller):
             self.render['high_confident_peak_graph'] = self._high_confidentPeaks_info()
         if exists(peaksbed):
             self.render['DHS_ratio_graph'] = self._DHS_ratio_info(peaksbed)
-        if self.conf['meta']['species']=='hg19':
+        if self.conf.basis.species =='hg19':
             self.render['verlcro_check'] = True
             self.render['velcro_ratio_graph'] = self._velcro_ratio_info(peaksbed)
-        if len(self.conf['meta']['treatments']) >= 2 :
-            vennGraph = os.path.abspath(self.rule['represult']['ven_png'])
-            correlationPlot = os.path.abspath(self.rule['represult']['cor_pdf'])
+        if self.conf.basis.treatnumber >= 2 :
+            vennGraph = os.path.abspath(self.rule.corven.venpng)
+            correlationPlot = os.path.abspath(self.rule.corven.corpdf)
             self._replicate_info(vennGraph,correlationPlot,correlationR)
             print vennGraph,correlationPlot
 #        self._render()
         self._check()
         self.summaryRender = dict(self.summaryRender.items()+self.render.items())
-        
 
-        
+
 class AnnotationQC(QC_Controller):
     """ AnnotationQC aims to describe the quality of annotations after peak calling. """ 
     def __init__(self,conf = '',rule = '', texfile = '',summarycheck = '',summaryRender = {},log = '', **args):
         super(AnnotationQC, self).__init__(conf, rule, log, texfile, **args)
         self.summarycheck = summarycheck
         self.summaryRender = summaryRender
-        self.peaksxls = self.rule['macsresult']['peaks_xls']
-        self.ceasCode = self.rule['ceasresult']['ceasr']
+        self.peaksxls = self.rule.macs.peaksxls
+        self.ceasCode = self.rule.ceas.R
         self.seqpos_out_path = lambda x:os.path.join("./results",x) # Fixed path
         self.seqpos_stats_out = "seqpos.txt"
-        self.conservationFile = self.rule['conservresult']['conserv_png']
-        self.conservationR = self.rule['conservresult']['conserv_r']
+        self.conservationFile = self.rule.conservation.conservpng
+        self.conservationR = self.rule.conservation.conservR
         print 'initialization of function qc'
-        
+
     def _ceas_info(self,peakxls,ceasCode):
         """ Describe peaks' distribution and relative position. """
         fhd = open( peakxls,"r" )
@@ -734,17 +624,17 @@ class AnnotationQC(QC_Controller):
                     list_fc.append(fc)
         with open(ceasCode) as cf:
             ceastring = cf.read()
-            
+
         Metaregxcontent = re.findall(r'layout\(matrix\(c\(1, 2, 3, 3, 4, 5\)[^z]*abline\(v=3000\.000000,lty=2,col=c\("black"\)\)', ceastring)[0]
         Pieregxcontent = re.findall(r'# Thus, look at the labels of the pie chart[^z]*# ChIP regions over the genome', ceastring)[0]
         piescript = '\n'.join(Pieregxcontent.split('\n')[4:-3]) + '\n'
         Metascript = '\n'.join(Metaregxcontent.split('\n')[1:]) + '\n'
         # plot 
-        rCode = self.rule['qcresult']['ceas_qc_r']
-        Metagene = self.rule['qcresult']['ceas_meta_pdf']
-        Ceasprofile = self.rule['qcresult']['ceas_profile_pdf']
+        rCode = self.rule.qc.ceas_QC_r
+        Metagene = self.rule.qc.ceas_meta_pdf
+        Ceasprofile = self.rule.qc.ceas_profile_pdf
         list_fcr = ','.join(list_fc)
-        
+
         with open(rCode,'w') as f:
             f.write("pdf('%s',height=11.5,width=8.5)\n" %Metagene )
             f.write('nf <- layout(matrix(c(1,1,2,3,4,5), 3, 2, byrow=TRUE),respect=TRUE)\n')
@@ -819,7 +709,7 @@ class AnnotationQC(QC_Controller):
         with open(histotyDataName) as hf:
                 historyData = hf.readlines()
                 cutoff = len(historyData)/2
-                
+
         scoreList = []
         for i in range(len(historyData)):
             temp = historyData[i].strip()
@@ -832,7 +722,7 @@ class AnnotationQC(QC_Controller):
             judge = 'pass'
         else:
             judge = 'fail'
-        temp = ['Conservation QC','dataset%s'%self.conf['meta']['dataset_id'],'%f'%round(min(scoreList),3),' ','%s'%judge]
+        temp = ['Conservation QC','dataset%s'%self.conf.basis.id, '%f' % round(min(scoreList),3),' ','%s'%judge]
         self.summarycheck.append(temp)
 #        print historyData[mindist]
 #        print value
@@ -841,8 +731,8 @@ class AnnotationQC(QC_Controller):
         value = [str(i) for i in value]
         ymax = max(value+judgevalue)
         ymin = min(value+judgevalue)
-        rCode = self.rule['qcresult']['conservation_compare_r']
-        pdfName = self.rule['qcresult']['conservation_compare_pdf']
+        rCode = self.rule.qc.conservation_compare_r
+        pdfName = self.rule.qc.conservation_compare_pdf
         with open(rCode,'w') as f:
             f.write("pdf('%s',height=8.5,width=8.5)\n" % pdfName)
             f.write("%s\n" % xlab)
@@ -890,20 +780,23 @@ class AnnotationQC(QC_Controller):
                 of.write('\t'.join(i)+'\n')
     def motif_top(self):
         p=MotifParser()
-        outdir = self.conf['meta']['output_dir']
+        outdir = self.conf.basis.output
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
         s2.sort(key=lambda x:x['zscore'][0],reverse=True)
         output = []
         for con in range(5):
-             i = s2[con]
-             logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
-             tempt = {'motif':i['synonym'],'hits':str(i['hits'][0]),'Zscore':str(i['zscore'][0]),'logo':logor}
-             output.append(tempt)
+            try:
+                 i = s2[con]
+                 logor = os.path.join(outdir,'results/',str(i['logoImg'][0]))
+                 tempt = {'motif':i['synonym'],'hits':str(i['hits'][0]),'Zscore':str(i['zscore'][0]),'logo':logor}
+                 output.append(tempt)
+            except IndexError:
+                pass
         return output
 
     def motif_info(self,atype):
-        outdir = self.conf['meta']['output_dir']
+        outdir = self.conf.basis.output
         p=MotifParser()
         p.ParserTable(self.seqpos_stats_out)
         s2 = p.motifs.values()
@@ -1017,21 +910,20 @@ class SummaryQC(QC_Controller):
             self.packfile()
 
     def packfile(self):
-        qcfolder = '%s_QCresult' %self.conf['meta']['dataset_id']
+        qcfolder = '%s_QCresult' %self.conf.basis.id
         os.system('mkdir %s' %qcfolder)
-        for iterm in self.rule['qcresult']:
-            print self.rule['qcresult'][iterm]
-            if isinstance(self.rule['qcresult'][iterm], list):
-                for subiterm in self.rule['qcresult'][iterm]:
+        for iterm in self.rule.qc:
+            print self.rule.qc.iterm
+            if isinstance(self.rule.qc.iterm, list):
+                for subiterm in self.rule.qc.iterm:
                     if has_content(subiterm):
                         cmd = 'cp -rf %s %s'%(subiterm, qcfolder)
                         self.run_cmd(cmd)
                         print subiterm
-            elif has_content(self.rule['qcresult'][iterm]):
-                print self.rule['qcresult'][iterm]
-                cmd = 'cp -rf %s %s'%(self.rule['qcresult'][iterm], qcfolder)
+            elif has_content(self.rule.qc.iterm):
+                print self.rule.qc.iterm
+                cmd = 'cp -rf %s %s'%(self.rule.qc.iterm, qcfolder)
                 self.run_cmd(cmd)
-
 
 
 
