@@ -13,7 +13,6 @@ HELP
 }
 
 # options
-echo $1
 while [ -n "$1" ]; do
     case $1 in
         -h)help;shift 1;;
@@ -24,16 +23,15 @@ while [ -n "$1" ]; do
     esac
 done
 
-if [ -n $pathd ]; then
-    help
-    echo "Please input the path for storing download data"
-fi
-if [ -d $pathd ]
+if [ -n $pathd ]
 then
-    echo "directory exists"
+    echo "input path right"
 else
-    mkdir $pathd
+    echo "no such directory"
+    help
+    exit 0
 fi
+mkdir -p $pathd
 
 ## choose for all users or single user
 PS3="Choose (1-2)"
@@ -51,9 +49,8 @@ if [[ $u = root ]]
 then
     echo "install for all users"
 else
-    echo "Need root authority, please ask your administrator!"
-    echo "Or try personal install"
-    exit 1
+    echo "No root authority, please ask your administrator!"
+    echo "Or try personal install, use local directory for bin and data"
 fi
 
 # users could customize executive bin path
@@ -71,9 +68,9 @@ if [ ! -f $data ]; then
 fi
 
 # cp built-in data
-cp chilin/lib/db/*.bed $data
-cp chilin/lib/db/*.txt $data
-unzip chilin/lib/db/DHS.zip -d $data
+cp chilin/db/*.bed $data
+cp chilin/db/*.txt $data
+unzip chilin/db/DHS.zip -d $data
 
 # change into pathd to download and install
 cd $pathd
