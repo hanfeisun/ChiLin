@@ -8,9 +8,13 @@ This page is intended for:
 
 **Developers**: in order to make sure they're using the right format
 of data and right version of tool to test, they have a consistent
-naming convention and can find each file easily
+naming convention and can find each file easily.
+Through the pipeline, several temporary files will be generated, some of them are only used for settings 
+and transitions, others for continuing the next step, the rest for publishing and interpreting a biological 
+story. Below is three sections of tables for universal name rules.
 
-`Raw Data`
+
+Raw Data
 =============
 
 supported format
@@ -34,7 +38,7 @@ ChiLin may **not** support the following format in current version:
 Format  Type     Solution
 ======  =======  ===============================================
 SRA     Seq      Use `SRA Toolkit`_ to convert to FASTQ format
-BED     Summit   
+BED     Summit
 BED     Peak     Could be converted to bam files using `bedToBam`
 wig     Profile
 Bigwig  Profile
@@ -303,14 +307,6 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 ..     annotationQC -> end[taillabel="Output Report"]
 
 
-========================
-Output & Temporary files
-========================
-
-This page is intended for:
-
-
-Through the pipeline, several temporary files will be generated, some of them are only used for settings and transitions, others for continuing the next step, the rest for publishing and interpreting a biological story.Below is three sections of tables for universal name rules.
 
 .. note::
      use clear term to replace the ${DatasetID}
