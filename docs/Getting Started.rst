@@ -1,6 +1,6 @@
-============
-Get_started
-============
+===============
+Getting Started
+===============
 
 
 Setting up ChiLin

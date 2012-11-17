@@ -19,18 +19,6 @@ written in Python.
    Manual
    Advanced
    FAQ
-   Dependency data
-   Protocol
-
-API Documentation
------------------
-
-Documentation for every chilin API.
-
-.. toctree::
-   :maxdepth: 2
-
-   api
 
 Others
 ------
