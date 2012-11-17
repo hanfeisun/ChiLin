@@ -17,7 +17,6 @@ written in Python.
    Home
    Getting Started
    Manual
-   How ChiLin works
    Advanced
    FAQ
    Dependency data

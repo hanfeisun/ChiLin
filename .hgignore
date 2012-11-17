@@ -16,3 +16,4 @@ chilin/lib/template/ChiLinjinja.conf
 .DS_Store
 test.jinja
 chilindata
+api.rst
