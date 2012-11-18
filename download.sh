@@ -262,86 +262,82 @@ for s in $species;do
 done
 
 echo "\
-[meta]
-user =
-dataset_id =
+[basis]
+user = foo
+id = 2012
+time = 2102xxx
 species = {{ species }}
-factor = 
-treatments =
-controls =
-output_dir =
-# should add fastq or bam suffix
-[bowtie]
-#BAMTOFASTQ = $bin/bam2fastx
-# latest bedtools
-BAMTOFASTQ = $bin/bamToFastq
+factor = ESR1
+treat = absolutepath
+control = absolutepath
+output = absolutepath
 
-BOWTIE_MAIN = $bin/bowtie
-BOWTIE_GENOME_INDEX_PATH = $bin/{{ species }}
-nBOWTIE_MAX_ALIGNMENT = 1
+[bowtie]
+path = $bin/bowtie
+# for color sequence using color index
+index = $data/{{ species }}
+bam2fq = $bin/bamToFastq
+maxalign = 1
 
 [samtools]
-SAMTOOLS_MAIN = $bin/samtools
-SAMTOOLS_CHROM_LEN_PATH = $data/chromInfo_{{ species }}.txt
-CHROM_LEN_BED_PATH = $data/chr_limit_{{ species }}.bed
+path = $bin/samtools
+chrlen = $data/chromInfo_{{ species }}.txt
+chrbed = $data/chr_limit_{{ species }}.bed
 
 [macs]
-MACS_MAIN = $bin/macs2
-BEDGRAPHTOBIGWIG_MAIN = $bin/bedGraphToBigWig
+path = $bin/macs2
+bg2bw = $bin/bedGraphToBigWig
 bedclip = $bin/bedClip
 
 [bedtools]
-INTERSECTBED_MAIN = $bin/intersectBed
-
-[bed2bam]
-BEDTOBAM_MAIN = $bin/bedToBam
+path = $bin/intersectBed
+dhs = $data/DHS_{{ species }}.bed
+velcro = $data/wgEncodeHg19ConsensusSignalArtifactRegions.bed
 
 [ceas]
-CEAS_MAIN = $bin/ceasBW
-ceas_ex = $bin/ceas-exon
-CEAS_GENETABLE_PATH = $data/{{ species }}.refGene
-CHROM_LEN = $data/chromInfo_{{ species }}.txt
-CEAS_PROMOTER_SIZES = 
-CEAS_BIPROMOTER_SIZES = 
-CEAS_REL_DIST = 
+path = $bin/ceasBW
+exon = $bin/ceas-exon
+refgene = $data/{{ species }}.refGene
+chrlen = $data/chromInfo_{{ species }}.txt
+promoter_sizes =
+bipromoter_sizes =
+rel_dist =
 
 [conservation]
-CONSERV_PLOT_MAIN = $bin/conservation_plot.py
-PEAKS_NUM = 3000
-CONSERV_PLOT_PHAST_PATH = $bin/conservation_{{ species }}
-# use vertebrate Phascon
+path = $bin/conservation_plot.py
+peaks = 3000
+width = 4000
+phast = $data/conservation_{{ species }}
 
 [correlation]
-WIG_CORRELATION_MAIN = $bin/bigwig_correlation.py
-WIG_CORRELATION_STEP = 10
-WIG_CORRELATION_METHOD = mean 
-WIG_CORRELATION_MIN = 2
-WIG_CORRELATION_MAX = 50
+path = $bin/bigwig_correlation.py
+wig_correlation_step = 10
+wig_correlation_method = mean
+wig_correlation_min = 2
+wig_correlation_max = 50
 
 [venn]
-VENN_DIAGRAM_MAIN = $bin/venn_diagram.py
-DHS_BED_PATH = $data/DHS/DHS_{{ species }}.bed 
-VELCRO_PATH = $data/wgEncodeHg19ConsensusSignalArtifactRegions.bed
-# velcro only available for hg19
+path = $bin/venn_diagram.py
 
 [seqpos]
-SEQPOS_MAIN = $bin/MDSeqPos.py
-SEQPOS_TOP_PEAKS = 1000
-SEQPOS_MDSCAN_WIDTH = 200
-SEQPOS_MDSCAN_TOP_PEAKS = 200
-SEQPOS_MDSCAN_TOP_PEAKS_REFINE = 500
-SEQPOS_WIDTH = 600
-SEQPOS_PVALUE_CUTOFF = 0.001
-SEQPOS_MOTIF_DB_SELECTION = cistrome.xml
+path = $bin/MDSeqPos.py
+species = {{ filterdup_species }}
+summitsnumber = 1000
+mdscan_width = 200
+mdscan_top_peaks = 200
+seqpos_mdscan_top_peaks_refine = 500
+seqpos_width = 600
+seqpos_pvalue_cutoff = 0.001
+db = cistrome.xml
 
-[QC]
-FASTQC_MAIN = $bin/FastQC/fastqc
-FILTERDUP_SPECIES = {{ filterdup_species }}
-" > chilin/lib/template/ChiLinjinja.conf.new
+[qc]
+path = $bin/FastQC/fastqc
+species = {{ filterdup_species }}
+" > chilin/template/ChiLin.conf.sample
 if [ $? -eq 0 ]; then
-    echo "Now automatic  generated conf is chilin/lib/template/ChiLinjinja.conf.new"
+    echo "Now automatic  generated conf is chilin/template/ChiLinjinja.conf.sample"
     echo "template conf has been replaced by the new conf"
-    cp chilin/lib/template/ChiLinjinja.conf.new chilin/lib/template/ChiLinjinja.conf
+    cp chilin/template/ChiLin.conf.sample chilin/conf/ChiLin.conf
 fi
 
 # install Chilin
