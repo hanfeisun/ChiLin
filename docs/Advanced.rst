@@ -9,8 +9,14 @@ and want to participate
 Dive into options
 ===================
 
+Configuration template generator
+---------------------------------
+
+
+
 step control
 ---------------
+
 If you don't want to go from beginning to the end of the pipeline, say, you just want the peaks calling results,
 the choice is the *-d* option, you could end at wherever you want.
 
