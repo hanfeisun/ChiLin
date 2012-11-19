@@ -14,12 +14,11 @@ Project Goal
 ==================
 There are two main command for the pipeline.
 The one `merge_DC` is for previous reservation version for constructing Cistrome Secondary Database;
-The New Version  `chilin` provide a more flexible handle for understanding the ChIP-seq analysis workflow.
-
+The New Version  ChiLin_ provide a more flexible handle for understanding the ChIP-seq analysis workflow.
 
 There are two layers for pipeline goal.This is part of the Cistrome_ project
 
-1.command line :: 
+1.command line ::
 
   The goal is to simply input the sequence data files up to input format
   support and fill in the customized table of experiment descriptions,
@@ -29,8 +28,5 @@ There are two layers for pipeline goal.This is part of the Cistrome_ project
 
   The ChIP-seq pipeline could be incorporated into the Cistrome
 
-
-  
-
-.. _Cistrome: Cistrome.org
-.. _samtools: samtools.sourceforge.net/SAM1.pdf 
+.. _Cistrome: http://Cistrome.org
+.. _ChiLin:: https://bitbucket.org/shenglinmei/chilin
