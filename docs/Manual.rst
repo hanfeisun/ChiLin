@@ -1,21 +1,23 @@
 ============
 Manual
 ============
+This manual is intended for two kind of users group.
 
-This page is intended for:
-**Users**: in order to know where they should go to download these
-  data and tools,what each output file represents
+**Biologists Users**: in order to know where they should go to download these
+data and tools,what each output file represents
 
 **Developers**: in order to make sure they're using the right format
 of data and right version of tool to test, they have a consistent
 naming convention and can find each file easily.
-Through the pipeline, several temporary files will be generated, some of them are only used for settings 
-and transitions, others for continuing the next step, the rest for publishing and interpreting a biological 
+
+Through the pipeline, several temporary files will be generated, some of them are only used for settings
+and transitions, others for continuing the next step, the rest for publishing and interpreting a biological
 story. Below is three sections of tables for universal name rules.
 
+.. _Manual:
 
 Raw Data
-=============
+========
 
 supported format
 ----------------------
@@ -25,14 +27,17 @@ and users could use the *bam* files that has been already mapped back to the gen
 
 ChiLin have been supporting the following format as input:
 
+.. _supported formats<raw data>:
+.. _Raw Data:
+
 ======  ======  ==========================================
 Format  Type    instruction
 ======  ======  ==========================================
-FASTQ   Seq     single-end fastq or absolid colored fastq
+FASTQ_   Seq     single-end fastq or absolid colored fastq
 BAM     Mapped  Skip mapping
 ======  ======  ==========================================
 
-ChiLin may **not** support the following format in current version:
+ChiLin do **not** support the following format in current version:
 
 ======  =======  ===============================================
 Format  Type     Solution
@@ -40,25 +45,56 @@ Format  Type     Solution
 SRA     Seq      Use `SRA Toolkit`_ to convert to FASTQ format
 BED     Summit
 BED     Peak     Could be converted to bam files using `bedToBam`
-wig     Profile
-Bigwig  Profile
+wig     Profile  Use wiggleToBigwiggle to convert to Bigwiggle
+Bigwig  Profile  Compressed Bigwiggle_
 ======  =======  ===============================================
 
 Quality Control
 ---------------------
+This part only use the tools for raw fastq quality control
+
 1. tools involved
+   We integrated Babraham's FastQC to assess the raw FastQ format
+   files and extracted sequence quality scores from their summary,
 
 2. Historic Data to compare
+   new data will be stored for further comparing with all Cistrome_
+   DC project historic data, which is collected by all DC team members
+   and save into sqlite3 database format for indexing.
 
+Output of Raw
+------------------
+1. temporary files
 
-Reads Mapping 
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+
+   FastQC treat data; %(DatasetID)s_rep%(treat_rep)s_treat_fastqc; FastQC
+   FastQC control data; %(DatasetID)s_rep%(control_rep)s_control_fastqc; FastQC
+   FastQC score R code; %(DatasetID)s_fastqc_score_distribution.r; R FastQC
+   FastQC score pdf ; %(DatasetID)s_fastqc_score_distribution.pdf
+
+2. No final result for package by default setting in this step
+
+Reads Mapping
 ==================
+
+Raw reads mapping is the first step for analyzing ChIP-seq data, which
+is very important for following analysis.
 
 Data analysis
 ---------------------
 
+Here, we have chosen the bowtie for mapping raw reads data.
+below is the example command line we set in python script for `hg19`
+::
+
+  > /usr/local/bin/bowtie -p 1 -S -m 1 /mnt/Storage/data/Bowtie/hg19 /mnt/Storage/home/qinq/testchilin/TFtest4806/4806treat1.fastq 4806TF_treat_rep1.sam
+
 Quality Control
 --------------------
+
 
 
 Peak Calling
@@ -91,13 +127,11 @@ Provide the overall report of the whole pipeline for viewing general result.
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
    :delim: ;
-
    root directory ; ${DatasetID}_ceas_combined.pdf  ; Cistron annotation ;  CEAS
    root directory ; ${DatasetID}_GSMID_QC.pdf ; All quality control measurements ; Main program
+
+
 .. _PDF report:
-
-
-.. _Raw Data:
 
 
 
@@ -137,8 +171,14 @@ Motif
 
   analysis the motif of the binding sites.
 
-Quality control
-===============
+
+
+==============
+Quality report
+==============
+
+.. _QC report:
+
 Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a comprehensive quality control report about a particular dataset as well as the relative result compared to the whole DC database.
 
 * Basic information: Species, Cell Type, Tissue Origin, Cell line, Factor, Experiment, Platform,  Treatment and Control. 
@@ -146,13 +186,6 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 * Peak calling QC measurement: Peak calling summary, High confident Peak, Peaks overlapped with DHS(Dnase Hypersensitivity sites), Velcro ratio(human only), Profile correlation within union peak regions, Peaks overlap between Replicates.
 * Functional Genomic QC measurement: Peak Height distribution, Meta Gene distribution, Peak conservation score, Motif QCmeasurement analysis.
 
-
-
-
-.. _FASTQ: http://en.wikipedia.org/wiki/FASTQ_format
-
-
-.. _SRA Toolkit: http://www.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?cmd=show&f=software&m=software&s=software
 
 .. ====
 .. Data
@@ -162,7 +195,7 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 .. -------------
 
 .. The Cpipe package includes all the build-in data for hg19 and mm9. For other species, you may need to download these data from data source or custom it yourself.
- 
+
 .. ============================   ============  =====================  =========  
 .. Data Name                       Used by       Data Source           Format     
 .. ============================   ============  =====================  =========  
@@ -250,18 +283,6 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 .. ============================   =====================  ==================    
 
 
-.. .. _MACS site: https://github.com/taoliu/MACS
-.. .. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
-.. .. _MDSeqPos site: https://bitbucket.org/cistrome/cistrome-applications-harvard/src/c477732c5c88/mdseqpos
-.. .. _bedtools site: http://code.google.com/p/bedtools/
-.. .. _SAMtools site: http://samtools.sourceforge.net/
-.. .. _Bowtie site: http://bowtie-bio.sourceforge.net/index.shtml
-.. .. _UCSC utilities: http://hgdownload.cse.ucsc.edu/admin/exe/
-.. .. _UCSC table browser: http://genome.ucsc.edu/cgi-bin/hgTables
-.. .. _Cistrome site: http://cistrome.org/~hanfei
-.. .. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
-.. .. _pdfTex site: http://www.tug.org/applications/pdftex/ 
-
 .. ========
 .. Workflow
 .. ========
@@ -316,9 +337,9 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 
 Notation
 ========
-All the program operation will be under the ${DatasetID}_folder.  
+All the program operation will be under the `[Basis]` *output* directory.
 
-.. envvar:: ${DatasetID}
+.. envvar:: %{DatasetID}s
 
     The value of :ref:`dataset.id<dataset.id>` option in :envvar:`[meta]` section
 
@@ -346,7 +367,7 @@ Temporary files
    :header: "FolderName", "FileName", "Content", "Tool used"
    :widths: 25, 25, 20, 10
    :delim: ;
-   
+
    root directory ; ${DatasetID}log ; log; class Log
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
@@ -385,13 +406,10 @@ Temporary files
    ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
    ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
 
-
-.. _Processed Data:
-
 Output result
 =============
 
-.. csv-table:: 
+.. csv-table::
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 10
    :delim: ;
@@ -417,8 +435,23 @@ Output result
    ${DatasetID}_QCresult ; ${DatasetID}_QC.pdf ; QC report ; :ref:`pdftex`
    root directory ; ${DatasetID}_summary.txt ; Data analysis summary ; : ref : `Built-in tools<Built-in tools>`
 
-
-
-
+.. _R: http://www.r-project.org/
 .. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
 .. _pdftex site: http://www.tug.org/applications/pdftex/
+.. _samtools: samtools.sourceforge.net/SAM1.pdf
+.. _Bigwiggle: http://genome.ucsc.edu/goldenPath/help/bigWig.html
+.. _FASTQ: http://en.wikipedia.org/wiki/FASTQ_format
+.. _SRA Toolkit: http://www.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?cmd=show&f=software&m=software&s=software
+.. _Processed Data:
+.. _Cistrome: http://Cistrome.org
+.. _MACS site: https://github.com/taoliu/MACS
+.. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
+.. _MDSeqPos site: https://bitbucket.org/cistrome/cistrome-applications-harvard/src/c477732c5c88/mdseqpos
+.. _bedtools site: http://code.google.com/p/bedtools/
+.. _SAMtools site: http://samtools.sourceforge.net/
+.. _Bowtie site: http://bowtie-bio.sourceforge.net/index.shtml
+.. _UCSC utilities: http://hgdownload.cse.ucsc.edu/admin/exe/
+.. _UCSC table browser: http://genome.ucsc.edu/cgi-bin/hgTables
+.. _Cistrome site: http://cistrome.org/~hanfei
+.. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
+.. _pdfTex site: http://www.tug.org/applications/pdftex/ 
