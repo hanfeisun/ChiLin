@@ -14,6 +14,8 @@ Through the pipeline, several temporary files will be generated, some of them ar
 and transitions, others for continuing the next step, the rest for publishing and interpreting a biological
 story. Below is three sections of tables for universal name rules.
 
+.. _Manual:
+
 Raw Data
 ========
 
@@ -31,7 +33,7 @@ ChiLin have been supporting the following format as input:
 ======  ======  ==========================================
 Format  Type    instruction
 ======  ======  ==========================================
-FASTQ   Seq     single-end fastq or absolid colored fastq
+FASTQ_   Seq     single-end fastq or absolid colored fastq
 BAM     Mapped  Skip mapping
 ======  ======  ==========================================
 
@@ -60,14 +62,30 @@ This part only use the tools for raw fastq quality control
    DC project historic data, which is collected by all DC team members
    and save into sqlite3 database format for indexing.
 
-Reads Mapping 
+Output of Raw
+------------------
+1. temporary files
+
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+
+   FastQC treat data; %(DatasetID)s_rep%(treat_rep)s_treat_fastqc; FastQC
+   FastQC control data; %(DatasetID)s_rep%(control_rep)s_control_fastqc; FastQC
+   FastQC score R code; %(DatasetID)s_fastqc_score_distribution.r; R FastQC
+   FastQC score pdf ; %(DatasetID)s_fastqc_score_distribution.pdf
+
+2. No final result for package by default setting in this step
+
+Reads Mapping
 ==================
 
 Raw reads mapping is the first step for analyzing ChIP-seq data, which
-is very important for latter analysis.
+is very important for following analysis.
 
 Data analysis
 ---------------------
+
 Here, we have chosen the bowtie for mapping raw reads data.
 below is the example command line we set in python script for `hg19`
 ::
@@ -76,6 +94,8 @@ below is the example command line we set in python script for `hg19`
 
 Quality Control
 --------------------
+
+
 
 Peak Calling
 =============
@@ -107,9 +127,10 @@ Provide the overall report of the whole pipeline for viewing general result.
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
    :delim: ;
-
    root directory ; ${DatasetID}_ceas_combined.pdf  ; Cistron annotation ;  CEAS
    root directory ; ${DatasetID}_GSMID_QC.pdf ; All quality control measurements ; Main program
+
+
 .. _PDF report:
 
 
@@ -166,8 +187,6 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 * Functional Genomic QC measurement: Peak Height distribution, Meta Gene distribution, Peak conservation score, Motif QCmeasurement analysis.
 
 
-
-
 .. ====
 .. Data
 .. ====
@@ -176,7 +195,7 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 .. -------------
 
 .. The Cpipe package includes all the build-in data for hg19 and mm9. For other species, you may need to download these data from data source or custom it yourself.
- 
+
 .. ============================   ============  =====================  =========  
 .. Data Name                       Used by       Data Source           Format     
 .. ============================   ============  =====================  =========  
@@ -264,18 +283,6 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 .. ============================   =====================  ==================    
 
 
-.. .. _MACS site: https://github.com/taoliu/MACS
-.. .. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
-.. .. _MDSeqPos site: https://bitbucket.org/cistrome/cistrome-applications-harvard/src/c477732c5c88/mdseqpos
-.. .. _bedtools site: http://code.google.com/p/bedtools/
-.. .. _SAMtools site: http://samtools.sourceforge.net/
-.. .. _Bowtie site: http://bowtie-bio.sourceforge.net/index.shtml
-.. .. _UCSC utilities: http://hgdownload.cse.ucsc.edu/admin/exe/
-.. .. _UCSC table browser: http://genome.ucsc.edu/cgi-bin/hgTables
-.. .. _Cistrome site: http://cistrome.org/~hanfei
-.. .. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
-.. .. _pdfTex site: http://www.tug.org/applications/pdftex/ 
-
 .. ========
 .. Workflow
 .. ========
@@ -330,9 +337,9 @@ Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a 
 
 Notation
 ========
-All the program operation will be under the ${DatasetID}_folder.  
+All the program operation will be under the `[Basis]` *output* directory.
 
-.. envvar:: ${DatasetID}
+.. envvar:: %{DatasetID}s
 
     The value of :ref:`dataset.id<dataset.id>` option in :envvar:`[meta]` section
 
@@ -360,7 +367,7 @@ Temporary files
    :header: "FolderName", "FileName", "Content", "Tool used"
    :widths: 25, 25, 20, 10
    :delim: ;
-   
+
    root directory ; ${DatasetID}log ; log; class Log
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
    ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
@@ -428,7 +435,7 @@ Output result
    ${DatasetID}_QCresult ; ${DatasetID}_QC.pdf ; QC report ; :ref:`pdftex`
    root directory ; ${DatasetID}_summary.txt ; Data analysis summary ; : ref : `Built-in tools<Built-in tools>`
 
-
+.. _R: http://www.r-project.org/
 .. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
 .. _pdftex site: http://www.tug.org/applications/pdftex/
 .. _samtools: samtools.sourceforge.net/SAM1.pdf
@@ -437,3 +444,14 @@ Output result
 .. _SRA Toolkit: http://www.ncbi.nlm.nih.gov/Traces/sra/sra.cgi?cmd=show&f=software&m=software&s=software
 .. _Processed Data:
 .. _Cistrome: http://Cistrome.org
+.. _MACS site: https://github.com/taoliu/MACS
+.. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
+.. _MDSeqPos site: https://bitbucket.org/cistrome/cistrome-applications-harvard/src/c477732c5c88/mdseqpos
+.. _bedtools site: http://code.google.com/p/bedtools/
+.. _SAMtools site: http://samtools.sourceforge.net/
+.. _Bowtie site: http://bowtie-bio.sourceforge.net/index.shtml
+.. _UCSC utilities: http://hgdownload.cse.ucsc.edu/admin/exe/
+.. _UCSC table browser: http://genome.ucsc.edu/cgi-bin/hgTables
+.. _Cistrome site: http://cistrome.org/~hanfei
+.. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
+.. _pdfTex site: http://www.tug.org/applications/pdftex/ 

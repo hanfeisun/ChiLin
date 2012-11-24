@@ -60,6 +60,19 @@ for macs2
 -----------------
 * --shift-size --nomodel: optional
 
+
+motif
+-----
+1. MDscan width is the speed limited step in the denovo motif
+discovery.
+
+conf as following ::
+   [seqpos]
+   ...
+   mdscan_width = 200
+
+2.
+
 Configuration instructions
 ----------------------------
 
@@ -70,7 +83,7 @@ Configuration instructions
 
     .. envvar:: id
 
-        The name for the dataset, which will be the value of :envvar:`${DatasetID}`
+        The name for the dataset, which will be the value of :envvar:`%{DatasetID}s`
         Limit: a string (1) consist of ``numbers``, ``alphabets`` or ``'_'`` (2) shorter than 20 characters
 
     .. envvar:: species
@@ -92,6 +105,10 @@ Configuration instructions
 
        The paths of treatment files
        Limit: absolute or relative ``path`` of files in :ref:`supported formats<raw data>`
+
+
+
+
 
 Dive into rule
 ===============
