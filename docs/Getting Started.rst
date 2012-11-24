@@ -46,28 +46,22 @@ Analyzing single datasets
 Here we recommend a dataset from `GSE30624` for testing whole pipeline
 with :ref:`QC report` generated.
 
-
-
-Simpest config
+Exmaple configuration
 --------------------------
-
 Here is one of the simpest ChiLin_ workflow you can make.
 
 .. literalinclude:: ../chilin/tests/test.conf
       :language: ini
       :linenos:
 
-Use your own path of :ref:`Raw Data<Raw Data>` to replace the Line 6. And use the path of the directory used to store :ref:`External Data` to replace Line 9.
+replace the line 6 to line 9 with your machine configurations.
 When saved to ``test.conf``, this config file can construct a powerful pipeline via:
 
 ::
 
-    > ChiLin run -c test.conf -t TF --debug
+    > ChiLin run -c test.conf -t TF
 
-When it finished about a few minutes later, you will get :ref:`Processed Data<Processed Data>` and a :ref:`PDF report`.
-Replace the commented in Line 2, Line 3 and Line 4 and complete other sections. Then load it with Cpipe.
-For the notation of output files, the :envvar:`${DatasetID}` will be ``demo_replicate``. The :envvar:`${treat_rep}` will be ``1``, ``2`` and ``3``. The :envvar:`${control_rep}` will be ``1`` and ``2``.
-
+detailed output and temporary files will be explained in the :ref:`Manual`
 
 Analyzing datasets in batch
 -------------------------------
@@ -79,7 +73,6 @@ server.
 ==============
 Any question on installation or runnning is appreciated, please mail
 to qinqianhappy@gmail.com.
-
 
 .. chilin-mvc:: https://bitbucket.org/Alvin_Qin/chilin-mvc
 .. ChiLin:: https://bitbucket.org/shenglinmei/chilin
