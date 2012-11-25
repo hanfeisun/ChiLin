@@ -47,7 +47,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'ChiLin manual'
-copyright = u'2012, DC'
+copyright = u'2012, ChiLin Cistrome'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -168,7 +168,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'DCdocdoc'
+htmlhelp_basename = 'ChiLindoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -187,8 +187,8 @@ latex_elements = {
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'DCdoc.tex', u'DCdoc Documentation',
-   u'DC', 'manual'),
+  ('index', 'ChiLin.tex', u'ChiLin Documentation',
+   u'ChIP-seq Pipeline', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -222,7 +222,7 @@ man_pages = [
 ]
 
 # If true, show URL addresses after external links.
-#man_show_urls = False
+man_show_urls = False
 
 
 # -- Options for Texinfo output ------------------------------------------------
@@ -231,8 +231,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'DCdoc', u'DCdoc Documentation',
-   u'DC', 'DCdoc', 'One line description of project.',
+  ('index', 'ChiLin', u'ChiLin Documentation',
+   u'ChiLin', 'ChIP-seq Pipeline', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -240,7 +240,7 @@ texinfo_documents = [
 #texinfo_appendices = []
 
 # If false, no module index is generated.
-#texinfo_domain_indices = True
+texinfo_domain_indices = True
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
-#texinfo_show_urls = 'footnote'
+texinfo_show_urls = 'footnote'

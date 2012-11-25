@@ -151,7 +151,7 @@ class PipeMACS2(PipeController):
         MACS step, separately and merge for sorted bam
         shell example:
         macs2 callpeak -B -q 0.01 --keep-dup 1
-        --shiftsize=73 --nomodel  -t /Users/testuser/Documents/testchilin/testid_treat_rep2.sam  -c control.bam -n test.bed
+        --shiftsize=73 --nomodel  -t /Users/testuser/Documents/testchilin/testid_treat_rep2.bam  -c control.bam -n test.bed
         """
         super(PipeMACS2, self).__init__(conf, rule, log, **args)
         # modify as a hidden option in conf
