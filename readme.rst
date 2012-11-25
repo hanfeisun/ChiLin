@@ -15,9 +15,9 @@ Here is a workflow of using ChiLin::
 
      1. type in this command to generate a config file:
 
-     ChiLin gen -s hg19 > example.conf
+     ChiLin gen -s hg19 > a_meaningful_name.conf
 
-     2.
+     2. modify the basis part to meet your requirement
         [basis]
         user = foo
         id = 2012
@@ -27,3 +27,5 @@ Here is a workflow of using ChiLin::
         treat = absolutepath
         control = absolutepath
         output = absolutepath
+     3. run the analysis part
+        ChiLin run -c a_meaningful_name.conf -t TF(orHistone)
