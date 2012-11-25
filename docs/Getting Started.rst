@@ -54,6 +54,7 @@ Here is one of the simpest ChiLin_ workflow you can make.
       :language: ini
       :linenos:
 
+.. _Get Started
 replace the line 6 to line 9 with your machine configurations.
 When saved to ``test.conf``, this config file can construct a powerful pipeline via:
 

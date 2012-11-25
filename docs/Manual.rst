@@ -14,6 +14,14 @@ Through the pipeline, several temporary files will be generated, some of them ar
 and transitions, others for continuing the next step, the rest for publishing and interpreting a biological
 story. Below is three sections of tables for universal name rules.
 
+.. note::
+   %(DatasetID)s denotes *id* you input in the *basis* section in
+   ChiLin.conf, %(treat_rep)s for treat number, %(control_rep)s for
+   control rep. see :ref:`Get Started`
+   use clear term to fill in the id
+   example: use factor name plus your favorate number to replace the DatasetID below.
+   if data is published, GSEID is recommended.
+
 .. _Manual:
 
 Raw Data
@@ -69,11 +77,13 @@ Output of Raw
 .. csv-table::
    :header: "Content", "File Name", "Tool used"
    :widths: 20, 30, 15
+   :delim: ;
 
-   FastQC treat data; %(DatasetID)s_rep%(treat_rep)s_treat_fastqc; FastQC
-   FastQC control data; %(DatasetID)s_rep%(control_rep)s_control_fastqc; FastQC
-   FastQC score R code; %(DatasetID)s_fastqc_score_distribution.r; R FastQC
-   FastQC score pdf ; %(DatasetID)s_fastqc_score_distribution.pdf
+   FastQC summary ; %{DatasetID}s_fasctqc_summary.txt ; FastQC ; ref:`FastQC`
+   FastQC treat data; %(DatasetID)s_rep%(treat_rep)s_treat_fastqc; FastQC_
+   FastQC control data; %(DatasetID)s_rep%(control_rep)s_control_fastqc; FastQC_
+   FastQC score R code; %(DatasetID)s_fastqc_score_distribution.r; R_ FastQC_
+   FastQC score pdf ; %(DatasetID)s_fastqc_score_distribution.pdf; R_
 
 2. No final result for package by default setting in this step
 
@@ -85,33 +95,223 @@ is very important for following analysis.
 
 Data analysis
 ---------------------
+Modern high throughput sequencers can generate tens of mil-
+lions of sequences in a single run. Before analysing this sequence
+to draw biological conclusions you should always perform some
+simple quality control checks to ensure that the raw data looks
+good and there are no problems or biases in your data which
+may a detect how you can usefully use it.
 
-Here, we have chosen the bowtie for mapping raw reads data.
+Here, we have chosen the bowtie for mapping raw reads data with
+standard parameters.
 below is the example command line we set in python script for `hg19`
 ::
 
-  > /usr/local/bin/bowtie -p 1 -S -m 1 /mnt/Storage/data/Bowtie/hg19 /mnt/Storage/home/qinq/testchilin/TFtest4806/4806treat1.fastq 4806TF_treat_rep1.sam
+  > /usr/local/bin/bowtie -p 1 -S -m 1 /pathtoIndex/hg19 /pathto/treat /outputdirectory/treat.sam
 
 Quality Control
 --------------------
+Built-in tools would extract quality control preparation information
+from standard output of Bowtie and sam files to do the following
+description statistics.
 
+Output of Mapping
+-----------------
+1. temporary files
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+   :delim: ;
 
+   Bowie treat files ; %(DatasetID)s_treat_rep%{treat_rep}s.sam ; :ref:`Bowtie`
+   Bowtie control files ; %(DatasetID)s_control_rep%{control_rep}s.sam ; :ref:`Bowtie`
+   Bowtie temporary summary ; bowtie.tmp ; :ref: `Bowtie`
+
+2. output files
+Bowtie result sam files would be converted to bam binary format for
+minimizing the file sizes through samtools::
+
+    samtools view -bt chrom_len sam bam
+
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+
+   Bowtie treat bam ; %{DatasetID}s_%{control_rep}s.bam  ; :ref:`samtools`
+   Bowtie control bam ; %{DatasetID}s_%{treat_rep}s.bam ; :ref:`samtools`
+
+Groom
+=====
+This part is designed for users who don't have raw reads fastq files,
+but have bam files instead. ChiLin helps to convert bam files to
+fastq files for further processing all pipeline.
+The only different for Usage is to input bam suffix files in the
+*ChiLin.conf*
+
+The convert tool used here is bedtools bamToFastq::
+       bamToFastq -i x.bam -fq test.fq
 
 Peak Calling
 =============
 
 Data Analysis
 --------------------
+We do the peak calling analysis by MACS2,
+we set the parameter to meet the requirement for non redundant tags
+for further analysis. Cutoff of false discovery rate(fdr) is set to
+0.01, only keep one tag for duplicate tags to remove possible bias.
+In default setting, macs2 would not build model.
+The standard command line involves here::
+
+     macs2 callpeak -B -q 0.01 --keep-dup 1 --shiftsize=73 --nomodel  -t /pathto/treat.bam  -c /pathto/control.bam -n macsname
 
 Quality Control
 -------------------
+1. Before peaks calling, bams files would be sent for MACS2_ subparser
+*filterdup* for statistical analysis on mapped reads non redundant
+rate, the higher the measurement is, the better the data quality are.
+2. After peaks calling, There are three measurement involves here,
+total peaks count, confident peaks count , and shift size(optionally,
+used when model=Yes, see in :ref:`advancedconf`)
 
+Output files
+------------
+1. temporary files
+
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+   :delim: ;
+
+   separate treat bedGraphfile ; %{DatasetID}s_treat_rep%{treat_rep}s.bdg ; :ref:`MACS2<MACS2>`
+   separate control MACS bedGraph file ; %{DatasetID}s_control_rep%{control_rep}s.bdg ; :ref:`MACS2<MACS2>`
+   Overall MACS bedGraph file ; %{DatasetID}s_treat.bdg ; :ref:`MACS2<MACS2>`
+   bedGraph temporary file(remove exceptions) ; %{DatasetID}s_treat.bdg.tmp ;  :ref:`MACS2<MACS2>`
+   sortedbed(For get top peaks) ; %(DatasetID)s_sorted.bed ; Linux sort
+   top 1000 peaks(for latter MDSeqpos) ; %{DatasetID}s_top1000_summits.bed ; :ref:`MACS<MACS2>`
+   MACS encode Peak(macs2 output) ; %{DatasetID}s_treat_rep%{treat_rep}s_peaks.encodePeak ; :ref:`MACS<MACS2>` 
+   treatrep_pq_table ; %(DatasetID)s_rep%(treat_rep)s_pq_table.txt ; :ref:`MACS<MACS2>`
+   pq_table ; %(DatasetID)s_pq_table.txt ; :ref:`MACS<MACS2>`
+   treat_rep%(DatasetID)s_rep%(treat_rep)s_treat_pvalue.bdg; :ref:`MACS<MACS2>`
+   treat_pvalue ; %(DatasetID)s_treat_pvalue.bdg; :ref:`MACS<MACS2>`
+   treatrep_qvalue ; %(DatasetID)s_rep%(treat_rep)s_treat_qvalue.bdg ; :ref:`MACS<MACS2>`
+   lambda_bdg ; %(DatasetID)s_rep%(control_rep)s_control_lambda.bdg ; :ref:`MACS<MACS2>`
+
+2. final results
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 25, 20
+   :delim: ;
+   treatreppeaks ; %(DatasetID)s_rep%(treat_rep)s_peaks.bed ; :ref:`MACS<MACS2>`
+   treatpeaks ; %(DatasetID)s_peaks.bed ; :ref:`MACS<MACS2>`
+   treatrepbw ; %(DatasetID)s_treat%(treat_rep)s.bw ; :ref:`MACS<MACS2>`
+   treatbw ; %(DatasetID)s_treat.bw ; :ref:`MACS<MACS2>`
+   controlrepbw ; %(DatasetID)s_rep%(treat_rep)s_control ; :ref:`MACS<MACS2>`
+   controlbw ; %(DatasetID)s_control.bw ; :ref:`MACS<MACS2>`
+   peaksrepxls ; %(DatasetID)s_rep%(treat_rep)s_peaks.xls ; :ref:`MACS<MACS2>`
+   peaksxls ; %(DatasetID)s_peaks.xls ; :ref:`MACS<MACS2>`
+   summitsrep ; %(DatasetID)s_rep%(treat_rep)s_summits.bed ; :ref:`MACS<MACS2>`
+   summits ; %(DatasetID)s_summits.bed ; :ref:`MACS<MACS2>`
+
+Replicates analysis
+===================
+
+Data analysis
+-------------
+Focus on the visulization of similarity between replicates.
+* Draw the venn diagram for peaks if there're less than 3 replicates (treatment or control)
+* plot the Correlation score for whole genome region average peaks score
+
+Quality Control
+---------------
+
+The R code is searched by regular expression to get the needed part
+for generating :ref:`QC report`
+
+.. csv-table::
+   :header: "Folder", "File Name", "Content", "Tool used"
+   :widths: 20, 25, 20, 10
+   :delim: ;
+   
+   ${DatasetID}_Cortmp ; ${DatasetID}_cor.R ; correlation plot code ; :ref:`Buit-in tools`
+   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_dhs.txt ; DHS peaks intersection ; :ref:`BEDtools`
+   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_velcro.txt ; overlap with velcro region; :ref:`BEDtools`
+   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_overlapped_bed ; peaks overlapped ; :ref:`bedtools`
+   ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
+   ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
+
+Meta genomics Study
+=================
+
+Focus on association between intervals (result of peak calling) and traits like genome annotation.
+
+* CEAS: Annotate the given intervals and scores with genome features
+* Conservation Plot: Calculates the PhastCons scores in several intervals sets
+
+output files
+------------
+CEAS part 
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+   :delim: ;
+
+    CIR ; %(DatasetID)s_ceas_CI.R ; :ref:`CEAS`
+    CIpdf ; %(DatasetID)s_ceas_CI.pdf; :ref:`CEAS`
+    xls ; %(DatasetID)s_ceas.xls; :ref:`CEAS`
+    CEAS R script ; %(DatasetID)s_ceas.R; :ref:`CEAS`
+    pdf ; %(DatasetID)s_ceas.pdf
+
+Conservation analysis  part
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+   :delim: ;
+    conservtopsummits ; %(DatasetID)s_top3000summits.bed ; :ref:`built-in tools`
+    conservR ; %(DatasetID)s_conserv.R ; :ref:`built-in tools`
+    conservpng ; %(DatasetID)s_conserv.png ; :ref:`built-in tools`
+
+Motif
+=====
+Here, we use the powerful combination of denovo motif finding
+algorithm, MDscan, and database-based search algorithm, Seqpos for
+motif analysis.
+
+output files
+------------
+.. csv-table::
+   :header: "Content", "File Name", "Tool used"
+   :widths: 20, 30, 15
+   :delim: ;
+
+   summitspeaks1000 ; %(DatasetID)s_summits_p1000.bed; linux tools
+   bgfreq ; %(DatasetID)s_bgfreq ; :ref:`MDSeqpos`
+   seqpos ; %(DatasetID)s_seqpos.zip ; :ref: `MDSeqpos`
+
+Other analysis type
+===================
+
+GO analysis
+-----------
+
+  extract all the genes upstream or downstream the predicting peaks for functional clustering or annotation.
+
+Cistrome Radar/ Finder
+----------------------
+  You could check your top rated peaks in the Cistrome Radar and
+  Finder to find interesting associated results, 
 
 Summary Report
 ===================
 
 Data Analysis Summary text
 ---------------------------
+
+.. csv-table::
+   :header: "Folder", "File Name", "Content", "Tool used"
+   :widths: 20, 25, 20, 15
+
+root directory ; %{DatasetID}slog ; log; class Log
 
 
 Quality Control Report
@@ -127,313 +327,28 @@ Provide the overall report of the whole pipeline for viewing general result.
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
    :delim: ;
-   root directory ; ${DatasetID}_ceas_combined.pdf  ; Cistron annotation ;  CEAS
-   root directory ; ${DatasetID}_GSMID_QC.pdf ; All quality control measurements ; Main program
-
+   root directory ; %{DatasetID}s_ceas_combined.pdf  ; Cistron annotation ;  CEAS
+   root directory ; %{DatasetID}s_GSMID_QC.pdf ; All quality control measurements ; Main program
 
 .. _PDF report:
 
-
-
-Data preprocession
-==================
-
-Convert the raw sequencing data into intervals and profiles.
-
-* Use Bowtie for tag alignment (mapping)
-* Use MACS2 for peak calling
-
-
-Correlation
-===========
-
-Focus on the visulization of similarity between replicates.
-
-* Draw the venn diagram for peaks if there're less than 3 replicates (treatment or control)
-
-
-Association Study
-=================
-
-Focus on association between intervals (result of peak calling) and traits like genome annotation.
-
-* CEAS: Annotate the given intervals and scores with genome features 
-* Conservation Plot: Calculates the PhastCons scores in several intervals sets
-
-.. GO analysis
-.. -----------
-
-..   extract all the genes upstream or downstream the predicting peaks for functional clustering or annotation.
-
-
-Motif
-=====
-
-  analysis the motif of the binding sites.
-
-
-
-==============
-Quality report
-==============
+Quality report Instruction
+--------------------------
+An example QC report is here QC_.
 
 .. _QC report:
 
-Based on Chip-seq pipeline and Cistrome DC database, QC program will generate a comprehensive quality control report about a particular dataset as well as the relative result compared to the whole DC database.
+Based on Chip-seq pipeline and Cistrome DC database, QC program will
+generate a comprehensive quality control report about a particular
+dataset as well as the relative result compared to the whole DC
+database.
+* QC report summary information ::
+     Give an overview of all the measurement pass or fail information
 
-* Basic information: Species, Cell Type, Tissue Origin, Cell line, Factor, Experiment, Platform,  Treatment and Control. 
+* Basic information: Species, Cell Type, Tissue Origin, Cell line, Factor, Experiment, Platform,  Treatment and Control.
 * Reads Genomic Mapping QC measurement: QC of raw sequence data with FastQC, FastQC score distribution, Basic mapping QC statistics, Mappable reads ratio, Mappable Redundant rate.
 * Peak calling QC measurement: Peak calling summary, High confident Peak, Peaks overlapped with DHS(Dnase Hypersensitivity sites), Velcro ratio(human only), Profile correlation within union peak regions, Peaks overlap between Replicates.
 * Functional Genomic QC measurement: Peak Height distribution, Meta Gene distribution, Peak conservation score, Motif QCmeasurement analysis.
-
-
-.. ====
-.. Data
-.. ====
-
-.. Built-in Data
-.. -------------
-
-.. The Cpipe package includes all the build-in data for hg19 and mm9. For other species, you may need to download these data from data source or custom it yourself.
-
-.. ============================   ============  =====================  =========  
-.. Data Name                       Used by       Data Source           Format     
-.. ============================   ============  =====================  =========  
-.. Chromesome length              samtools      `UCSC table browser`_  2-column   
-.. Chromesome length              CEAS          --                     --
-.. Genome backgroud annotation    CEAS          `CEAS site`_           sqlite3
-.. DHS region                     bedtools      Custom                 BED
-.. Velcro region                  bedtools	     Custom                 BED
-.. Motif database                 MDSeqPos      `MDSeqPos site`_       xml
-.. FastQC result database         QCreport      Custom                 bed
-.. Data summary database          QCreport      Custom                 bed
-.. ============================   ============  =====================  =========
-
-
-.. .. _External Data:
-
-.. External Data
-.. -------------
-
-.. Some data are too large to be included by the pipeline package, so you need to download these data from data source.
-
-.. ============================   =================  =====================  =========  
-.. Data Name                       Used by           Data Source            Format     
-.. ============================   =================  =====================  =========  
-.. Bowtie pre-built index         Bowtie             `Bowtie site`_         ebwt
-.. Conservation profile           Conservation Plot  `Cistrome site`_       Bigwig
-.. ============================   =================  =====================  =========  
-
-.. =====
-.. Tools
-.. =====
-
-.. Built-in Tools
-.. --------------
-
-.. Built-in tools are the scripts that can be run from command-line independently when you have installed the Cpipe package.
-
-
-.. .. _Built-in tools:
-
-.. ============================   =====================  
-.. Tool Name                      Modified from        
-.. ============================   =====================  
-.. liftover
-.. Venn Diagram
-.. Conservation Plot
-.. Correlation plot               bigwig_correlation
-.. bamtofastq
-.. BedClip
-.. wigTobigwiggle
-.. RegPotential
-.. sample_contamination
-.. ============================   =====================  
-
-
-.. .. _Bowtie:
-.. .. _samtools:
-.. .. _MACS2:
-.. .. _MDSeqpos:
-.. .. _BEDtools:
-.. .. _External Tools:
-
-.. External Tools
-.. --------------
-
-
-.. External Tools are the tools invoked by Cpipe by their path.
-
-.. ============================   =====================  ==================    
-.. Tool Name                      Download source         Version
-.. ============================   =====================  ==================    
-.. FastQC
-.. R
-.. Cython
-.. MACS2                          `MACS site`_           2.0.10 20120605
-.. CEAS                           `CEAS site`_           0.9.9.7
-.. bedtools		       `bedtools site`_	      v2.16.2
-.. pybedtools
-.. samtools		       `SAMtools site`_	      0.1.17
-.. Bowtie                         `Bowtie site`_         0.12.8
-.. bedGraphToBigWig	       `UCSC utilities`_      v4
-.. FastQC                         `FastQC site`_         v0.10.1
-.. pdfTeX                         `pdfTex site`_         v1.40.10
-.. IGV
-.. ============================   =====================  ==================    
-
-
-.. ========
-.. Workflow
-.. ========
-
-.. .. digraph:: foo
-
-..     rankdir=TB
-..     size="15,15"
-..     edge[arrowhead=open]
-
-..     start[shape=circle, label="", style=filled]
-..     end[shape=doublecircle, label="", style=filled]
-
-..     readconf[shape=box,style=rounded, label="class Check"]
-..     bowtie[shape=box,style=rounded, label="Run Bowtie"]
-..     rawQC[shape=box,style=rounded, label="Run RawQC"]
-..     mappingQC[shape=box,style=rounded, label="Run MappingQC"]
-..     macs2[shape=box,style=rounded, label="Run MACS2"]
-..     peakcallingQC[shape=box,style=rounded, label="Run PeakcallingQC"]
-..     ceas_seqpos[shape=box,style=rounded, label="Run CEAS/Seqpos"]
-..     venn[shape=box,style=rounded, label="class Replicates, Draw VennDiagram and Correlation plot"]
-..     conservation[shape=box,style=rounded, label="Draw ConservationPlot"]
-..     annotationQC[shape=box,style=rounded, label="Run AnnotationQC"]
-
-    
-..     ifmapped[shape=diamond, label="Mapped?"]
-..     ifrep[shape=diamond, label="Replicate?"]
-    
-..     start -> readconf
-..     readconf -> rawQC
-..     rawQC -> ifmapped[headport=n, color="grey"]
-..     ifmapped -> mappingQC[label="[Yes]" tailport=s]
-..     ifmapped -> bowtie[taillabel="[No]" tailport=e]
-..     bowtie -> mappingQC
-..     mappingQC -> macs2[color="grey"]
-..     macs2 -> ifrep
-..     peakcallingQC -> ceas_seqpos[color="grey"]
-..     ifrep -> venn[label="[Yes]" tailport=s]
-..     ifrep -> conservation[label="[No]" tailport=e]
-..     venn -> conservation
-..     conservation -> peakcallingQC
-..     ceas_seqpos -> annotationQC
-..     annotationQC -> end[taillabel="Output Report"]
-
-
-
-.. note::
-     use clear term to replace the ${DatasetID}
-
-     example: use factor name plus your favorate number to replace the DatasetID below.
-     if data is published, GSEID is recommended.
-
-Notation
-========
-All the program operation will be under the `[Basis]` *output* directory.
-
-.. envvar:: %{DatasetID}s
-
-    The value of :ref:`dataset.id<dataset.id>` option in :envvar:`[meta]` section
-
-.. envvar:: ${treat_rep}
-
-    The suffix of :envvar:`treatment` option in :envvar:`[meta]` section
-
-
-.. envvar:: ${control_rep}
-
-    The suffix of :envvar:`control` option in :envvar:`[meta]` section
-
-.. envvar:: ${config}
-
-    The general configuration file for pipeline :envvar:`[meta]` section
-
-.. envvar:: ${log}
-
-    For write in all shell output and assessment during procedure, including time consumed :envvar: `[meta]`
-
-Temporary files
-===============
-
-.. csv-table::
-   :header: "FolderName", "FileName", "Content", "Tool used"
-   :widths: 25, 25, 20, 10
-   :delim: ;
-
-   root directory ; ${DatasetID}log ; log; class Log
-   ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
-   ${DatasetID}_Bowtietmp ; ${DatasetID}_treat_rep${treat_rep}.sam ; mapping result ; :ref:`Bowtie`
-   ${DatasetID}_Bowtietmp ; ${DatasetID}_control_rep${control_rep}.sam ; mapping result ; :ref:`Bowtie`
-   ${DatasetID}_Bowtietmp ; ${DatasetID}_bowtie_sh.txt ; bowtie shell summary ; :ref: `Bowtie`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_dhs.txt ; DHS peaks intersection ; :ref:`BEDtools`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_velcro.txt ; overlap with velcro region; :ref:`BEDtools`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_overlapped_bed ; peaks overlapped ; :ref:`bedtools`
-   ${DatasetID}_MACStmp ; ${DatasetID}_control_rep${control_rep}.bdg ; separate control MACS bedGraph file; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat_rep${treat_rep}.bdg ; separate treat bedGraphfile ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat.bdg ; Overall MACS bedGraph file ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat.bdg.tmp ; bedGraph temporary file ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_treat.bdg ; separate treat bedGraph ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_${treat_rep}_peaks.encodePeak ; MACS encode Peak ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_pq_table.txt ; separate p q value  ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_pq_table.txt ; collective MACS2 p q value ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_control_lambda.bdg ; treat over control lambda; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_control.bdg ; treat over control ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_peaks.xls ; peaks calling list ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat_peaks.xls ; overall peak file ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_pq_table.txt ; peaks calling p q value ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_summits.bed ; peaks summits ; :ref:`MACS2<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_treat_logLR.bdg ; log bedGraph ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat_logLR.bdg ; log bedGraph ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_treat_pvalue.bdg ; treat bedGraph pvalue ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_treat_pvalue.bdg ; treat overall p value ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_rep${treat_rep}_treat_qvalue.bdg ; treat bedGraph q value ;  :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_top1000_summits.bed ; top 1000 peaks ; :ref:`MACS<MACS2>`
-   ${DatasetID}_MACStmp ; ${DatasetID}_bgfreq ; MACS background frequence ; :ref:`MACS<MACS2>`
-   ${DatasetID}_Cortmp ; ${DatasetID}_cor.R ; correlation plot code ; :ref:`Buit-in tools`
-   ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithoutpeak.R ; CEAS ; R
-   ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithpeak.R ; CEAS ; R
-   ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithoutpeak.pdf ; CEAS ; R
-   ${DatasetID}_CEAStmp ; ${DatasetID}_ceaswithpeak.pdf ; CEAS ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_fasctqc_summary.txt ; FastQC ; ref:`FastQC`
-   ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
-
-Output result
-=============
-
-.. csv-table::
-   :header: "Folder", "File Name", "Content", "Tool used"
-   :widths: 20, 25, 20, 10
-   :delim: ;
-   
-   root directory ; ${DatasetID}log ; log; class Log
-   ${DatasetID}_bowtieresult ; ${DatasetID}_${control_rep}.bam ; mapping result ; :ref:`samtools`
-   ${DatasetID}_bowtieresult ; ${DatasetID}_${treat_rep}.bam ; mapping result; 
-   ${DatasetID}_MACSresult ; ${DatasetID}_${treat_rep}_peaks.bed ;Peak calling ; :ref:`MACS2<MACS2>`      
-   ${DatasetID}_corresult ; ${DatasetID}_cor.R ; correlation plot code ; :ref:`Built-in tools<Built-in tools>`
-   ${DatasetID}_corresult ; ${DatasetID}_cor.pdf ; correlation plot pdf ; :ref:`Built-in tools<Built-in tools>`
-   ${DatasetID}_Motifresult ; ${DatasetID}_seqpos.zip ; Motif analysis ; :ref:`MDSeqpos<MDSeqpos>`
-   ${DatasetID}_CEASresult ;${DatasetID}_ceas.xls ; CEAS ; CEAS_
-   ${DatasetID}_conservresult ; ${DatasetID}_conserv.png ; Phascon score plot ; :ref:`Built-in tools<Built-in tools>`
-   ${DatasetID}_conservresult ; ${DatasetID}_conserv.R ; Phascon score ; :ref:`Built-in tools<Built-in tools>`
-   ${DatasetID}_MappingQCresult ; ${DatasetID}_redundant_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_MappingQCresult ; ${DatasetID}_mappable_ratio.pdf ; Mapping QC result ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_fastqc_score_distribution.pdf ; Raw data QC ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_fastqc_summary.txt ; Raw data QC ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_DHS_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_velcro_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_peak_ratio.pdf ; Peak calling QC ; R
-   ${DatasetID}_QCresult ; ${DatasetID}_QC.tex ; QC report code ; pdftex_
-   ${DatasetID}_QCresult ; ${DatasetID}_QC.pdf ; QC report ; :ref:`pdftex`
-   root directory ; ${DatasetID}_summary.txt ; Data analysis summary ; : ref : `Built-in tools<Built-in tools>`
 
 .. _R: http://www.r-project.org/
 .. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
@@ -455,3 +370,6 @@ Output result
 .. _Cistrome site: http://cistrome.org/~hanfei
 .. _FastQC site: http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
 .. _pdfTex site: http://www.tug.org/applications/pdftex/ 
+.. _QC: http://compbio.tongji.edu.cn/~meisl/document/7119_example.pdf
+.. _CEAS site: http://liulab.dfci.harvard.edu/CEAS/download.html
+.. _pdftex site: http://www.tug.org/applications/pdftex/
