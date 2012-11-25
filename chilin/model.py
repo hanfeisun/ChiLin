@@ -22,9 +22,7 @@ def gen_conf( species ):
     elif species == 'mm9':
         conf = temp.render(species = species,
                            filterdup_species = 'mm')
-    with open(new_temp, 'w') as f:
-        f.write(conf)
-    f.close()
+    print conf
 
 class LogWriter:
     def __init__(self, logfile = 'log'):
