@@ -136,6 +136,7 @@ minimizing the file sizes through samtools::
 .. csv-table::
    :header: "Content", "File Name", "Tool used"
    :widths: 20, 30, 15
+   :delim; ;
 
    Bowtie treat bam ; %{DatasetID}s_%{control_rep}s.bam  ; :ref:`samtools`
    Bowtie control bam ; %{DatasetID}s_%{treat_rep}s.bam ; :ref:`samtools`
@@ -149,7 +150,8 @@ The only different for Usage is to input bam suffix files in the
 *ChiLin.conf*
 
 The convert tool used here is bedtools bamToFastq::
-       bamToFastq -i x.bam -fq test.fq
+
+   bamToFastq -i x.bam -fq test.fq
 
 Peak Calling
 =============
@@ -198,10 +200,12 @@ Output files
    lambda_bdg ; %(DatasetID)s_rep%(control_rep)s_control_lambda.bdg ; :ref:`MACS<MACS2>`
 
 2. final results
+
 .. csv-table::
    :header: "Content", "File Name", "Tool used"
    :widths: 20, 25, 20
    :delim: ;
+
    treatreppeaks ; %(DatasetID)s_rep%(treat_rep)s_peaks.bed ; :ref:`MACS<MACS2>`
    treatpeaks ; %(DatasetID)s_peaks.bed ; :ref:`MACS<MACS2>`
    treatrepbw ; %(DatasetID)s_treat%(treat_rep)s.bw ; :ref:`MACS<MACS2>`
@@ -233,12 +237,12 @@ for generating :ref:`QC report`
    :widths: 20, 25, 20, 10
    :delim: ;
    
-   ${DatasetID}_Cortmp ; ${DatasetID}_cor.R ; correlation plot code ; :ref:`Buit-in tools`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_dhs.txt ; DHS peaks intersection ; :ref:`BEDtools`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_bedtools_velcro.txt ; overlap with velcro region; :ref:`BEDtools`
-   ${DatasetID}_BEDtoolstmp ; ${DatasetID}_overlapped_bed ; peaks overlapped ; :ref:`bedtools`
-   ${DatasetID}_qctmp ; ${DatasetID}_Metagene_distribution.pdf ; AnnotationQC ; R
-   ${DatasetID}_qctmp ; ${DatasetID}_peak_height_distribution.pdf ; AnnotationQC ; R
+   correlation plot code ; %{DatasetID}s_cor.R ; :ref:`Buit-in tools`
+   DHS peaks intersection ; %{DatasetID}s_bedtools_dhs.txt ; :ref:`BEDtools`
+   overlap with velcro region ; %{DatasetID}s_bedtools_velcro.txt ; :ref:`BEDtools`
+   peaks overlapped ; %{DatasetID}s_overlapped_bed ; :ref:`bedtools`
+   AnnotationQC ; %{DatasetID}s_Metagene_distribution.pdf ; R
+   AnnotationQC ; %{DatasetID}s_peak_height_distribution.pdf ; R
 
 Meta genomics Study
 =================
@@ -251,22 +255,25 @@ Focus on association between intervals (result of peak calling) and traits like 
 output files
 ------------
 CEAS part 
+
 .. csv-table::
    :header: "Content", "File Name", "Tool used"
    :widths: 20, 30, 15
    :delim: ;
 
-    CIR ; %(DatasetID)s_ceas_CI.R ; :ref:`CEAS`
-    CIpdf ; %(DatasetID)s_ceas_CI.pdf; :ref:`CEAS`
-    xls ; %(DatasetID)s_ceas.xls; :ref:`CEAS`
+    CEAS script ; %(DatasetID)s_ceas_CI.R ; :ref:`CEAS`
+    CEAS script ; %(DatasetID)s_ceas_CI.pdf; :ref:`CEAS`
+    CEAS xls ; %(DatasetID)s_ceas.xls; :ref:`CEAS`
     CEAS R script ; %(DatasetID)s_ceas.R; :ref:`CEAS`
-    pdf ; %(DatasetID)s_ceas.pdf
+    CEAS result pdf ; %(DatasetID)s_ceas.pdf
 
 Conservation analysis  part
+
 .. csv-table::
    :header: "Content", "File Name", "Tool used"
    :widths: 20, 30, 15
    :delim: ;
+
     conservtopsummits ; %(DatasetID)s_top3000summits.bed ; :ref:`built-in tools`
     conservR ; %(DatasetID)s_conserv.R ; :ref:`built-in tools`
     conservpng ; %(DatasetID)s_conserv.png ; :ref:`built-in tools`
@@ -310,31 +317,27 @@ Data Analysis Summary text
 .. csv-table::
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
+    root directory ; %{DatasetID}slog ; log; class Log
 
-root directory ; %{DatasetID}slog ; log; class Log
-
-
-Quality Control Report
+Quality report Instruction
 --------------------------
 
-Provide the overall report of the whole pipeline for viewing general result.
+An example QC report is here QC_.
 
 .. Note:: 
    Output Format is optional(default PDF)
    Below is output in the root directory, that is the folder named after ${DatasetID}
 
+Provide the overall report of the whole pipeline for viewing general result.
+
+
 .. csv-table::
    :header: "Folder", "File Name", "Content", "Tool used"
    :widths: 20, 25, 20, 15
    :delim: ;
-   root directory ; %{DatasetID}s_ceas_combined.pdf  ; Cistron annotation ;  CEAS
    root directory ; %{DatasetID}s_GSMID_QC.pdf ; All quality control measurements ; Main program
 
 .. _PDF report:
-
-Quality report Instruction
---------------------------
-An example QC report is here QC_.
 
 .. _QC report:
 
