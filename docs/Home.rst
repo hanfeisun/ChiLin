@@ -5,10 +5,9 @@ Home
 Project Purpose
 ===================
 
-* ChIP-seq experiment has been a mature and wide-spread technique for detecting the TF and histone modification distribution from the genome scale.
-* Along with the popularity of the technique and the increasingly huge number of highthroughput datasets, it may be confusing for biologists to get a quick and easy access to understand their biological meaning, and the same important thing is the unbiased judgement of the data quality.So, it's necessary for us establishing a universal and easy-to-use ChIP-seq data analysis pipeline for biologists.
-* For bioinformaticians, you may find this may be the most extensible and flexible ChIP-seq integrated python packages ever. It provides various genomic data format support and high-rated analysis toolbox. Any bug report is welcome.
-
+* ChIP-seq experiment has been a mature and wide-spread technique for detecting the TF, histone modification and chromatin factors distribution from the genome scale.
+* Along with the popularity of the technique and the increasingly huge number of highthroughput datasets, it may be confusing for biologists to get a quick and easy access to understand their biological meaning, and the same important thing is the unbiased judgement of the data quality.So, it's necessary for us to establish a universal and user-friendly ChIP-seq data analysis pipeline for biologists.
+* For bioinformaticians, this is the most extensible and flexible ChIP-seq implemented with python so far. It support various genomic data format and integrate high-rated analysis toolbox.
 
 Project Goal
 ==================
@@ -29,4 +28,4 @@ There are two layers for pipeline goal.This is part of the Cistrome_ project
   The ChIP-seq pipeline could be incorporated into the Cistrome
 
 .. _Cistrome: http://Cistrome.org
-.. _ChiLin:: https://bitbucket.org/shenglinmei/chilin
+.. _ChiLin: https://bitbucket.org/shenglinmei/chilin
