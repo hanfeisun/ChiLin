@@ -21,7 +21,7 @@ def main():
           author_email='samleomei@gmail.com',
           packages = ["chilin","chilin.motif"],
           install_requires=['jinja2', 'argparse'],
-          package_data = {'chilin':['db/*','template/*', 'conf/*']},
+          package_data = {'chilin':['db/*','template/*', 'conf/*', 'awk/*']},
           scripts=['scripts/ChiLin'],
           classifiers=[
             'Development Status :: 5 - productive',
