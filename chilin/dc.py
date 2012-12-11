@@ -77,6 +77,7 @@ class PipeBowtie(PipeController):
         use awk to speed up a little
         """
         print "working on extracting"
+        print cnt
         for sam_rep in range(cnt):
             cmd = ''' time awk -F \'\\t\' -f %s %s > bowtie.tmp ''' \
                   % (resource_filename("chilin", os.path.join("awk", "bowtie_stats.awk")), files[sam_rep])
@@ -91,7 +92,13 @@ class PipeBowtie(PipeController):
                 uniq_read = con[2].rstrip('\n')
                 uniq_location = con[3].rstrip('\n')
                 usable_percentage = float(con[2])/float(con[0])*100
-            self._sam2bam(self.rule.bowtie.samtreat[sam_rep], self.rule.samtools.bamtreat[sam_rep])
+                print sam_rep
+                print self.rule.bowtie.samtreat
+                print self.rule.samtools.bamtreat
+            if not control:
+                self._sam2bam(self.rule.bowtie.samtreat[sam_rep], self.rule.samtools.bamtreat[sam_rep])
+            else:
+                self._sam2bam(self.rule.bowtie.samcontrol[sam_rep], self.rule.samtools.bamcontrol[sam_rep])
             # uniq_read = len([i for i in reads_dict if reads_dict[i] == 1])
             # uniq_location = len(location_dict)
             # usable_percentage = float(uniq_read)/float(total_reads)*100
