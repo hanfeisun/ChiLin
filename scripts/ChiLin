@@ -37,13 +37,12 @@ def parse_args():
     parser = ChiLinParser(description = description)
     sub_parsers = parser.add_subparsers(help = "sub-command help", dest = "sub_command")
 
-    # TODO, improve test system
+    # TODO, improve test system, testing in different treat, control combination
     test_parser = sub_parsers.add_parser("test",  help = "test ChiLin using test data and config",
                                          description = " A simple test on ChiLin installation ")
     test_parser.add_argument("-s", "--species", choices = ("hg19", "mm9"), required= True)
     test_parser.add_argument("-t", "--TF", default=False, help="TF test or Histone test")
 
-    # ChiLinjinja.conf
     template_parser = sub_parsers.add_parser("gen",  help = "generate a template of config file",
                                              description = "ChiLin-gen: A config template generator for ChiLin")
     template_parser.add_argument("-s","--species", choices = ("hg19", "mm9"), required = True)
@@ -63,6 +62,8 @@ def parse_args():
                              help = "How many threads can be used")
     pipe_parser.add_argument("-k", "--skip", dest="onlyqc", action="store_true", default=False,
                              help="skip dc part")
+    pipe_parser.add_argument("-z", "--dc", dest="onlydc", action="store_true", default=False,
+                             help="skip qc part")
     pipe_parser.add_argument("-a", "--absolid", dest="color", action="store_true", default=False,
                              help="For special absolid color fastq")
     pipe_parser.add_argument("-d", dest = "step_end", type = int, default = 6,
@@ -87,12 +88,6 @@ def main():
     rl = pp.get_rule()
     log_func = pp.log
 
-    print dir(cf)
-    print dir(rl)
-    print rl.bowtie.samtreat
-    print rl.bowtie.samcontrol
-    print rl.samtools.bamtreat
-    print rl.samtools.bamcontrol
     p = lambda func:partial(func, conf=cf, rule=rl, log=log_func, debug=args.debug,
                             texfile=pp.get_tex(),
                             datasummary = pp.get_summary(),
@@ -105,15 +100,16 @@ def main():
     if not args.onlyqc:
         groom = p(PipeGroom)()
         groom.run()
- #   rawqc = p(RawQC)()
- #   rawqc.run()
+    if not args.onlydc:
+        rawqc = p(RawQC)()
+        rawqc.run()
     if not args.onlyqc:
         # TODO insert into dc module
         bowtie = p(PipeBowtie)(color=args.color)
         bowtie.run()
-
- #   mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck,summaryRender = rawqc.summaryRender )
- #   mappingqc.run()
+    if not args.onlydc:
+        mappingqc = p(MappingQC)(summarycheck = rawqc.summarycheck,summaryRender = rawqc.summaryRender )
+        mappingqc.run()
     if not args.onlyqc:
         macs2 = p(PipeMACS2)()
         macs2.run()
@@ -121,26 +117,27 @@ def main():
         pipevenncor = p(PipeVennCor)(ratios = macs2.rendercontent)
         pipevenncor.run()
 
- #       peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
- #       peakcallingqc.run()
+    if not args.onlydc:
+        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck)
+        peakcallingqc.run()
         
-        pipeceas = p(PipeCEAS)()
-        pipeceas.run()
+    pipeceas = p(PipeCEAS)()
+    pipeceas.run()
 
-        pipeconserv = p(PipeConserv)()
-        pipeconserv.run()
+    pipeconserv = p(PipeConserv)()
+    pipeconserv.run()
 
-        pipemotif = p(PipeMotif)()
-        pipemotif.run()
- #   peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck,summaryRender = mappingqc.summaryRender)
- #   peakcallingqc.run()
+    pipemotif = p(PipeMotif)()
+    pipemotif.run()
+    if not args.onlydc:
+        peakcallingqc = p(PeakcallingQC)(summarycheck = mappingqc.summarycheck,summaryRender = mappingqc.summaryRender)
+        peakcallingqc.run()
 
- #   annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck,summaryRender = peakcallingqc.summaryRender)
- #   annotationqc.run(args.atype)
+        annotationqc = p(AnnotationQC)(summarycheck = peakcallingqc.summarycheck,summaryRender = peakcallingqc.summaryRender)
+        annotationqc.run(args.atype)
 
-
- #   summaryqc = p(SummaryQC)()
- #   summaryqc.run(annotationqc.summarycheck,annotationqc.summaryRender,args.onlyqc)
+        summaryqc = p(SummaryQC)()
+        summaryqc.run(annotationqc.summarycheck,annotationqc.summaryRender,args.onlyqc)
 
     p(package)()
 
