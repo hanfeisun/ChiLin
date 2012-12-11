@@ -100,7 +100,7 @@ class Rule(RuleBase):
                   "QCtex", "QCreport"])
     summary = Section(['datasummary', 'log'])
 
-class PipePreparation(Conf):
+class PipePreparation(Conf, Rule):
     def __init__(self, ChiLinconfPath,
                  NameConfPath = resource_filename("chilin", os.path.join("conf", "NameRule.conf"))):
         """
@@ -118,8 +118,13 @@ class PipePreparation(Conf):
         self._conf.basis.control = parseinput(self._conf.basis.control)
         self._conf.basis.treatnumber = len(self._conf.basis.treat)
         self._conf.basis.controlnumber = len(self._conf.basis.control)
+        print self._conf.basis.treatnumber
+        print self._conf.basis.treat
+        print self._conf.basis.control
+        print self._conf.basis.controlnumber
+        ## don't disorder control and treat !!
         self._rule = Rule(NameConfPath, self._conf.basis.id,
-                          self._conf.basis.treatnumber, self._conf.basis.controlnumber)
+                          self._conf.basis.controlnumber, self._conf.basis.treatnumber)
         self.log = LogWriter(self._rule.summary.log).record
 
     def get_config(self):
