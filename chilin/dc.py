@@ -378,7 +378,7 @@ class PipeVennCor(PipeController):
         if a_type == 'dhs':
             lena_type = len(open(self.rule.bedtools.dhs, 'r').readlines())
         elif a_type == 'velcro':
-            if True:
+            if species:
                 lena_type = len(open(self.rule.bedtools.velcro, 'r').readlines())
         self.ratio[a_type] = lena_type
         if lenall != 0:
