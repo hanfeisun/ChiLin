@@ -144,19 +144,12 @@ class RawQC(QC_Controller):
         self.render['RawQC_check'] = True
         self.render['prefix_dataset_id'] = underline_to_space(self.conf.basis.id)
         if len(self.conf.basis.control) ==0:
-            rawdata = self.conf.basis.treat
-            names = self.rule.qc.treat_data
+            rawdata = self.conf.basis.treat[:]
+            names = self.rule.qc.treat_data[:]
         else:
             rawdata = self.conf.basis.treat +self.conf.basis.control
             names = self.rule.qc.treat_data + self.rule.qc.control_data
 
-        suffix = lambda x: x.endswith(".bed") or x.endswith(".bam") or x.endswith(".fastq")
-        for i in range(len(rawdata)-1,-1,-1):
-            if suffix(rawdata[i]):
-                pass
-            else:
-                del rawdata[i]
-        print rawdata
         if len(rawdata)!=0:
             self.render['fastqc_table'],self.render['fastqc_graph'] = self._fastqc_info(rawdata,names)
             self.render['fastqc_check'] = True
