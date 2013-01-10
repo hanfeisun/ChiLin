@@ -47,7 +47,7 @@ class Conf(ConfBase):
     bedtools = Section(["path", "dhs", "velcro"])
     ceas = Section(["path", "exon", "peaks", "refgene", "chrlen", "promoter_sizes", "bipromoter_sizes", "rel_dist"])
     conservation = Section(["path", "peaks", "width", "phast"])
-    correlation = Section(["path", "wig_correlation_step", "wig_correlation_min", "wig_correlation_max"])
+    correlation = Section(["path", "species", "wig_correlation_step", "wig_correlation_min", "wig_correlation_max"])
     venn = Section(["path"])
     seqpos = Section(["path", "species", "summitsnumber", "mdscan_width", "mdscan_top_peaks",
                       "seqpos_mdscan_top_peaks_refine", "seqpos_width", "seqpos_pvalue_cutoff", "db"])
