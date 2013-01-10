@@ -395,8 +395,9 @@ class PipeVennCor(PipeController):
         to avoid negative peaks
         2. use bedClip to avoid chromosome out of range use ceas chr len
         bedClip testid_1_peaks.bed /mnt/Storage/data/sync_cistrome_lib/chromLen/hg19.len test.bed
-        example:
-        /opt/bin/wig_correlation_bigwig_input_only.py -d mm9  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
+        example: 
+        important modification: -d mm9 => species chrinfo path
+        /opt/bin/wig_correlation_bigwig_input_only.py -d mm9_chr_info.path  -s 10  -m mean  --min-score 2  --max-score 50  -r 6576_cor.R 6576_rep1_treat.bw 6576_rep2_treat.bw -l replicate_1 -l replicate_2
         """
         # filter bed files
         def filter(peaks, tmp):
@@ -456,7 +457,7 @@ class PipeVennCor(PipeController):
             # correlation plot
             cmd = '{0} -d {1} -s {2} -m mean --min-score {3} --max-score {4} -r {5} {6} {7} && mv {8}.pdf {9}'
             cmd = cmd.format(self.conf.correlation.path,
-                             self.conf.basis.species,
+                             self.conf.correlation.species,
                              self.conf.correlation.wig_correlation_step,
                              self.conf.correlation.wig_correlation_min,
                              self.conf.correlation.wig_correlation_max,
