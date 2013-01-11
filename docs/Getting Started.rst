@@ -21,7 +21,7 @@ the test files are in the *tests* folder
 - Generating Configuration file
  To run the tests, you need simply need to run::
 
-    Chilin.py gen -s hg19
+    Chilin gen -s hg19
 
 .. literalinclude:: ../chilin/tests/test.conf
       :language: ini
@@ -34,7 +34,7 @@ the test files are in the *tests* folder
 
 - run::
 
-    ChiLin.py run -c ChiLin.conf -t TF
+    ChiLin run -c ChiLin.conf -t TF
 
 This should be run all dependent program with dependent data.
 
