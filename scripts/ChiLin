@@ -18,7 +18,8 @@ from chilin.dc import (PipeGroom,
                        PipeCEAS,
                        PipeConserv,
                        PipeMotif,
-                       package)
+                       package,
+                       rm)
 
 from chilin.qc import (RawQC,
                        MappingQC,
@@ -46,6 +47,7 @@ def parse_args():
     template_parser = sub_parsers.add_parser("gen",  help = "generate a template of config file",
                                              description = "ChiLin-gen: A config template generator for ChiLin")
     template_parser.add_argument("-s","--species", choices = ("hg19", "mm9"), required = True)
+    template_parser.add_argument("-p","--platform", choices = ("Illumina", "absolid"), required = True)
 
     # Run
     pipe_parser = sub_parsers.add_parser("run", help = "run pipeline using a config file",
@@ -68,12 +70,14 @@ def parse_args():
                              help="For special absolid color fastq")
     pipe_parser.add_argument("-d", dest = "step_end", type = int, default = 6,
                              help = "specify the end step of pipeline, 1 for bowtie, 2 for macs, 3 for venn and correlation, 4 for ceas, 5 for conservation, 6 for motif, Note: if you only have bed file, start from 2")
+    pipe_parser.add_argument("-r", dest = "remove", action = "store_true", default = False,
+                             help = "remove temporary files")
     pipe_parser.add_argument("--debug", help = "debug mode", action = "store_true", default = False)
     
     args = parser.parse_args()
 
     if args.sub_command == "gen":
-        gen_conf(args.species)
+        gen_conf(args.species, args.platform)
         sys.exit(0)
 
     if args.sub_command == "run":
@@ -140,6 +144,8 @@ def main():
         summaryqc.run(annotationqc.summarycheck,annotationqc.summaryRender,args.onlyqc)
 
     p(package)()
+    if args.remove:
+        rm(args.remove)
 
 if __name__ == "__main__":
     try: 

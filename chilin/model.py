@@ -11,10 +11,13 @@ import sys
 
 
 
-def gen_conf( species ):
+def gen_conf( species, platform ):
     """ options for subparser gen """
     env = Environment(loader = PackageLoader('chilin', 'conf'))
-    new_temp = "ChiLin.conf"
+    if platform == "Illumina":
+        new_temp = "ChiLin.conf"
+    elif platform == "absolid":
+        new_temp = "ChiLin_ab.conf"
     temp = env.get_template(new_temp)
     if species == 'hg19':
         conf = temp.render(species = species,
