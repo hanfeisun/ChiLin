@@ -4,6 +4,7 @@ Data Analysis Workflow
 from controller import PipeController
 from pkg_resources import resource_filename
 from subprocess import call
+from glob import glob
 import os, sys, re
 
 exists = os.path.exists
@@ -714,11 +715,11 @@ class PipeMotif(PipeController):
 #    def run(self):
 #        pass
 
+
 def package(conf, rule, log, **args):
     """
     package all the results in datasetid folder
     """
-    from glob import glob
     bams = glob('*.bam')
     xls = glob('*.xls')
     summits = glob('*_summits.bed')
@@ -739,3 +740,15 @@ def package(conf, rule, log, **args):
         for f in fs:
             call('cp %s %s' % (f, folder), shell = True)
     log('package success')
+
+def rm(choose):
+    """ remove unnecessary part of the files
+    """
+    preserv = os.listdir(".")
+    print preserv
+    if choose:
+        for f in preserv:
+            if f.startswith("dataset") and os.path.isdir(f):
+                continue
+            else:
+                call("rm -r %s" % f, shell = True)
