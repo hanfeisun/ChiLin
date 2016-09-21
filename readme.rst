@@ -10,8 +10,7 @@ with less configuration.
 Note
 ----
 
-This is an early-stage snapshot of ChiLin. To get the latest version of Chilin, please go to [this repository](https://github.com/cfce/chilin)
-
+This is an early-stage snapshot of ChiLin. To get the latest version of Chilin, please go to https://github.com/cfce/chilin
 
 Nutshell
 --------
