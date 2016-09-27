@@ -12,6 +12,8 @@ Note
 
 This is an early-stage snapshot of ChiLin. To get the latest version of Chilin, please go to https://github.com/cfce/chilin
 
+The paper for this work is accepted by BMC Bioinformatics in Sep 2016
+
 Nutshell
 --------
 
